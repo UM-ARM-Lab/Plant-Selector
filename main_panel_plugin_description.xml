@@ -1,0 +1,11 @@
+<library path="libmain_panel">
+
+  <class name="rviz_custom_panel/MainPanel" 
+         type="rviz_custom_panel::MainPanel"
+         base_class_type="rviz::Panel">
+    <description>
+      Panel that allows for selection of point clouds
+    </description>
+  </class>
+
+</library>
