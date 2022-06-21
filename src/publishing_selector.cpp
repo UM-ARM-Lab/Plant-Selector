@@ -32,49 +32,56 @@ PublishingSelector::~PublishingSelector() {}
 // TODO: Don't hardcode frame ids
 void PublishingSelector::updateTopic() {
     // see if I can get command line args to work with this, if not put into a panel
-    node_handle_.param("frame_id", tf_frame_, std::string("camera_depth_optical_frame"));
-    rviz_cloud_topic_ = std::string("/rviz_selected_points");
+    rviz_cloud_topic = std::string("/rviz_selected_points");
 
-    rviz_selected_publisher_ = node_handle_.advertise<sensor_msgs::PointCloud2>(rviz_cloud_topic_.c_str(), 1);
-    num_selected_points_ = 0;
+    rviz_selected_publisher = n.advertise<sensor_msgs::PointCloud2>(rviz_cloud_topic, 1);
+    num_selected_points = 0;
+}
+
+void PublishingSelector::clear_points() {
+    rviz::SelectionManager* selection_manager = context_->getSelectionManager();
+    rviz::M_Picked selection = selection_manager->getSelection();
+    selection_manager->removeSelection(selection);
+    visualization_msgs::Marker marker;
+    // Set the frame ID and timestamp.  See the TF tutorials for information on these.
+    marker.header.frame_id = context_->getFixedFrame().toStdString().c_str();
+    marker.header.stamp = ros::Time::now();
+    marker.ns = "basic_shapes";
+    marker.id = 0;
+    marker.type = visualization_msgs::Marker::CUBE;
+    marker.action = visualization_msgs::Marker::DELETE;
+    marker.lifetime = ros::Duration();
+    num_selected_points = 0;
 }
 
 int PublishingSelector::processKeyEvent(QKeyEvent* event, rviz::RenderPanel* panel) {
     if (event->type() == QKeyEvent::KeyPress) {
         // clear points
         if (event->key() == 'c' || event->key() == 'C') {
-            rviz::SelectionManager* selection_manager = context_->getSelectionManager();
-            rviz::M_Picked selection = selection_manager->getSelection();
-            selection_manager->removeSelection(selection);
-            visualization_msgs::Marker marker;
-            // Set the frame ID and timestamp.  See the TF tutorials for information on these.
-            marker.header.frame_id = context_->getFixedFrame().toStdString().c_str();
-            marker.header.stamp = ros::Time::now();
-            marker.ns = "basic_shapes";
-            marker.id = 0;
-            marker.type = visualization_msgs::Marker::CUBE;
-            marker.action = visualization_msgs::Marker::DELETE;
-            marker.lifetime = ros::Duration();
-            num_selected_points_ = 0;
+            clear_points();
         }
         else if (event->key() == 'p' || event->key() == 'P') {
-            rviz_selected_publisher_.publish(selected_points_);
+            rviz_selected_publisher.publish(selected_points);
+            clear_points();
         }
     }
+
+    // this return removes a warning, not sure what this func should return
+    return 0;
 }
 
 int PublishingSelector::processMouseEvent(rviz::ViewportMouseEvent& event) {
     int flags = rviz::SelectionTool::processMouseEvent(event);
     if (event.alt()) {
-        selecting_ = false;
+        selecting = false;
     }
     else {
         if (event.leftDown()) {
-        selecting_ = true;
+        selecting = true;
         }
     }
 
-    if (selecting_) {
+    if (selecting) {
         if (event.leftUp()) {
         this->processSelectedArea();
         }
@@ -87,38 +94,38 @@ int PublishingSelector::processSelectedArea() {
     rviz::M_Picked selection = selection_manager->getSelection();
     rviz::PropertyTreeModel* model = selection_manager->getPropertyModel();
 
-    selected_points_.header.frame_id = "camera_depth_optical_frame";
-    selected_points_.height = 1;
-    selected_points_.point_step = 4 * 4;
-    selected_points_.is_dense = false;
-    selected_points_.is_bigendian = false;
-    selected_points_.fields.resize(4);
+    selected_points.header.frame_id = context_->getFixedFrame().toStdString();
+    selected_points.height = 1;
+    selected_points.point_step = 4 * 4;
+    selected_points.is_dense = false;
+    selected_points.is_bigendian = false;
+    selected_points.fields.resize(4);
 
-    selected_points_.fields[0].name = "x";
-    selected_points_.fields[0].offset = 0;
-    selected_points_.fields[0].datatype = sensor_msgs::PointField::FLOAT32;
-    selected_points_.fields[0].count = 1;
+    selected_points.fields[0].name = "x";
+    selected_points.fields[0].offset = 0;
+    selected_points.fields[0].datatype = sensor_msgs::PointField::FLOAT32;
+    selected_points.fields[0].count = 1;
 
-    selected_points_.fields[1].name = "y";
-    selected_points_.fields[1].offset = 4;
-    selected_points_.fields[1].datatype = sensor_msgs::PointField::FLOAT32;
-    selected_points_.fields[1].count = 1;
+    selected_points.fields[1].name = "y";
+    selected_points.fields[1].offset = 4;
+    selected_points.fields[1].datatype = sensor_msgs::PointField::FLOAT32;
+    selected_points.fields[1].count = 1;
 
-    selected_points_.fields[2].name = "z";
-    selected_points_.fields[2].offset = 8;
-    selected_points_.fields[2].datatype = sensor_msgs::PointField::FLOAT32;
-    selected_points_.fields[2].count = 1;
+    selected_points.fields[2].name = "z";
+    selected_points.fields[2].offset = 8;
+    selected_points.fields[2].datatype = sensor_msgs::PointField::FLOAT32;
+    selected_points.fields[2].count = 1;
 
-    selected_points_.fields[3].name = "rgb";
-    selected_points_.fields[3].offset = 12;
-    selected_points_.fields[3].datatype = sensor_msgs::PointField::FLOAT32;
-    selected_points_.fields[3].count = 1;
+    selected_points.fields[3].name = "rgb";
+    selected_points.fields[3].offset = 12;
+    selected_points.fields[3].datatype = sensor_msgs::PointField::FLOAT32;
+    selected_points.fields[3].count = 1;
 
 
     int i = 0;
     while (model->hasIndex(i, 0)) {
-        selected_points_.row_step = (i + 1) * selected_points_.point_step;
-        selected_points_.data.resize(selected_points_.row_step);
+        selected_points.row_step = (i + 1) * selected_points.point_step;
+        selected_points.data.resize(selected_points.row_step);
 
         QModelIndex child_index = model->index(i, 0);
 
@@ -126,7 +133,7 @@ int PublishingSelector::processSelectedArea() {
         rviz::VectorProperty* subchild = (rviz::VectorProperty*)child->childAt(0);
         Ogre::Vector3 point_data = subchild->getVector();
 
-        uint8_t* data_pointer = &selected_points_.data[0] + i * selected_points_.point_step;
+        uint8_t* data_pointer = &selected_points.data[0] + i * selected_points.point_step;
         *(float*)data_pointer = point_data.x;
         data_pointer += 4;
         *(float*)data_pointer = point_data.y;
@@ -164,10 +171,10 @@ int PublishingSelector::processSelectedArea() {
         data_pointer += 4;
         i++;
     }
-    num_selected_points_ = i;
+    num_selected_points = i;
 
-    selected_points_.width = i;
-    selected_points_.header.stamp = ros::Time::now();
+    selected_points.width = i;
+    selected_points.header.stamp = ros::Time::now();
     return 0;
 }
 }  // namespace rviz_custom_tool

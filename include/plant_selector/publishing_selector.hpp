@@ -26,24 +26,24 @@ public:
   virtual ~PublishingSelector();
   virtual int processMouseEvent(rviz::ViewportMouseEvent& event);
   virtual int processKeyEvent(QKeyEvent* event, rviz::RenderPanel* panel);
+  void clear_points();
 
 public Q_SLOTS:
   void updateTopic();
 
 protected:
   int processSelectedArea();
-  ros::NodeHandle node_handle_;
-  ros::Publisher rviz_selected_publisher_;
-  ros::Subscriber pointcloud_subscriber_;
+  ros::NodeHandle n;
+  ros::Publisher rviz_selected_publisher;
+  ros::Subscriber pointcloud_subscriber;
 
-  std::string tf_frame_;
-  std::string rviz_cloud_topic_;
-  std::string subscribed_cloud_topic_;
+  std::string tf_frame;
+  std::string rviz_cloud_topic;
 
-  sensor_msgs::PointCloud2 selected_points_;
+  sensor_msgs::PointCloud2 selected_points;
 
-  bool selecting_;
-  int num_selected_points_;
+  bool selecting;
+  int num_selected_points;
 };
 }  // namespace rviz_custom_tool
 

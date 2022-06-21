@@ -3,22 +3,11 @@
 
 #include <ros/ros.h>
 #include <rviz/panel.h>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
 
-// Other ROS dependencies
 #include <string.h>
 #include <QWidget>
-#include <QSlider>
 #include <QPushButton>
 #include <QLabel>
-#include <QWheelEvent>
-
-#include <sensor_msgs/PointCloud2.h>
-#include <interactive_markers/interactive_marker_server.h>
-
-#include "std_msgs/Bool.h"
-#include "std_msgs/Float32MultiArray.h"
 
 namespace rviz
 {
@@ -68,13 +57,16 @@ namespace rviz_custom_panel
          */
         private Q_SLOTS:
 
-            void branch_button_handler();
-            void weed_button_handler();
+            void command_changed(const QString& command_text);
+            void cancel_button_handler();
 
         /**
          *  Finally, we close up with protected member variables
          */
         protected:
+            ros::NodeHandle n;
+            ros::Publisher mode_pub;
+
             rviz::VisualizationManager* manager;
             rviz::RenderPanel* render_panel;
 

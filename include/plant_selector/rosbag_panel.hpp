@@ -3,22 +3,14 @@
 
 #include <ros/ros.h>
 #include <rviz/panel.h>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
 
-// Other ROS dependencies
 #include <string.h>
 #include <QWidget>
 #include <QSlider>
-#include <QPushButton>
 #include <QLabel>
-#include <QWheelEvent>
+#include <QLineEdit>
 
 #include <sensor_msgs/PointCloud2.h>
-#include <interactive_markers/interactive_marker_server.h>
-
-#include "std_msgs/Bool.h"
-#include "std_msgs/Float32MultiArray.h"
 
 namespace rviz
 {
@@ -70,6 +62,9 @@ namespace rviz_custom_panel
 
             void set_bag();
             void set_frame(int new_frame_num);
+            void set_topic();
+
+            void set_zed_defaults();
 
         /**
          *  Finally, we close up with protected member variables
@@ -82,6 +77,10 @@ namespace rviz_custom_panel
             rviz::VisualizationManager* manager;
             rviz::RenderPanel* render_panel;
 
+            std::string pc_topic;
+
+            QLineEdit* pc_topic_edit;
+            QLabel* pc_topic_label;
             QSlider* frame_slider;
             QLabel* frame_number;
 
