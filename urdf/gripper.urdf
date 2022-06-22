@@ -1,0 +1,82 @@
+<?xml version="1.0"?>
+<robot name="gripper">
+    <link name="end_effector_left">
+        <collision>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <mesh filename="package://hdt_michigan_description/meshes/PINCER_HOUSING2.STL"/>
+            </geometry>
+        </collision>
+
+        <visual>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <mesh filename="package://hdt_michigan_description/meshes/PINCER_HOUSING2.STL"/>
+            </geometry>
+        </visual>
+    </link>
+
+    <joint name="leftgripper" type="fixed">
+        <axis xyz="0 0 1"/>
+        <origin xyz="0 0.0135 0.068553" rpy="1.5707 -0.42 -1.5707"/>
+        <parent link="end_effector_left"/>
+        <child link="leftgripper_link"/>
+    </joint>
+
+
+    <link name="leftgripper_link">
+        <collision>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <mesh filename="package://hdt_michigan_description/meshes/PINCER_FINGER.STL"/>
+            </geometry>
+        </collision>
+
+        <visual>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <mesh filename="package://hdt_michigan_description/meshes/PINCER_FINGER.STL"/>
+            </geometry>
+        </visual>
+    </link>
+
+    <joint name="leftgripper2" type="fixed">
+        <axis xyz="0 0 1"/>
+        <origin xyz="0 -0.0135 0.068553" rpy="1.5707 -0.42 1.5707"/>
+        <parent link="end_effector_left"/>
+        <child link="leftgripper2_link"/>
+    </joint>
+
+    <link name="leftgripper2_link">
+        <collision>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <mesh filename="package://hdt_michigan_description/meshes/PINCER_FINGER.STL"/>
+            </geometry>
+        </collision>
+
+        <visual>
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <mesh filename="package://hdt_michigan_description/meshes/PINCER_FINGER.STL"/>
+            </geometry>
+        </visual>
+    </link>
+
+    <link name="left_tool">
+        <visual name="left_tool_visual">
+            <origin xyz="0 0 0" rpy="0 0 0"/>
+            <geometry>
+                <sphere radius="0.002"/>
+            </geometry>
+        </visual>
+    </link>
+
+    <joint name="left_tool_joint" type="fixed">
+        <parent link="end_effector_left"/>
+        <child link="left_tool"/>
+        <origin xyz="0.0 0.0 0.181" rpy="0 0 0"/>
+    </joint>
+
+</robot>
+
