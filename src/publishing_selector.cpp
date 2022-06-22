@@ -151,9 +151,7 @@ int PublishingSelector::processSelectedArea() {
                 rviz::ColorProperty* colorchild = (rviz::ColorProperty*)grandchild;
                 QColor thecolor = colorchild->getColor();
 
-                int r;
-                int g;
-                int b;
+                int r, g, b;
 
                 thecolor.getRgb(&r, &g, &b);
                 int rgb = 0x00000000;
