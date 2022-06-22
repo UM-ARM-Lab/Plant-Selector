@@ -1,7 +1,7 @@
 # Import useful libraries and functions
 import open3d as o3d
 import numpy as np
-import pcl as pcl
+import pcl
 
 import rospy
 import ros_numpy
@@ -15,7 +15,7 @@ from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point
 from arc_utilities.tf2wrapper import TF2Wrapper
 from sklearn.decomposition import PCA
-from sensor_msgs import point_cloud2 as pc2
+import sensor_msgs.point_cloud2 as pc2
 
 
 def ros_to_pcl(ros_cloud):
@@ -32,10 +32,11 @@ def ros_to_pcl(ros_cloud):
     for data in pc2.read_points(ros_cloud, skip_nans=True):
         points_list.append([data[0], data[1], data[2], data[3]])
 
-    pcl_data = pcl.PointCloud_PointXYZRGB()
+    pcl_data = pcl.PointXYZRGB()
     pcl_data.from_list(points_list)
 
     return pcl_data
+
 
 class WeedExtractor:
     def __init__(self, camera_frame):
@@ -51,6 +52,7 @@ class WeedExtractor:
         rospy.Subscriber("/rviz_selected_points", PointCloud2, self.select_weed)
 
         self.frame_id = camera_frame
+
 
     def plot_pointcloud_rviz(self, pub: rospy.Publisher, xs, ys, zs):
         """
@@ -145,7 +147,6 @@ class WeedExtractor:
         # Call the function to plot plane as a PC
         self.plot_pointcloud_rviz(self.plane_pub, points_flat[:, 0], points_flat[:, 1], points_flat[:, 2])
 
-
     def select_weed(self, selection):
         print('received message')
         # Load point cloud and visualize it
@@ -153,7 +154,8 @@ class WeedExtractor:
         # o3d.visualization.draw_geometries([pcd])
 
         # Get numpy array of xyz and rgb values of the point cloud
-        pcd_points = np.asarray(pcd.points)
+        pcd_points = np.array(list(pc2.read_points(selection)))
+
         pcd_colors = np.asarray(pcd.colors)
 
         print(pcd_points.shape)
@@ -167,7 +169,6 @@ class WeedExtractor:
                                         (pcd_colors[:, 1] > g_low) & (pcd_colors[:, 1] < g_high) &
                                         (pcd_colors[:, 2] > b_low) & (pcd_colors[:, 2] < b_high))
 
-        h = len(green_points_indices[0])
         if len(green_points_indices[0]) == 1:
             r_low, g_low, b_low = 0, 0.3, 0
             r_high, g_high, b_high = 1, 1, 1
