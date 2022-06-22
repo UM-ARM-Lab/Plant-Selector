@@ -1,6 +1,8 @@
 # Import useful libraries and functions
 import open3d as o3d
 import numpy as np
+import pcl as pcl
+
 import rospy
 import ros_numpy
 import matplotlib.pyplot as plt
@@ -13,9 +15,27 @@ from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Point
 from arc_utilities.tf2wrapper import TF2Wrapper
 from sklearn.decomposition import PCA
+from sensor_msgs import point_cloud2 as pc2
 
-camera_frame = 'zed2i_left_camera_frame'
 
+def ros_to_pcl(ros_cloud):
+    """ Converts a ROS PointCloud2 message to a pcl PointXYZRGB
+
+        Args:
+            ros_cloud (PointCloud2): ROS PointCloud2 message
+
+        Returns:
+            pcl.PointCloud_PointXYZRGB: PCL XYZRGB point cloud
+    """
+    points_list = []
+
+    for data in pc2.read_points(ros_cloud, skip_nans=True):
+        points_list.append([data[0], data[1], data[2], data[3]])
+
+    pcl_data = pcl.PointCloud_PointXYZRGB()
+    pcl_data.from_list(points_list)
+
+    return pcl_data
 
 class WeedExtractor:
     def __init__(self, camera_frame):
@@ -48,7 +68,7 @@ class WeedExtractor:
         # Define a tuple with coordinates and type
         np_record_array = np.array(list_of_tuples, dtype=dtype)
         # Construct ROS message
-        msg = ros_numpy.msgify(PointCloud2, np_record_array, frame_id=camera_frame, stamp=rospy.Time.now())
+        msg = ros_numpy.msgify(PointCloud2, np_record_array, stamp=rospy.Time.now())
         # Publish the message
         pub.publish(msg)
 
@@ -70,7 +90,7 @@ class WeedExtractor:
         msg.type = Marker.ARROW
         msg.action = Marker.ADD
         msg.ns = name
-        msg.header.frame_id = camera_frame
+        msg.header.frame_id = self.frame_id
         msg.color = color_msg
 
         # Define endpoint of the arrow, given by the start point, the direction and a length_scale parameter
@@ -128,7 +148,7 @@ class WeedExtractor:
 
     def select_weed(self, selection):
         # Load point cloud and visualize it
-        pcd = o3d.io.read_point_cloud("../pcs/weed-extraction/weed-09.pcd")
+        pcd = ros_to_pcl(selection)
         # o3d.visualization.draw_geometries([pcd])
 
         # Get numpy array of xyz and rgb values of the point cloud
@@ -248,7 +268,7 @@ class WeedExtractor:
             # Define transformation matrix from camera to end effector
             camera2ee = camera2tool @ tool2ee
             # Display gripper
-            tfw.send_transform_matrix(camera2ee, parent=camera_frame, child='end_effector_left')
+            tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
 
             # Call plot_pointcloud_rviz function to visualize PCs in Rviz
             # Visualize all the point cloud as "source"
@@ -272,6 +292,7 @@ class WeedExtractor:
 def main():
     weed_extractor = WeedExtractor("zed2i_left_camera_frame")
     rospy.spin()
+
 
 if __name__ == '__main__':
     main()
