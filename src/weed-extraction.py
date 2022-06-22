@@ -48,7 +48,7 @@ class WeedExtractor:
         self.arrow_pub = rospy.Publisher("normal", Marker, queue_size=10)
         self.plane_pub = rospy.Publisher("dirt_plane", PointCloud2, queue_size=10)
 
-        self.selection_sub = rospy.Subscriber("/rviz_selected_points", PointCloud2, queue_size=10)
+        rospy.Subscriber("/rviz_selected_points", PointCloud2, self.select_weed)
 
         self.frame_id = camera_frame
 
@@ -147,6 +147,7 @@ class WeedExtractor:
 
 
     def select_weed(self, selection):
+        print('received message')
         # Load point cloud and visualize it
         pcd = ros_to_pcl(selection)
         # o3d.visualization.draw_geometries([pcd])
@@ -154,6 +155,9 @@ class WeedExtractor:
         # Get numpy array of xyz and rgb values of the point cloud
         pcd_points = np.asarray(pcd.points)
         pcd_colors = np.asarray(pcd.colors)
+
+        print(pcd_points.shape)
+        print(pcd_colors.shape)
 
         # Filter the point cloud so that only the green points stay
         # Get the indices of the points with g parameter greater than x
