@@ -221,7 +221,7 @@ class PlantExtractor:
         points = np.array(list(pc2.read_points(selection)))[:, :3]
 
         pcd = o3d.geometry.PointCloud()
-        pcd.points = points
+        pcd.points = o3d.utility.Vector3dVector(points)
         # Apply plane segmentation function from open3d and get the best inliers
         _, best_inliers = pcd.segment_plane(distance_threshold=0.0005,
                                             ransac_n=3,
@@ -273,9 +273,9 @@ class PlantExtractor:
             # Rviz commands
             tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
             # Call rviz_arrow function to first component, cut direction and second component
-            self.rviz_arrow(inliers_centroid, normal, name='first component', length_scale=0.04, color='r')
-            self.rviz_arrow(inliers_centroid, cut_y, name='cut y', length_scale=0.05, color='g')
-            self.rviz_arrow(inliers_centroid, cut_direction, name='cut direction', length_scale=0.05, color='b')
+            self.rviz_arrow(inliers_centroid, normal, name='first component', length_scale=0.04, color='r', thickness=0.08)
+            self.rviz_arrow(inliers_centroid, cut_y, name='cut y', length_scale=0.05, color='g', thickness=0.08)
+            self.rviz_arrow(inliers_centroid, cut_direction, name='cut direction', length_scale=0.05, color='b', thickness=0.08)
 
             # Call plot_plane function to visualize plane in Rviz
             self.plot_plane(inliers_centroid, normal, size=0.05, res=0.001)
@@ -378,6 +378,8 @@ class PlantExtractor:
         inlier_dirt_centroid = np.mean(inlier_dirt_points, axis=0)
         # The a, b, c coefficients of the plane equation are the components of the normal vector of that plane
         normal = np.asarray([a, b, c])
+        if normal[2] > 0:
+            normal = -normal
 
         phi = -atan(normal[1] / normal[2])
         theta = atan(normal[0] / normal[2])
