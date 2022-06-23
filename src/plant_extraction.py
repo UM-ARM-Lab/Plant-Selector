@@ -5,7 +5,7 @@ import pcl as pcl
 
 import rospy
 import ros_numpy
-from math import atan, sin, cos
+from math import atan, sin, cos, pi
 from sensor_msgs.msg import PointCloud2
 from statistics import mode
 from std_msgs.msg import ColorRGBA
@@ -122,7 +122,7 @@ class PlantExtractor:
 
     def project(self, u, n):
         """
-        This functions projects a vector "u" to a plane "n" following a mathematic equation.
+        This functions projects a vector "u" to a plane "n" following a mathematical equation.
         :param u: vector that is going to be projected. (numpy array)
         :param n: normal vector of the plane (numpy array)
         :return: vector projected onto the plane (numpy array)
@@ -272,9 +272,9 @@ class PlantExtractor:
         # Rviz commands
         tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
         # Call rviz_arrow function to first component, cut direction and second component
-        self.rviz_arrow(inliers_centroid, normal, name='first component', length_scale=0.04, color='r', thickness=0.08)
-        self.rviz_arrow(inliers_centroid, cut_y, name='cut y', length_scale=0.05, color='g', thickness=0.08)
-        self.rviz_arrow(inliers_centroid, cut_direction, name='cut direction', length_scale=0.05, color='b', thickness=0.08)
+        # self.rviz_arrow(inliers_centroid, normal, name='first component', length_scale=0.04, color='r', thickness=0.008)
+        # self.rviz_arrow(inliers_centroid, cut_y, name='cut y', length_scale=0.05, color='g', thickness=0.008)
+        # self.rviz_arrow(inliers_centroid, cut_direction, name='cut direction', length_scale=0.05, color='b', thickness=0.008)
 
         # Call plot_plane function to visualize plane in Rviz
         self.plot_plane(inliers_centroid, normal, size=0.05, res=0.001)
@@ -368,9 +368,13 @@ class PlantExtractor:
         inlier_dirt_centroid = np.mean(inlier_dirt_points, axis=0)
         # The a, b, c coefficients of the plane equation are the components of the normal vector of that plane
         normal = np.asarray([a, b, c])
+        if normal[2] > 0:
+            normal = -normal
 
         phi = atan(normal[1] / normal[2])
         theta = atan(normal[0] / normal[2])
+        if theta < 0:
+            theta = theta + pi
         psi = atan(normal[1] / normal[0])
 
         Rx = np.asarray([[1, 0, 0],
@@ -395,7 +399,6 @@ class PlantExtractor:
         """
 
         tfw = TF2Wrapper()
-
         # Construct transformation matrix from camera to tool of end effector
         camera2tool = np.zeros([4, 4])
         camera2tool[:3, :3] = frame2vector_rot
@@ -422,11 +425,10 @@ class PlantExtractor:
                              green_pcd_points[:, 2])
         # Call rviz_arrow function to see normal of the plane
         self.rviz_arrow(inlier_dirt_centroid, normal, name='normal', thickness=0.008, length_scale=0.15,
-                   color='w')
+                        color='w')
         # Call plot_plane function to visualize plane in Rviz
         self.plot_plane(inlier_dirt_centroid, normal, size=0.1, res=0.001)
         rospy.sleep(1)
-
 
 
 def main():
