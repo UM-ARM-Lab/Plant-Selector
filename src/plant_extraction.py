@@ -254,35 +254,33 @@ class PlantExtractor:
         cut_y = np.cross(cut_direction_normalized, normal)
 
         tfw = TF2Wrapper()
-        while True:
-            # Get 3x3 rotation matrix
-            # The first row is the x-axis of the tool frame in the camera frame
-            camera2tool_rot = np.array([normal, cut_y, cut_direction_normalized]).T
+        # Get 3x3 rotation matrix
+        # The first row is the x-axis of the tool frame in the camera frame
+        camera2tool_rot = np.array([normal, cut_y, cut_direction_normalized]).T
 
-            # Construct transformation matrix from camera to tool of end effector
-            camera2tool = np.zeros([4, 4])
-            camera2tool[:3, :3] = camera2tool_rot
-            camera2tool[:3, 3] = inliers_centroid
-            camera2tool[3, 3] = 1
+        # Construct transformation matrix from camera to tool of end effector
+        camera2tool = np.zeros([4, 4])
+        camera2tool[:3, :3] = camera2tool_rot
+        camera2tool[:3, 3] = inliers_centroid
+        camera2tool[3, 3] = 1
 
-            # Get transformation matrix between tool and end effector
-            tool2ee = tfw.get_transform(parent="left_tool", child="end_effector_left")
-            # Chain effect: get transformation matrix from camera to end effector
-            camera2ee = camera2tool @ tool2ee
+        # Get transformation matrix between tool and end effector
+        tool2ee = tfw.get_transform(parent="left_tool", child="end_effector_left")
+        # Chain effect: get transformation matrix from camera to end effector
+        camera2ee = camera2tool @ tool2ee
 
-            # Rviz commands
-            tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
-            # Call rviz_arrow function to first component, cut direction and second component
-            self.rviz_arrow(inliers_centroid, normal, name='first component', length_scale=0.04, color='r', thickness=0.08)
-            self.rviz_arrow(inliers_centroid, cut_y, name='cut y', length_scale=0.05, color='g', thickness=0.08)
-            self.rviz_arrow(inliers_centroid, cut_direction, name='cut direction', length_scale=0.05, color='b', thickness=0.08)
+        # Rviz commands
+        tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
+        # Call rviz_arrow function to first component, cut direction and second component
+        self.rviz_arrow(inliers_centroid, normal, name='first component', length_scale=0.04, color='r', thickness=0.08)
+        self.rviz_arrow(inliers_centroid, cut_y, name='cut y', length_scale=0.05, color='g', thickness=0.08)
+        self.rviz_arrow(inliers_centroid, cut_direction, name='cut direction', length_scale=0.05, color='b', thickness=0.08)
 
-            # Call plot_plane function to visualize plane in Rviz
-            self.plot_plane(inliers_centroid, normal, size=0.05, res=0.001)
-            # Call plot_pointcloud_rviz function to visualize PCs in Rviz
-            plot_pointcloud_rviz(self.src_pub, points[:, 0], points[:, 1], points[:, 2])
-            plot_pointcloud_rviz(self.inliers_pub, inlier_points[:, 0], inlier_points[:, 1], inlier_points[:, 2])
-            rospy.sleep(1)
+        # Call plot_plane function to visualize plane in Rviz
+        self.plot_plane(inliers_centroid, normal, size=0.05, res=0.001)
+        # Call plot_pointcloud_rviz function to visualize PCs in Rviz
+        plot_pointcloud_rviz(self.src_pub, points[:, 0], points[:, 1], points[:, 2])
+        plot_pointcloud_rviz(self.inliers_pub, inlier_points[:, 0], inlier_points[:, 1], inlier_points[:, 2])
 
     def select_weed(self, selection):
         # Load point cloud and visualize it
@@ -297,10 +295,6 @@ class PlantExtractor:
             pcd_colors = np.vstack((pcd_colors, rgb))
 
         pcd_colors = pcd_colors[1:, :] / 255
-
-        # Get numpy array of xyz and rgb values of the point cloud
-        print(pcd_points.shape)
-        print(pcd_colors.shape)
 
         # Filter the point cloud so that only the green points stay
         # Get the indices of the points with g parameter greater than x
@@ -321,8 +315,6 @@ class PlantExtractor:
         green_points_xyz = pcd_points[green_points_indices]
         green_points_rgb = pcd_colors[green_points_indices]
 
-        print(green_points_rgb.shape)
-
         # Create Open3D point cloud for green points
         green_pcd = o3d.geometry.PointCloud()
         # Save xyzrgb info in green_pcd (type: open3d.PointCloud)
@@ -336,8 +328,6 @@ class PlantExtractor:
 
         # Apply DBSCAN to green points
         labels = np.array(green_pcd.cluster_dbscan(eps=0.02, min_points=10))
-
-        print(labels)
 
         """
         # Color clusters and visualize them
@@ -408,37 +398,37 @@ class PlantExtractor:
 
         tfw = TF2Wrapper()
 
-        while True:
-            # Construct transformation matrix from camera to tool of end effector
-            camera2tool = np.zeros([4, 4])
-            camera2tool[:3, :3] = frame2vector_rot
-            camera2tool[:3, 3] = weed_centroid
-            camera2tool[3, 3] = 1
+        # Construct transformation matrix from camera to tool of end effector
+        camera2tool = np.zeros([4, 4])
+        camera2tool[:3, :3] = frame2vector_rot
+        camera2tool[:3, 3] = weed_centroid
+        camera2tool[3, 3] = 1
 
-            # Define transformation matrix from tool to end effector
-            tool2ee = tfw.get_transform(parent="left_tool", child="end_effector_left")
-            # Define transformation matrix from camera to end effector
-            camera2ee = camera2tool @ tool2ee
-            # Display gripper
-            tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
+        # Define transformation matrix from tool to end effector
+        tool2ee = tfw.get_transform(parent="left_tool", child="end_effector_left")
+        # Define transformation matrix from camera to end effector
+        camera2ee = camera2tool @ tool2ee
+        # Display gripper
+        tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
 
-            # Call plot_pointcloud_rviz function to visualize PCs in Rviz
-            # Visualize all the point cloud as "source"
-            plot_pointcloud_rviz(self.src_pub,
-                                 pcd_points[:, 0],
-                                 pcd_points[:, 1],
-                                 pcd_points[:, 2])
-            # Visualize filtered green points as "inliers"
-            plot_pointcloud_rviz(self.inliers_pub,
-                                 green_pcd_points[:, 0],
-                                 green_pcd_points[:, 1],
-                                 green_pcd_points[:, 2])
-            # Call rviz_arrow function to see normal of the plane
-            self.rviz_arrow(inlier_dirt_centroid, normal, name='normal', thickness=0.008, length_scale=0.15,
-                       color='w')
-            # Call plot_plane function to visualize plane in Rviz
-            self.plot_plane(inlier_dirt_centroid, normal, size=0.1, res=0.001)
-            rospy.sleep(1)
+        # Call plot_pointcloud_rviz function to visualize PCs in Rviz
+        # Visualize all the point cloud as "source"
+        plot_pointcloud_rviz(self.src_pub,
+                             pcd_points[:, 0],
+                             pcd_points[:, 1],
+                             pcd_points[:, 2])
+        # Visualize filtered green points as "inliers"
+        plot_pointcloud_rviz(self.inliers_pub,
+                             green_pcd_points[:, 0],
+                             green_pcd_points[:, 1],
+                             green_pcd_points[:, 2])
+        # Call rviz_arrow function to see normal of the plane
+        self.rviz_arrow(inlier_dirt_centroid, normal, name='normal', thickness=0.008, length_scale=0.15,
+                   color='w')
+        # Call plot_plane function to visualize plane in Rviz
+        self.plot_plane(inlier_dirt_centroid, normal, size=0.1, res=0.001)
+        rospy.sleep(1)
+
 
 
 def main():
