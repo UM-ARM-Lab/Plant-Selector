@@ -220,6 +220,8 @@ class PlantExtractor:
         # Transform open3d PC to numpy array
         points = np.array(list(pc2.read_points(selection)))[:, :3]
 
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = points
         # Apply plane segmentation function from open3d and get the best inliers
         _, best_inliers = pcd.segment_plane(distance_threshold=0.0005,
                                             ransac_n=3,
