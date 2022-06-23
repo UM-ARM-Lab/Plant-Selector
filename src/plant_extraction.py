@@ -5,7 +5,6 @@ import pcl as pcl
 
 import rospy
 import ros_numpy
-import matplotlib.pyplot as plt
 from math import atan, sin, cos
 from sensor_msgs.msg import PointCloud2
 from statistics import mode
@@ -16,6 +15,31 @@ from geometry_msgs.msg import Point
 from arc_utilities.tf2wrapper import TF2Wrapper
 from sklearn.decomposition import PCA
 from sensor_msgs import point_cloud2 as pc2
+from std_msgs.msg import String
+import struct
+import ctypes
+
+
+def float_to_rgb(float_rgb):
+    """ Converts a packed float RGB format to an RGB list
+
+        Args:
+            float_rgb: RGB value packed as a float
+
+        Returns:
+            color (list): 3-element list of integers [0-255,0-255,0-255]
+    """
+    s = struct.pack('>f', float_rgb)
+    i = struct.unpack('>l', s)[0]
+    pack = ctypes.c_uint32(i).value
+
+    r = (pack & 0x00FF0000) >> 16
+    g = (pack & 0x0000FF00) >> 8
+    b = (pack & 0x000000FF)
+
+    color = [r,g,b]
+
+    return color
 
 
 def ros_to_pcl(ros_cloud):
@@ -32,12 +56,34 @@ def ros_to_pcl(ros_cloud):
     for data in pc2.read_points(ros_cloud, skip_nans=True):
         points_list.append([data[0], data[1], data[2], data[3]])
 
-    pcl_data = pcl.PointCloud_PointXYZRGB()
+    pcl_data = pcl.PointXYZRGB()
     pcl_data.from_list(points_list)
 
     return pcl_data
 
-class WeedExtractor:
+
+def plot_pointcloud_rviz(pub: rospy.Publisher, xs, ys, zs):
+    """
+    This function plots pointcloud in Rviz.
+    :param pub: ROS Publisher
+    :param xs: x coordinates of points
+    :param ys: y coordinates of points
+    :param zs: z coordinates of points
+    :return: None.
+    """
+    # Create a list of the coordinates of the points
+    list_of_tuples = [(x, y, z) for x, y, z in zip(xs, ys, zs)]
+    # Define name and type
+    dtype = [('x', np.float32), ('y', np.float32), ('z', np.float32)]
+    # Define a tuple with coordinates and type
+    np_record_array = np.array(list_of_tuples, dtype=dtype)
+    # Construct ROS message
+    msg = ros_numpy.msgify(PointCloud2, np_record_array, stamp=rospy.Time.now())
+    # Publish the message
+    pub.publish(msg)
+
+
+class PlantExtractor:
     def __init__(self, camera_frame):
         rospy.init_node("weed_extraction")
         # Initialize publishers for PCs, arrow and planes
@@ -48,34 +94,44 @@ class WeedExtractor:
         self.arrow_pub = rospy.Publisher("normal", Marker, queue_size=10)
         self.plane_pub = rospy.Publisher("dirt_plane", PointCloud2, queue_size=10)
 
-        rospy.Subscriber("/rviz_selected_points", PointCloud2, self.select_weed)
+        rospy.Subscriber("/plant_selector/mode", String, self.mode_change)
+        rospy.Subscriber("/rviz_selected_points", PointCloud2, self.select_plant)
 
         self.frame_id = camera_frame
+        self.mode = None
 
-    def plot_pointcloud_rviz(self, pub: rospy.Publisher, xs, ys, zs):
+    def mode_change(self, new_mode):
         """
-        This function plots pointcloud in Rviz.
-        :param pub: ROS Publisher
-        :param xs: x coordinates of points
-        :param ys: y coordinates of points
-        :param zs: z coordinates of points
-        :return: None.
+        Callback to a new mode type from /plant_selector/mode. Modes can be either None, Branch, Weed, or Cancel.
+        :param new_mode: ros string msg
         """
-        # Create a list of the coordinates of the points
-        list_of_tuples = [(x, y, z) for x, y, z in zip(xs, ys, zs)]
-        # Define name and type
-        dtype = [('x', np.float32), ('y', np.float32), ('z', np.float32)]
-        # Define a tuple with coordinates and type
-        np_record_array = np.array(list_of_tuples, dtype=dtype)
-        # Construct ROS message
-        msg = ros_numpy.msgify(PointCloud2, np_record_array, stamp=rospy.Time.now())
-        # Publish the message
-        pub.publish(msg)
+        self.mode = new_mode.data
+        rospy.loginfo("New mode: " + self.mode)
+
+    def select_plant(self, selection):
+        """
+        Callback to a new pointcloud message to /rviz_selected_points. This func calls a function to handle
+        branch or weed extraction depending on the type of mode is currently active
+        :param selection: ros pointcloud2 message
+        """
+        rospy.loginfo("About to detect plant in \"" + self.mode + "\" mode")
+        if self.mode == "Branch":
+            self.select_branch(selection)
+        elif self.mode == "Weed":
+            self.select_weed(selection)
+
+    def project(self, u, n):
+        """
+        This functions projects a vector "u" to a plane "n" following a mathematic equation.
+        :param u: vector that is going to be projected. (numpy array)
+        :param n: normal vector of the plane (numpy array)
+        :return: vector projected onto the plane (numpy array)
+        """
+        return u - np.dot(u, n) / np.linalg.norm(n) * n
 
     def rviz_arrow(self, start, direction, name, thickness, length_scale, color):
         """
         This function displays an arrow in Rviz.
-        :param pub: ROS Publisher
         :param start: vector with coordinates of the start point (origin)
         :param direction: vector that defines de direction of the arrow
         :param name: namespace to display in Rviz
@@ -143,19 +199,104 @@ class WeedExtractor:
         points_flat = points.reshape([-1, 3])
 
         # Call the function to plot plane as a PC
-        self.plot_pointcloud_rviz(self.plane_pub, points_flat[:, 0], points_flat[:, 1], points_flat[:, 2])
+        plot_pointcloud_rviz(self.plane_pub, points_flat[:, 0], points_flat[:, 1], points_flat[:, 2])
 
+    def select_branch(self, selection):
+        """
+        STEPS:
+        - load the selected point cloud
+        - compute the grasp/cut pose and publish it so we can see it in rviz
+            - get the inliers using open3d plane segmentation
+            - compute the centroid of the inliers
+            - run PCA on the inliers
+            - get the first component
+            - define the plane (the 1st component is the normal of the plane)
+            - visualize the plane
+            - take the gripper to the centroid
+            - define the orientation of the gripper
+                - project the camera-to-plant vector into the plane
+        """
+        # TODO: Need to figure out either how to do different plane segmentation on a numpy array, or convert ros to pcl
+        # Transform open3d PC to numpy array
+        points = np.array(list(pc2.read_points(selection)))[:, :3]
+
+        # Apply plane segmentation function from open3d and get the best inliers
+        _, best_inliers = pcd.segment_plane(distance_threshold=0.0005,
+                                            ransac_n=3,
+                                            num_iterations=1000)
+        # Just save and continue working with the inlier points defined by the plane segmentation function
+        inlier_points = points[best_inliers]
+        # Get the centroid of the inlier points
+        # In Cartesian coordinates, the centroid is just the mean of the components. That is, axis=0 runs down the rows,
+        # so at the end you get the mean of x, y and z components (centroid)
+        inliers_centroid = np.mean(inlier_points, axis=0)
+
+        # Apply PCA and get just one principal component
+        pca = PCA(n_components=1)
+        # Fit the PCA to the inlier points
+        pca.fit(inlier_points)
+        # The first component (vector) is the normal of the plane we are looking for
+        normal = pca.components_[0]
+
+        # Since camera position is lost, define an approximate position
+        camera_position = np.array([0, 0, 0])
+        # This is the "main vector" going from the camera to the centroid of the PC
+        camera_to_centroid = inliers_centroid - camera_position
+
+        # Call the project function to get the cut direction vector
+        cut_direction = self.project(camera_to_centroid, normal)
+        # Normalize the projected vector
+        cut_direction_normalized = cut_direction / np.linalg.norm(cut_direction)
+        # Cross product between normalized cut director vector and the normal of the plane to obtain the
+        # 2nd principal component
+        cut_y = np.cross(cut_direction_normalized, normal)
+
+        tfw = TF2Wrapper()
+        while True:
+            # Get 3x3 rotation matrix
+            # The first row is the x-axis of the tool frame in the camera frame
+            camera2tool_rot = np.array([normal, cut_y, cut_direction_normalized]).T
+
+            # Construct transformation matrix from camera to tool of end effector
+            camera2tool = np.zeros([4, 4])
+            camera2tool[:3, :3] = camera2tool_rot
+            camera2tool[:3, 3] = inliers_centroid
+            camera2tool[3, 3] = 1
+
+            # Get transformation matrix between tool and end effector
+            tool2ee = tfw.get_transform(parent="left_tool", child="end_effector_left")
+            # Chain effect: get transformation matrix from camera to end effector
+            camera2ee = camera2tool @ tool2ee
+
+            # Rviz commands
+            tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
+            # Call rviz_arrow function to first component, cut direction and second component
+            self.rviz_arrow(inliers_centroid, normal, name='first component', length_scale=0.04, color='r')
+            self.rviz_arrow(inliers_centroid, cut_y, name='cut y', length_scale=0.05, color='g')
+            self.rviz_arrow(inliers_centroid, cut_direction, name='cut direction', length_scale=0.05, color='b')
+
+            # Call plot_plane function to visualize plane in Rviz
+            self.plot_plane(inliers_centroid, normal, size=0.05, res=0.001)
+            # Call plot_pointcloud_rviz function to visualize PCs in Rviz
+            plot_pointcloud_rviz(self.src_pub, points[:, 0], points[:, 1], points[:, 2])
+            plot_pointcloud_rviz(self.inliers_pub, inlier_points[:, 0], inlier_points[:, 1], inlier_points[:, 2])
+            rospy.sleep(1)
 
     def select_weed(self, selection):
-        print('received message')
         # Load point cloud and visualize it
-        pcd = ros_to_pcl(selection)
-        # o3d.visualization.draw_geometries([pcd])
+        # TODO: Figure out how to get the rgb part of the ros msg
+        points = np.array(list(pc2.read_points(selection)))
+        pcd_points = points[:, :3]
+        float_colors = points[:, 3]
+
+        pcd_colors = np.array((0, 0, 0))
+        for x in float_colors:
+            rgb = float_to_rgb(x)
+            pcd_colors = np.vstack((pcd_colors, rgb))
+
+        pcd_colors = pcd_colors[1:, :] / 255
 
         # Get numpy array of xyz and rgb values of the point cloud
-        pcd_points = np.asarray(pcd.points)
-        pcd_colors = np.asarray(pcd.colors)
-
         print(pcd_points.shape)
         print(pcd_colors.shape)
 
@@ -167,7 +308,6 @@ class WeedExtractor:
                                         (pcd_colors[:, 1] > g_low) & (pcd_colors[:, 1] < g_high) &
                                         (pcd_colors[:, 2] > b_low) & (pcd_colors[:, 2] < b_high))
 
-        h = len(green_points_indices[0])
         if len(green_points_indices[0]) == 1:
             r_low, g_low, b_low = 0, 0.3, 0
             r_high, g_high, b_high = 1, 1, 1
@@ -178,6 +318,8 @@ class WeedExtractor:
         # Save xyzrgb info in green_points (type: numpy array)
         green_points_xyz = pcd_points[green_points_indices]
         green_points_rgb = pcd_colors[green_points_indices]
+
+        print(green_points_rgb.shape)
 
         # Create Open3D point cloud for green points
         green_pcd = o3d.geometry.PointCloud()
@@ -192,6 +334,8 @@ class WeedExtractor:
 
         # Apply DBSCAN to green points
         labels = np.array(green_pcd.cluster_dbscan(eps=0.02, min_points=10))
+
+        print(labels)
 
         """
         # Color clusters and visualize them
@@ -276,12 +420,12 @@ class WeedExtractor:
 
             # Call plot_pointcloud_rviz function to visualize PCs in Rviz
             # Visualize all the point cloud as "source"
-            self.plot_pointcloud_rviz(self.src_pub,
+            plot_pointcloud_rviz(self.src_pub,
                                  pcd_points[:, 0],
                                  pcd_points[:, 1],
                                  pcd_points[:, 2])
             # Visualize filtered green points as "inliers"
-            self.plot_pointcloud_rviz(self.inliers_pub,
+            plot_pointcloud_rviz(self.inliers_pub,
                                  green_pcd_points[:, 0],
                                  green_pcd_points[:, 1],
                                  green_pcd_points[:, 2])
@@ -294,7 +438,7 @@ class WeedExtractor:
 
 
 def main():
-    weed_extractor = WeedExtractor("zed2i_left_camera_frame")
+    plant_extractor = PlantExtractor("zed2i_left_camera_frame")
     rospy.spin()
 
 
