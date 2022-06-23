@@ -368,10 +368,8 @@ class PlantExtractor:
         inlier_dirt_centroid = np.mean(inlier_dirt_points, axis=0)
         # The a, b, c coefficients of the plane equation are the components of the normal vector of that plane
         normal = np.asarray([a, b, c])
-        if normal[2] > 0:
-            normal = -normal
 
-        phi = -atan(normal[1] / normal[2])
+        phi = atan(normal[1] / normal[2])
         theta = atan(normal[0] / normal[2])
         psi = atan(normal[1] / normal[0])
 
