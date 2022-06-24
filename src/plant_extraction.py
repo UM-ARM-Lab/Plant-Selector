@@ -1,4 +1,8 @@
+#!/usr/bin/env python
 # Import useful libraries and functions
+import argparse
+import sys
+
 import open3d as o3d
 import numpy as np
 import pcl as pcl
@@ -85,7 +89,6 @@ def plot_pointcloud_rviz(pub: rospy.Publisher, xs, ys, zs):
 
 class PlantExtractor:
     def __init__(self, camera_frame):
-        rospy.init_node("weed_extraction")
         # Initialize publishers for PCs, arrow and planes
         # SYNTAX: pub = rospy.Publisher('topic_name', geometry_msgs.msg.Point, queue_size=10)
         # Second argument was imported in the beginning
@@ -432,7 +435,13 @@ class PlantExtractor:
 
 
 def main():
-    plant_extractor = PlantExtractor("zed2i_left_camera_frame")
+    rospy.init_node("plant_extraction")
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('frame', type=str)
+    args = parser.parse_args(rospy.myargv(sys.argv[1:]))
+
+    plant_extractor = PlantExtractor(args.frame)
     rospy.spin()
 
 
