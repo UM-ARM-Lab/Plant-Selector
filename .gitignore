@@ -1,3 +1,4 @@
 bags/
 .idea/
 pcs/*
+*.rviz

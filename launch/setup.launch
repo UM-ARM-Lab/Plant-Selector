@@ -1,5 +1,4 @@
 <launch>
-
     <node pkg="rviz" type="rviz" name="rviz" args="-d $(find plant_selector)/default.rviz"/>
     <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="camera_tf_offset" args="0 0 0 -1.5707 0 -1.5707 zed2i_left_camera_frame zed2i_optical_copy"/> -->
     <!-- load ZED URDF -->
