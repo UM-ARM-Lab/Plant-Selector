@@ -276,8 +276,11 @@ class PlantExtractor:
         # Chain effect: get transformation matrix from camera to end effector
         camera2ee = camera2tool @ tool2ee
 
+        for x in range(5):
+            tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
+            rospy.sleep(0.05)
+
         # Rviz commands
-        tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
         # Call rviz_arrow function to first component, cut direction and second component
         # self.rviz_arrow(inliers_centroid, normal, name='first component', length_scale=0.04, color='r', thickness=0.008)
         # self.rviz_arrow(inliers_centroid, cut_y, name='cut y', length_scale=0.05, color='g', thickness=0.008)
@@ -413,8 +416,9 @@ class PlantExtractor:
         # Define transformation matrix from camera to end effector
         camera2ee = camera2tool @ tool2ee
         # Display gripper
-        tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
-
+        for x in range(5):
+            tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
+            rospy.sleep(0.05)
         # Call plot_pointcloud_rviz function to visualize PCs in Rviz
         # Visualize all the point cloud as "source"
         plot_pointcloud_rviz(self.src_pub,
