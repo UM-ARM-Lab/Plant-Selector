@@ -375,10 +375,9 @@ class PlantExtractor:
             normal = -normal
 
         phi = atan(normal[1] / normal[2])
-        theta = atan(normal[0] / normal[2])
-        if theta < 0:
-            theta = theta + pi
-        psi = atan(normal[1] / normal[0])
+        if phi < pi/2:
+            phi = phi + pi - 2 * phi
+        theta = atan(normal[0] / -normal[2])
 
         Rx = np.asarray([[1, 0, 0],
                          [0, cos(phi), -sin(phi)],
@@ -386,11 +385,8 @@ class PlantExtractor:
         Ry = np.asarray([[cos(theta), 0, sin(theta)],
                          [0, 1, 0],
                          [-sin(theta), 0, cos(theta)]])
-        Rz = np.asarray([[cos(psi), -sin(psi), 0],
-                         [sin(psi), cos(psi), 0],
-                         [0, 0, 1]])
 
-        frame2vector_rot = Rx @ Ry @ Rz
+        frame2vector_rot = Rx @ Ry
 
         """
         # Apply PCA and get just one principal component
