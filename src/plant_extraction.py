@@ -98,7 +98,7 @@ class PlantExtractor:
         self.plane_pub = rospy.Publisher("dirt_plane", PointCloud2, queue_size=10)
 
         rospy.Subscriber("/plant_selector/mode", String, self.mode_change)
-        rospy.Subscriber("/rviz_selected_points", PointCloud2, self.select_plant)
+        self.pc_sub = None
 
         self.frame_id = camera_frame
         self.mode = None
@@ -109,6 +109,10 @@ class PlantExtractor:
         :param new_mode: ros string msg
         """
         self.mode = new_mode.data
+        if self.mode == "Branch":
+            self.pc_sub = rospy.Subscriber("/plant_selector/filtered", PointCloud2, self.select_plant)
+        elif self.mode == "Weed":
+            self.pc_sub = rospy.Subscriber("/rviz_selected_points", PointCloud2, self.select_plant)
         rospy.loginfo("New mode: " + self.mode)
 
     def select_plant(self, selection):

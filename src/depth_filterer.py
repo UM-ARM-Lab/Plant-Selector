@@ -44,7 +44,7 @@ class Filterer:
         closest_cluster = 0
         closest_cluster_dist = np.inf
         # TODO: Figure out how to get the actual center of camera
-        camera_location = np.array((1, 0, 0))
+        camera_location = np.array((0, 0, 0))
         for x in range(n_clusters):
             sel_indicies = np.argwhere(labels == x).squeeze(1)
             this_cluster = points[sel_indicies]
