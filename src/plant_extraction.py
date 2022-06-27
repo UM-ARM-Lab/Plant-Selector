@@ -410,7 +410,6 @@ class PlantExtractor:
                         color='w')
         # Call plot_plane function to visualize plane in Rviz
         self.plot_plane(inlier_dirt_centroid, normal, size=0.1, res=0.001)
-        rospy.sleep(1)
 
 
 def main():
