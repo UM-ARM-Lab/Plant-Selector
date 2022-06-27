@@ -257,7 +257,7 @@ class PlantExtractor:
         # Chain effect: get transformation matrix from camera to end effector
         camera2ee = camera2tool @ tool2ee
 
-        for x in range(5):
+        for x in range(10):
             tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
             rospy.sleep(0.05)
 
@@ -397,7 +397,7 @@ class PlantExtractor:
         # Define transformation matrix from camera to end effector
         camera2ee = camera2tool @ tool2ee
         # Display gripper
-        for x in range(5):
+        for x in range(10):
             tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
             rospy.sleep(0.05)
         # Call plot_pointcloud_rviz function to visualize PCs in Rviz
