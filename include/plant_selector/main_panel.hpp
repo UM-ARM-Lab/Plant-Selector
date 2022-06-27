@@ -57,6 +57,7 @@ namespace rviz_custom_panel
          */
         private Q_SLOTS:
 
+            void publish_time_changed(const QString& command_text);
             void command_changed(const QString& command_text);
             void cancel_button_handler();
 
@@ -66,7 +67,7 @@ namespace rviz_custom_panel
         protected:
             ros::NodeHandle n;
             ros::Publisher mode_pub;
-
+            ros::Publisher publish_time_pub;
             rviz::VisualizationManager* manager;
             rviz::RenderPanel* render_panel;
 

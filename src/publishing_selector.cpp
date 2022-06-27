@@ -20,6 +20,7 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <QVariant>
 #include <visualization_msgs/Marker.h>
+#include <boost/foreach.hpp>
 
 namespace rviz_custom_tool
 {
@@ -31,11 +32,17 @@ PublishingSelector::~PublishingSelector() {}
 
 // TODO: Don't hardcode frame ids
 void PublishingSelector::updateTopic() {
-    // see if I can get command line args to work with this, if not put into a panel
     rviz_cloud_topic = std::string("/rviz_selected_points");
 
     rviz_selected_publisher = n.advertise<sensor_msgs::PointCloud2>(rviz_cloud_topic, 1);
+    instant_sub = n.subscribe("/plant_selector/is_instant", 1000, &PublishingSelector::instant_pub_handler, this);
+    is_instant = true;
+
     num_selected_points = 0;
+}
+
+void PublishingSelector::instant_pub_handler(const std_msgs::Bool::ConstPtr& msg) {
+    is_instant = msg->data;
 }
 
 void PublishingSelector::clear_points() {
@@ -173,6 +180,11 @@ int PublishingSelector::processSelectedArea() {
 
     selected_points.width = i;
     selected_points.header.stamp = ros::Time::now();
+
+    if(is_instant) {
+        rviz_selected_publisher.publish(selected_points);
+        clear_points();
+    }
     return 0;
 }
 }  // namespace rviz_custom_tool
