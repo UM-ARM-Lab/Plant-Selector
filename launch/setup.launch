@@ -22,6 +22,7 @@
     <node name="depth_filter" pkg="plant_selector" type="depth_filterer.py" output="screen"/>
 
     <!-- Cpp Executables-->
-    <node name="real_time_handler" pkg="plant_selector" type="real_time_handler" output="screen"/>
+    <arg name="pc_source" default="/zed2i/zed_node/point_cloud/cloud_registered"/>
+    <node name="real_time_handler" pkg="plant_selector" type="real_time_handler" output="screen" args="$(arg pc_source)"/>
 </launch>
 

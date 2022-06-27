@@ -5,10 +5,11 @@
 #include "ros/ros.h"
 #include "std_msgs/Bool.h"
 #include "sensor_msgs/PointCloud2.h"
+#include "string.h"
 
 class RealTimeHandler {
 public:
-    RealTimeHandler();
+    RealTimeHandler(std::string pc_source);
     void new_frame_handler(sensor_msgs::PointCloud2);
     void is_selecting_handler(std_msgs::Bool);
 
