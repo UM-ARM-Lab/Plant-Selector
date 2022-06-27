@@ -6,14 +6,11 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /Point Clouds1
         - /Grasp Pose1/Arrows1/Namespaces1
-        - /Grasp Pose1/Gripper1
         - /Grasp Pose1/Frames1/Frames1
-        - /Weed Extraction1
         - /Weed Extraction1/Normal1/Namespaces1
       Splitter Ratio: 0.41791045665740967
-    Tree Height: 411
+    Tree Height: 349
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -172,7 +169,7 @@ Visualization Manager:
           Size (Pixels): 4
           Size (m): 0.009999999776482582
           Style: Points
-          Topic: /inliers
+          Topic: /inliers_pc
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
@@ -200,14 +197,14 @@ Visualization Manager:
           Size (Pixels): 4
           Size (m): 0.009999999776482582
           Style: Points
-          Topic: /source
+          Topic: /source_pc
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
           Value: false
         - Class: rviz/Marker
           Enabled: false
-          Marker Topic: /arrow
+          Marker Topic: /normal
           Name: Arrows
           Namespaces:
             {}
@@ -241,7 +238,7 @@ Visualization Manager:
           Use Fixed Frame: true
           Use rainbow: true
           Value: false
-        - Alpha: 1
+        - Alpha: 0.5
           Class: rviz/RobotModel
           Collision Enabled: false
           Enabled: true
@@ -369,7 +366,7 @@ Visualization Manager:
           Color: 143; 89; 2
           Color Transformer: FlatColor
           Decay Time: 0
-          Enabled: true
+          Enabled: false
           Invert Rainbow: false
           Max Color: 255; 255; 255
           Min Color: 0; 0; 0
@@ -377,14 +374,14 @@ Visualization Manager:
           Position Transformer: XYZ
           Queue Size: 10
           Selectable: true
-          Size (Pixels): 2
+          Size (Pixels): 4
           Size (m): 0.009999999776482582
           Style: Points
-          Topic: /source_weed
+          Topic: /source_pc
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
-          Value: true
+          Value: false
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -397,7 +394,7 @@ Visualization Manager:
           Color: 115; 210; 22
           Color Transformer: FlatColor
           Decay Time: 0
-          Enabled: true
+          Enabled: false
           Invert Rainbow: false
           Max Color: 255; 255; 255
           Min Color: 0; 0; 0
@@ -405,14 +402,14 @@ Visualization Manager:
           Position Transformer: XYZ
           Queue Size: 10
           Selectable: true
-          Size (Pixels): 4
+          Size (Pixels): 10
           Size (m): 0.009999999776482582
           Style: Points
-          Topic: /inliers_weed
+          Topic: /inliers_pc
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
-          Value: true
+          Value: false
         - Class: rviz/Marker
           Enabled: false
           Marker Topic: /normal
@@ -421,7 +418,7 @@ Visualization Manager:
             {}
           Queue Size: 100
           Value: false
-        - Alpha: 0.10000000149011612
+        - Alpha: 0.05000000074505806
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
             Max Value: 0.16836558282375336
@@ -433,7 +430,7 @@ Visualization Manager:
           Color: 173; 127; 168
           Color Transformer: FlatColor
           Decay Time: 0
-          Enabled: true
+          Enabled: false
           Invert Rainbow: false
           Max Color: 255; 255; 255
           Min Color: 0; 0; 0
@@ -441,14 +438,14 @@ Visualization Manager:
           Position Transformer: XYZ
           Queue Size: 10
           Selectable: true
-          Size (Pixels): 3
+          Size (Pixels): 2
           Size (m): 0.009999999776482582
           Style: Points
-          Topic: /dirt_plane
+          Topic: /plane
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
-          Value: true
+          Value: false
       Enabled: true
       Name: Weed Extraction
   Enabled: true
@@ -468,7 +465,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 1.133438229560852
+      Distance: 1.976462721824646
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -476,27 +473,27 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.9894466996192932
-        Y: -0.6263695359230042
-        Z: -0.332404762506485
+        X: 0.9056029915809631
+        Y: 0.15444400906562805
+        Z: -0.42577674984931946
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.3247973620891571
+      Pitch: 0.7097973227500916
       Target Frame: <Fixed Frame>
-      Yaw: 2.980402946472168
+      Yaw: 3.1854097843170166
     Saved: ~
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 1043
+  Height: 1016
   Hide Left Dock: false
   Hide Right Dock: true
   MainPanel:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd00000004000000000000022b00000375fc020000000dfb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d00000226000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000001000530065006c00500061006e0065006c00000002460000006e0000000000000000fb0000000c00430061006d00650072006100000002d0000000c70000000000000000fb0000000a0049006d00610067006500000001a0000001f70000000000000000fb00000012004d00610069006e00500061006e0065006c01000002690000008f0000007f00fffffffb000000160052006f007300620061006700500061006e0065006c01000002fe000000b40000007700ffffff00000001000001000000035afc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d0000035a000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000007800000003efc0100000002fb0000000800540069006d0065010000000000000780000002eb00fffffffb0000000800540069006d006501000000000000045000000000000000000000054f0000037500000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd00000004000000000000022b0000035afc020000000dfb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d000001e8000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000001000530065006c00500061006e0065006c00000002460000006e0000000000000000fb0000000c00430061006d00650072006100000002d0000000c70000000000000000fb0000000a0049006d00610067006500000001a0000001f70000000000000000fb00000012004d00610069006e00500061006e0065006c010000022b000000b90000007f00fffffffb000000160052006f007300620061006700500061006e0065006c01000002ea000000ad0000007700ffffff00000001000001000000035afc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d0000035a000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000005f80000003efc0100000002fb0000000800540069006d00650100000000000005f8000002eb00fffffffb0000000800540069006d00650100000000000004500000000000000000000003c70000035a00000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   RosbagPanel:
     collapsed: false
   Selection:
@@ -507,6 +504,6 @@ Window Geometry:
     collapsed: false
   Views:
     collapsed: true
-  Width: 1920
-  X: 0
-  Y: 0
+  Width: 1528
+  X: 54
+  Y: 27
