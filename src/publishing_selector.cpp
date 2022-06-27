@@ -35,6 +35,7 @@ void PublishingSelector::updateTopic() {
     rviz_cloud_topic = std::string("/rviz_selected_points");
 
     rviz_selected_publisher = n.advertise<sensor_msgs::PointCloud2>(rviz_cloud_topic, 1);
+    is_selecting_pub = n.advertise<std_msgs::Bool>("/plant_selector/is_selecting", 1);
     instant_sub = n.subscribe("/plant_selector/is_instant", 1000, &PublishingSelector::instant_pub_handler, this);
     is_instant = true;
 
@@ -81,16 +82,25 @@ int PublishingSelector::processMouseEvent(rviz::ViewportMouseEvent& event) {
     int flags = rviz::SelectionTool::processMouseEvent(event);
     if (event.alt()) {
         selecting = false;
+        std_msgs::Bool msg;
+        msg.data = selecting;
+        is_selecting_pub.publish(msg);
     }
     else {
         if (event.leftDown()) {
-        selecting = true;
+            selecting = true;
+            std_msgs::Bool msg;
+            msg.data = selecting;
+            is_selecting_pub.publish(msg);
         }
     }
 
     if (selecting) {
         if (event.leftUp()) {
-        this->processSelectedArea();
+            this->processSelectedArea();
+            std_msgs::Bool msg;
+            msg.data = false;
+            is_selecting_pub.publish(msg);
         }
     }
     return flags;

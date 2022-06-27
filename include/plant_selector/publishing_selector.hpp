@@ -4,8 +4,7 @@
 #define SELECTED_POINTS_PUBLISHER_HPP
 
 #ifndef Q_MOC_RUN  // See: https://bugreports.qt-project.org/browse/QTBUG-22829
-#include <ros/node_handle.h>
-#include <ros/publisher.h>
+#include <ros/ros.h>
 #include "rviz/tool.h"
 #include <QCursor>
 #include <QObject>
@@ -37,6 +36,7 @@ protected:
   int processSelectedArea();
   ros::NodeHandle n;
   ros::Publisher rviz_selected_publisher;
+  ros::Publisher is_selecting_pub;
   ros::Subscriber instant_sub;
 
   std::string tf_frame;
