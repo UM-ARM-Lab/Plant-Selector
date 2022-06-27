@@ -6,10 +6,11 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /PC Selection1/Frame1
+        - /Point Clouds1
         - /Grasp Pose1/Arrows1/Namespaces1
         - /Grasp Pose1/Gripper1
         - /Grasp Pose1/Frames1/Frames1
+        - /Weed Extraction1
         - /Weed Extraction1/Normal1/Namespaces1
       Splitter Ratio: 0.41791045665740967
     Tree Height: 411
@@ -28,7 +29,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: Frame
+    SyncSource: RealTime Handler
   - Class: rviz_custom_panel/MainPanel
     Name: MainPanel
   - Class: rviz_custom_panel/RosbagPanel
@@ -76,7 +77,7 @@ Visualization Manager:
           Invert Rainbow: false
           Max Color: 255; 255; 255
           Min Color: 0; 0; 0
-          Name: Frame
+          Name: OG Cam PC
           Position Transformer: XYZ
           Queue Size: 10
           Selectable: true
@@ -98,13 +99,41 @@ Visualization Manager:
           Channel Name: intensity
           Class: rviz/PointCloud2
           Color: 255; 255; 255
-          Color Transformer: FlatColor
+          Color Transformer: RGB8
           Decay Time: 0
           Enabled: true
           Invert Rainbow: false
           Max Color: 255; 255; 255
           Min Color: 0; 0; 0
-          Name: filtered
+          Name: RealTime Handler
+          Position Transformer: XYZ
+          Queue Size: 10
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.009999999776482582
+          Style: Points
+          Topic: /plant_selector/controlled_point_cloud
+          Unreliable: false
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: true
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 10
+            Min Value: -10
+            Value: true
+          Axis: Z
+          Channel Name: intensity
+          Class: rviz/PointCloud2
+          Color: 255; 255; 255
+          Color Transformer: FlatColor
+          Decay Time: 0
+          Enabled: false
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Min Color: 0; 0; 0
+          Name: Depth Filtered Selection
           Position Transformer: XYZ
           Queue Size: 10
           Selectable: true
@@ -115,9 +144,9 @@ Visualization Manager:
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
-          Value: true
+          Value: false
       Enabled: true
-      Name: PC Selection
+      Name: Point Clouds
     - Class: rviz/Group
       Displays:
         - Alpha: 1
@@ -263,6 +292,67 @@ Visualization Manager:
             {}
           Update Interval: 0
           Value: false
+        - Alpha: 1
+          Class: rviz/RobotModel
+          Collision Enabled: false
+          Enabled: true
+          Links:
+            All Links Enabled: true
+            Expand Joint Details: false
+            Expand Link Details: false
+            Expand Tree: false
+            Link Tree Style: Links in Alphabetic Order
+            base_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            zed2i_baro_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            zed2i_base_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            zed2i_camera_center:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            zed2i_left_camera_frame:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            zed2i_left_camera_optical_frame:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            zed2i_mag_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            zed2i_right_camera_frame:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            zed2i_right_camera_optical_frame:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            zed2i_temp_left_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            zed2i_temp_right_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+          Name: camera
+          Robot Description: zed2i_description
+          TF Prefix: ""
+          Update Interval: 0
+          Value: true
+          Visual Enabled: true
       Enabled: true
       Name: Grasp Pose
     - Class: rviz/Group
@@ -361,95 +451,6 @@ Visualization Manager:
           Value: true
       Enabled: true
       Name: Weed Extraction
-    - Alpha: 1
-      Class: rviz/RobotModel
-      Collision Enabled: false
-      Enabled: true
-      Links:
-        All Links Enabled: true
-        Expand Joint Details: false
-        Expand Link Details: false
-        Expand Tree: false
-        Link Tree Style: Links in Alphabetic Order
-        base_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        zed2i_baro_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        zed2i_base_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        zed2i_camera_center:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-          Value: true
-        zed2i_left_camera_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        zed2i_left_camera_optical_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        zed2i_mag_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        zed2i_right_camera_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        zed2i_right_camera_optical_frame:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        zed2i_temp_left_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-        zed2i_temp_right_link:
-          Alpha: 1
-          Show Axes: false
-          Show Trail: false
-      Name: RobotModel
-      Robot Description: zed2i_description
-      TF Prefix: ""
-      Update Interval: 0
-      Value: true
-      Visual Enabled: true
-    - Alpha: 1
-      Autocompute Intensity Bounds: true
-      Autocompute Value Bounds:
-        Max Value: 10
-        Min Value: -10
-        Value: true
-      Axis: Z
-      Channel Name: intensity
-      Class: rviz/PointCloud2
-      Color: 255; 255; 255
-      Color Transformer: RGB8
-      Decay Time: 0
-      Enabled: true
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Min Color: 0; 0; 0
-      Name: PointCloud2
-      Position Transformer: XYZ
-      Queue Size: 10
-      Selectable: true
-      Size (Pixels): 3
-      Size (m): 0.009999999776482582
-      Style: Points
-      Topic: /plant_selector/controlled_point_cloud
-      Unreliable: false
-      Use Fixed Frame: true
-      Use rainbow: true
-      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -467,7 +468,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 1.7749083042144775
+      Distance: 1.133438229560852
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -475,17 +476,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 1.1026698350906372
-        Y: 0.015753718093037605
-        Z: -0.23923587799072266
+        X: 0.9894466996192932
+        Y: -0.6263695359230042
+        Z: -0.332404762506485
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.3747972846031189
+      Pitch: 0.3247973620891571
       Target Frame: <Fixed Frame>
-      Yaw: 3.0654070377349854
+      Yaw: 2.980402946472168
     Saved: ~
 Window Geometry:
   Displays:

@@ -22,7 +22,9 @@ from sensor_msgs import point_cloud2 as pc2
 from std_msgs.msg import String
 import struct
 import ctypes
-
+from sensor_msgs import point_cloud2
+from sensor_msgs.msg import PointField
+from std_msgs.msg import Header
 
 def float_to_rgb(float_rgb):
     """ Converts a packed float RGB format to an RGB list
@@ -45,46 +47,23 @@ def float_to_rgb(float_rgb):
 
     return color
 
-
-def ros_to_pcl(ros_cloud):
-    """ Converts a ROS PointCloud2 message to a pcl PointXYZRGB
-
-        Args:
-            ros_cloud (PointCloud2): ROS PointCloud2 message
-
-        Returns:
-            pcl.PointCloud_PointXYZRGB: PCL XYZRGB point cloud
+def plot_pointcloud_rviz(pub, points, frame_id):
     """
-    points_list = []
+    Args:
+        points: an Nx3 array
+        frame_id: the frame to publish in
 
-    for data in pc2.read_points(ros_cloud, skip_nans=True):
-        points_list.append([data[0], data[1], data[2], data[3]])
+    Returns: a PointCloud2 message ready to be published to rviz
 
-    pcl_data = pcl.PointXYZRGB()
-    pcl_data.from_list(points_list)
-
-    return pcl_data
-
-
-def plot_pointcloud_rviz(pub: rospy.Publisher, xs, ys, zs):
     """
-    This function plots pointcloud in Rviz.
-    :param pub: ROS Publisher
-    :param xs: x coordinates of points
-    :param ys: y coordinates of points
-    :param zs: z coordinates of points
-    :return: None.
-    """
-    # Create a list of the coordinates of the points
-    list_of_tuples = [(x, y, z) for x, y, z in zip(xs, ys, zs)]
-    # Define name and type
-    dtype = [('x', np.float32), ('y', np.float32), ('z', np.float32)]
-    # Define a tuple with coordinates and type
-    np_record_array = np.array(list_of_tuples, dtype=dtype)
-    # Construct ROS message
-    msg = ros_numpy.msgify(PointCloud2, np_record_array, stamp=rospy.Time.now())
-    # Publish the message
-    pub.publish(msg)
+    header = Header(frame_id=frame_id)
+    fields = [PointField('x', 0, PointField.FLOAT32, 1),
+              PointField('y', 4, PointField.FLOAT32, 1),
+              PointField('z', 8, PointField.FLOAT32, 1)
+              # PointField('rgb', 12, PointField.FLOAT32, 1)
+              ]
+    pc2_msg = point_cloud2.create_cloud(header, fields, points)
+    pub.publish(pc2_msg)
 
 
 class PlantExtractor:
@@ -206,7 +185,7 @@ class PlantExtractor:
         points_flat = points.reshape([-1, 3])
 
         # Call the function to plot plane as a PC
-        plot_pointcloud_rviz(self.plane_pub, points_flat[:, 0], points_flat[:, 1], points_flat[:, 2])
+        plot_pointcloud_rviz(self.plane_pub, points_flat[:, :3], self.frame_id)
 
     def select_branch(self, selection):
         """
@@ -289,8 +268,8 @@ class PlantExtractor:
         # Call plot_plane function to visualize plane in Rviz
         self.plot_plane(inliers_centroid, normal, size=0.05, res=0.001)
         # Call plot_pointcloud_rviz function to visualize PCs in Rviz
-        plot_pointcloud_rviz(self.src_pub, points[:, 0], points[:, 1], points[:, 2])
-        plot_pointcloud_rviz(self.inliers_pub, inlier_points[:, 0], inlier_points[:, 1], inlier_points[:, 2])
+        plot_pointcloud_rviz(self.src_pub, points[:, :3], self.frame_id)
+        plot_pointcloud_rviz(self.inliers_pub, inlier_points[:, :3], self.frame_id)
 
     def select_weed(self, selection):
         # Load point cloud and visualize it
@@ -421,15 +400,9 @@ class PlantExtractor:
             rospy.sleep(0.05)
         # Call plot_pointcloud_rviz function to visualize PCs in Rviz
         # Visualize all the point cloud as "source"
-        plot_pointcloud_rviz(self.src_pub,
-                             pcd_points[:, 0],
-                             pcd_points[:, 1],
-                             pcd_points[:, 2])
+        plot_pointcloud_rviz(self.src_pub, pcd_points[:, :3], self.frame_id)
         # Visualize filtered green points as "inliers"
-        plot_pointcloud_rviz(self.inliers_pub,
-                             green_pcd_points[:, 0],
-                             green_pcd_points[:, 1],
-                             green_pcd_points[:, 2])
+        plot_pointcloud_rviz(self.inliers_pub, green_pcd_points[:, :3], self.frame_id)
         # Call rviz_arrow function to see normal of the plane
         self.rviz_arrow(inlier_dirt_centroid, normal, name='normal', thickness=0.008, length_scale=0.15,
                         color='w')
