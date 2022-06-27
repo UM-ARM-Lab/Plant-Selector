@@ -36,6 +36,9 @@ class Filterer:
 
     def cluster_filter(self, pc):
         points = np.array(list(sensor_msgs.point_cloud2.read_points(pc)))
+
+        # TODO: The eps value here might want to somehow change dynamically where points further away can have clusters more spread out?
+        # The eps value really depends on how good the video quality is and how far away points are from each other
         clustering = DBSCAN(eps=0.015, min_samples=30).fit(points)
         labels = clustering.labels_
         n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
