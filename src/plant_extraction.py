@@ -77,10 +77,12 @@ class PlantExtractor:
         self.plane_pub = rospy.Publisher("dirt_plane", PointCloud2, queue_size=10)
 
         rospy.Subscriber("/plant_selector/mode", String, self.mode_change)
-        self.pc_sub = None
 
         self.frame_id = camera_frame
-        self.mode = None
+
+        # Set the default mode to branch
+        self.mode = "Branch"
+        self.pc_sub = rospy.Subscriber("/plant_selector/filtered", PointCloud2, self.select_plant)
 
     def mode_change(self, new_mode):
         """
@@ -266,7 +268,7 @@ class PlantExtractor:
         # self.rviz_arrow(inliers_centroid, cut_direction, name='cut direction', length_scale=0.05, color='b', thickness=0.008)
 
         # Call plot_plane function to visualize plane in Rviz
-        self.plot_plane(inliers_centroid, normal, size=0.05, res=0.001)
+        # self.plot_plane(inliers_centroid, normal, size=0.05, res=0.001)
         # Call plot_pointcloud_rviz function to visualize PCs in Rviz
         plot_pointcloud_rviz(self.src_pub, points[:, :3], self.frame_id)
         plot_pointcloud_rviz(self.inliers_pub, inlier_points[:, :3], self.frame_id)

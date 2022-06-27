@@ -20,7 +20,6 @@ private:
     ros::Subscriber is_selecting_sub;
 
     bool is_selecting; // if a selection is in progress, don't publish new frames
-    int counter = 0;
 };
 
 #endif

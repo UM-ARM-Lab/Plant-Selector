@@ -39,7 +39,7 @@ namespace rviz_custom_panel
 
         QLabel* inter_label = new QLabel("Interaction Type:", this);
 
-        QStringList commands = {"Select...", "Branch", "Weed"};
+        QStringList commands = {"Branch", "Weed"};
         QComboBox* combo = new QComboBox(this);
         combo->addItems(commands);
 
