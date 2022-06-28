@@ -18,13 +18,19 @@ class Filterer:
         points = np.array(list(sensor_msgs.point_cloud2.read_points(pc)))
 
         # Perform a color filter
-        points = helpers.green_color_filter(points)
+        # points = helpers.green_color_filter(points)
 
         # TODO: The eps value here might want to somehow change dynamically where points further away can have clusters more spread out?
         # The eps value really depends on how good the video quality is and how far away points are from each other
         clustering = DBSCAN(eps=0.015, min_samples=30).fit(points)
         labels = clustering.labels_
         n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+        rospy.loginfo(n_clusters)
+
+        # If there are no clusters, return
+        if n_clusters == 0:
+            rospy.loginfo("Invalid selection for branch selection")
+            return
 
         # Find the cluster closest to the user
         closest_cluster = 0
