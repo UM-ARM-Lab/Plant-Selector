@@ -19,7 +19,7 @@
     <!-- Python Scripts -->
     <arg name="frame_id" default="zed2i_left_camera_frame"/>
     <node name="plant_extraction" pkg="plant_selector" type="plant_extraction.py" output="screen" args="$(arg frame_id)"/>
-    <node name="depth_filter" pkg="plant_selector" type="depth_filterer.py" output="screen"/>
+    <node name="filterer" pkg="plant_selector" type="filterer.py" output="screen"/>
 
     <!-- Cpp Executables-->
     <arg name="pc_source" default="/zed2i/zed_node/point_cloud/cloud_registered"/>
