@@ -30,7 +30,6 @@ void RealTimeHandler::is_selecting_handler(std_msgs::Bool msg) {
 int main(int argc, char** argv) {
     ros::init(argc, argv, "real_time_handler");
     std::string pc_source = argv[1];
-    std::cout << pc_source << std::endl;
     RealTimeHandler handler = RealTimeHandler(pc_source);
     ros::spin();
     return 0;
