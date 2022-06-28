@@ -164,49 +164,20 @@ class PlantExtractor:
         :return: None.
         """
         # Transform open3d PC to numpy array
-        points = np.array(list(pc2.read_points(selection)))
-
-        pcd_points = points[:, :3]
-        float_colors = points[:, 3]
-
-        pcd_colors = np.array((0, 0, 0))
-        for x in float_colors:
-            rgb = hp.float_to_rgb(x)
-            pcd_colors = np.vstack((pcd_colors, rgb))
-
-        pcd_colors = pcd_colors[1:, :] / 255
-
-        # Filter the point cloud so that only the green points stay
-        # Get the indices of the points with g parameter greater than x
-        r_low, g_low, b_low = 0, 0.6, 0
-        r_high, g_high, b_high = 1, 1, 1
-        green_points_indices = np.where((pcd_colors[:, 0] > r_low) & (pcd_colors[:, 0] < r_high) &
-                                        (pcd_colors[:, 1] > g_low) & (pcd_colors[:, 1] < g_high) &
-                                        (pcd_colors[:, 2] > b_low) & (pcd_colors[:, 2] < b_high))
-
-        if len(green_points_indices[0]) == 1:
-            r_low, g_low, b_low = 0, 0.3, 0
-            r_high, g_high, b_high = 1, 1, 1
-            green_points_indices = np.where((pcd_colors[:, 0] > r_low) & (pcd_colors[:, 0] < r_high) &
-                                            (pcd_colors[:, 1] > g_low) & (pcd_colors[:, 1] < g_high) &
-                                            (pcd_colors[:, 2] > b_low) & (pcd_colors[:, 2] < b_high))
-
+        green_points_xyz = np.array(list(pc2.read_points(selection)))[:, :3]
         # Save xyzrgb info in green_points (type: numpy array)
-        green_points_xyz = pcd_points[green_points_indices]
-        green_points_rgb = pcd_colors[green_points_indices]
 
         # Create Open3D point cloud for green points
         green_pcd = o3d.geometry.PointCloud()
         # Save xyzrgb info in green_pcd (type: open3d.PointCloud)
         green_pcd.points = o3d.utility.Vector3dVector(green_points_xyz)
-        green_pcd.colors = o3d.utility.Vector3dVector(green_points_rgb)
 
         # Apply plane segmentation function from open3d and get the best inliers
         _, best_inliers = green_pcd.segment_plane(distance_threshold=0.01,
                                                   ransac_n=3,
                                                   num_iterations=1000)
         # Just save and continue working with the inlier points defined by the plane segmentation function
-        inlier_points = pcd_points[best_inliers]
+        inlier_points = green_points_xyz[best_inliers]
         # Get the centroid of the inlier points
         # In Cartesian coordinates, the centroid is just the mean of the components. That is, axis=0 runs down the rows,
         # so at the end you get the mean of x, y and z components (centroid)
@@ -248,13 +219,13 @@ class PlantExtractor:
         # Chain effect: get transformation matrix from camera to end effector
         camera2ee = camera2tool @ tool2ee
 
-        for x in range(2):
+        for x in range(10):
             tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
-            rospy.sleep(0.1)
+            rospy.sleep(0.05)
 
         # Rviz commands
         # Call plot_pointcloud_rviz function to visualize PCs in Rviz
-        hp.publish_pc_no_color(self.src_pub, points[:, :3], self.frame_id)
+        hp.publish_pc_no_color(self.src_pub, green_points_xyz[:, :3], self.frame_id)
         hp.publish_pc_no_color(self.inliers_pub, inlier_points[:, :3], self.frame_id)
         # Call rviz_arrow function to see normal of the plane
         self.rviz_arrow(inliers_centroid, normal, name='normal', thickness=0.008, length_scale=0.15,
@@ -373,9 +344,10 @@ class PlantExtractor:
         # Define transformation matrix from camera to end effector
         camera2ee = camera2tool @ tool2ee
         # Display gripper
-        for x in range(2):
+        for x in range(10):
             tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
-            rospy.sleep(0.1)
+            # rospy.loginfo(camera2ee)
+            rospy.sleep(0.05)
         # Call plot_pointcloud_rviz function to visualize PCs in Rviz
         # Visualize all the point cloud as "source"
         hp.publish_pc_no_color(self.src_pub, pcd_points[:, :3], self.frame_id)
