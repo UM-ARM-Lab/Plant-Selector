@@ -1,33 +1,33 @@
 #!/usr/bin/env python
 # Import useful libraries and functions
 import argparse
-import sys
-
-import open3d as o3d
-import numpy as np
-import pcl as pcl
-
-import rospy
-import ros_numpy
-from math import atan, sin, cos, pi
-from sensor_msgs.msg import PointCloud2
-from statistics import mode
-from std_msgs.msg import ColorRGBA
-from matplotlib import colors
-from visualization_msgs.msg import Marker
-from geometry_msgs.msg import Point
-from arc_utilities.tf2wrapper import TF2Wrapper
-from sklearn.decomposition import PCA
-from sensor_msgs import point_cloud2 as pc2
-from std_msgs.msg import String
-import struct
 import ctypes
+import struct
+import sys
+from math import atan, sin, cos, pi
+from statistics import mode
+
+import numpy as np
+import open3d as o3d
+from matplotlib import colors
+from sklearn.decomposition import PCA
+
+import ros_numpy
+import rospy
+from arc_utilities.tf2wrapper import TF2Wrapper
+from geometry_msgs.msg import Point
 from sensor_msgs import point_cloud2
+from sensor_msgs import point_cloud2 as pc2
+from sensor_msgs.msg import PointCloud2
 from sensor_msgs.msg import PointField
+from std_msgs.msg import ColorRGBA
 from std_msgs.msg import Header
+from std_msgs.msg import String
+from visualization_msgs.msg import Marker
+
 
 def float_to_rgb(float_rgb):
-    """ Converts a packed float RGB format to an RGB list
+    """ Converts a packed float RGB format to an RGB list.
 
         Args:
             float_rgb: RGB value packed as a float
@@ -43,31 +43,36 @@ def float_to_rgb(float_rgb):
     g = (pack & 0x0000FF00) >> 8
     b = (pack & 0x000000FF)
 
-    color = [r,g,b]
+    color = [r, g, b]
 
     return color
+
 
 def plot_pointcloud_rviz(pub, points, frame_id):
     """
     Args:
-        points: an Nx3 array
-        frame_id: the frame to publish in
+        pub: Ros publisher
+        points: A Nx3 array
+        frame_id: The frame to publish in
 
-    Returns: a PointCloud2 message ready to be published to rviz
+    Returns: A PointCloud2 message ready to be published to rviz
 
     """
     header = Header(frame_id=frame_id)
     fields = [PointField('x', 0, PointField.FLOAT32, 1),
               PointField('y', 4, PointField.FLOAT32, 1),
-              PointField('z', 8, PointField.FLOAT32, 1)
-              # PointField('rgb', 12, PointField.FLOAT32, 1)
-              ]
+              PointField('z', 8, PointField.FLOAT32, 1)]
     pc2_msg = point_cloud2.create_cloud(header, fields, points)
     pub.publish(pc2_msg)
 
 
 class PlantExtractor:
     def __init__(self, camera_frame):
+        """
+        Initialize publishers for PCs, arrow and planes.
+
+        :param camera_frame: Name of the camera frame to be used.
+        """
         # Initialize publishers for PCs, arrow and planes
         # SYNTAX: pub = rospy.Publisher('topic_name', geometry_msgs.msg.Point, queue_size=10)
         # Second argument was imported in the beginning
@@ -86,8 +91,9 @@ class PlantExtractor:
 
     def mode_change(self, new_mode):
         """
-        Callback to a new mode type from /plant_selector/mode. Modes can be either None, Branch, Weed, or Cancel.
-        :param new_mode: ros string msg
+        Callback to a new mode type from /plant_selector/mode. Modes can be either Branch or Weed.
+
+        :param new_mode: Ros string message
         """
         self.mode = new_mode.data
         if self.mode == "Branch":
@@ -99,8 +105,9 @@ class PlantExtractor:
     def select_plant(self, selection):
         """
         Callback to a new pointcloud message to /rviz_selected_points. This func calls a function to handle
-        branch or weed extraction depending on the type of mode is currently active
-        :param selection: ros pointcloud2 message
+        branch or weed extraction depending on the type of mode is currently active.
+
+        :param selection: Ros pointcloud2 message
         """
         rospy.loginfo("About to detect plant in \"" + self.mode + "\" mode")
         if self.mode == "Branch":
@@ -108,9 +115,11 @@ class PlantExtractor:
         elif self.mode == "Weed":
             self.select_weed(selection)
 
-    def project(self, u, n):
+    @staticmethod
+    def project(u, n):
         """
         This functions projects a vector "u" to a plane "n" following a mathematical equation.
+
         :param u: vector that is going to be projected. (numpy array)
         :param n: normal vector of the plane (numpy array)
         :return: vector projected onto the plane (numpy array)
@@ -120,11 +129,13 @@ class PlantExtractor:
     def rviz_arrow(self, start, direction, name, thickness, length_scale, color):
         """
         This function displays an arrow in Rviz.
+
         :param start: vector with coordinates of the start point (origin)
         :param direction: vector that defines de direction of the arrow
         :param name: namespace to display in Rviz
         :param thickness: thickness of the arrow
         :param length_scale: length of the arrow
+        :param color: color of the arrow
         :return: None
         """
         color_msg = ColorRGBA(*colors.to_rgba(color))
@@ -154,7 +165,7 @@ class PlantExtractor:
     def plot_plane(self, centroid, normal, size: float = 1, res: float = 0.01):
         """
         This function plots a plane in Rviz.
-        :param pub: ROS publisher
+
         :param centroid: centroid of the inliers
         :param normal: normal vector of the plane
         :param size: size of the plane
@@ -191,20 +202,11 @@ class PlantExtractor:
 
     def select_branch(self, selection):
         """
-        STEPS:
-        - load the selected point cloud
-        - compute the grasp/cut pose and publish it so we can see it in rviz
-            - get the inliers using open3d plane segmentation
-            - compute the centroid of the inliers
-            - run PCA on the inliers
-            - get the first component
-            - define the plane (the 1st component is the normal of the plane)
-            - visualize the plane
-            - take the gripper to the centroid
-            - define the orientation of the gripper
-                - project the camera-to-plant vector into the plane
+        This function selects the branch and gives a pose for the gripper.
+
+        :param selection: selected pointcloud from rviz
+        :return: None.
         """
-        # TODO: Need to figure out either how to do different plane segmentation on a numpy array, or convert ros to pcl
         # Transform open3d PC to numpy array
         points = np.array(list(pc2.read_points(selection)))
 
@@ -290,18 +292,11 @@ class PlantExtractor:
         # Chain effect: get transformation matrix from camera to end effector
         camera2ee = camera2tool @ tool2ee
 
-        for x in range(10):
+        for x in range(2):
             tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
             rospy.sleep(0.1)
 
         # Rviz commands
-        # Call rviz_arrow function to first component, cut direction and second component
-        # self.rviz_arrow(inliers_centroid, normal, name='first component', length_scale=0.04, color='r', thickness=0.008)
-        # self.rviz_arrow(inliers_centroid, cut_y, name='cut y', length_scale=0.05, color='g', thickness=0.008)
-        # self.rviz_arrow(inliers_centroid, cut_direction, name='cut direction', length_scale=0.05, color='b', thickness=0.008)
-
-        # Call plot_plane function to visualize plane in Rviz
-        # self.plot_plane(inliers_centroid, normal, size=0.05, res=0.001)
         # Call plot_pointcloud_rviz function to visualize PCs in Rviz
         plot_pointcloud_rviz(self.src_pub, points[:, :3], self.frame_id)
         plot_pointcloud_rviz(self.inliers_pub, inlier_points[:, :3], self.frame_id)
@@ -312,8 +307,13 @@ class PlantExtractor:
         self.plot_plane(inliers_centroid, normal, size=0.1, res=0.001)
 
     def select_weed(self, selection):
+        """
+        This function extracts the weed points and gives a pose for the gripper.
+
+        :param selection: Selected pointcloud in Rviz.
+        :return: None.
+        """
         # Load point cloud and visualize it
-        # TODO: Figure out how to get the rgb part of the ros msg
         points = np.array(list(pc2.read_points(selection)))
         pcd_points = points[:, :3]
         float_colors = points[:, 3]
@@ -358,15 +358,6 @@ class PlantExtractor:
         # Apply DBSCAN to green points
         labels = np.array(green_pcd.cluster_dbscan(eps=0.02, min_points=10))
 
-        """
-        # Color clusters and visualize them
-        max_label = labels.max()
-        colors = plt.get_cmap("tab20")(labels / (max_label if max_label > 0 else 1))
-        colors[labels < 0] = 0
-        green_pcd.colors = o3d.utility.Vector3dVector(colors[:, :3])
-        o3d.visualization.draw_geometries([green_pcd])
-        """
-
         # Get labels of the biggest cluster
         biggest_cluster_indices = np.where(labels[:] == mode(labels))
         # Just keep the points that correspond to the biggest cluster (weed)
@@ -405,23 +396,14 @@ class PlantExtractor:
             phi = phi + pi - 2 * phi
         theta = atan(normal[0] / -normal[2])
 
-        Rx = np.asarray([[1, 0, 0],
+        rx = np.asarray([[1, 0, 0],
                          [0, cos(phi), -sin(phi)],
                          [0, sin(phi), cos(phi)]])
-        Ry = np.asarray([[cos(theta), 0, sin(theta)],
+        ry = np.asarray([[cos(theta), 0, sin(theta)],
                          [0, 1, 0],
                          [-sin(theta), 0, cos(theta)]])
 
-        frame2vector_rot = Rx @ Ry
-
-        """
-        # Apply PCA and get just one principal component
-        pca = PCA(n_components=3)
-        # Fit the PCA to the inlier points
-        pca.fit(inlier_dirt_points)
-        # The third component (vector) is the normal of the plane of the dirt we are looking for
-        third_comp = pca.components_[2]
-        """
+        frame2vector_rot = rx @ ry
 
         tfw = TF2Wrapper()
         # Construct transformation matrix from camera to tool of end effector
@@ -435,7 +417,7 @@ class PlantExtractor:
         # Define transformation matrix from camera to end effector
         camera2ee = camera2tool @ tool2ee
         # Display gripper
-        for x in range(10):
+        for x in range(2):
             tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
             rospy.sleep(0.1)
         # Call plot_pointcloud_rviz function to visualize PCs in Rviz
@@ -451,6 +433,11 @@ class PlantExtractor:
 
 
 def main():
+    """
+    This main function constantly waits for any selection of points in Rviz.
+
+    :return: None.
+    """
     rospy.init_node("plant_extraction")
 
     parser = argparse.ArgumentParser()
