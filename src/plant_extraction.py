@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # Import useful libraries and functions
+import helpers as hp
 import argparse
-import ctypes
-import struct
 import sys
 from math import atan, sin, cos, pi
 from statistics import mode
@@ -16,54 +15,11 @@ import ros_numpy
 import rospy
 from arc_utilities.tf2wrapper import TF2Wrapper
 from geometry_msgs.msg import Point
-from sensor_msgs import point_cloud2
 from sensor_msgs import point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2
-from sensor_msgs.msg import PointField
 from std_msgs.msg import ColorRGBA
-from std_msgs.msg import Header
 from std_msgs.msg import String
 from visualization_msgs.msg import Marker
-
-
-def float_to_rgb(float_rgb):
-    """ Converts a packed float RGB format to an RGB list.
-
-        Args:
-            float_rgb: RGB value packed as a float
-
-        Returns:
-            color (list): 3-element list of integers [0-255,0-255,0-255]
-    """
-    s = struct.pack('>f', float_rgb)
-    i = struct.unpack('>l', s)[0]
-    pack = ctypes.c_uint32(i).value
-
-    r = (pack & 0x00FF0000) >> 16
-    g = (pack & 0x0000FF00) >> 8
-    b = (pack & 0x000000FF)
-
-    color = [r, g, b]
-
-    return color
-
-
-def plot_pointcloud_rviz(pub, points, frame_id):
-    """
-    Args:
-        pub: Ros publisher
-        points: A Nx3 array
-        frame_id: The frame to publish in
-
-    Returns: A PointCloud2 message ready to be published to rviz
-
-    """
-    header = Header(frame_id=frame_id)
-    fields = [PointField('x', 0, PointField.FLOAT32, 1),
-              PointField('y', 4, PointField.FLOAT32, 1),
-              PointField('z', 8, PointField.FLOAT32, 1)]
-    pc2_msg = point_cloud2.create_cloud(header, fields, points)
-    pub.publish(pc2_msg)
 
 
 class PlantExtractor:
@@ -198,7 +154,7 @@ class PlantExtractor:
         points_flat = points.reshape([-1, 3])
 
         # Call the function to plot plane as a PC
-        plot_pointcloud_rviz(self.plane_pub, points_flat[:, :3], self.frame_id)
+        hp.publish_pc_no_color(self.plane_pub, points_flat[:, :3], self.frame_id)
 
     def select_branch(self, selection):
         """
@@ -215,7 +171,7 @@ class PlantExtractor:
 
         pcd_colors = np.array((0, 0, 0))
         for x in float_colors:
-            rgb = float_to_rgb(x)
+            rgb = hp.float_to_rgb(x)
             pcd_colors = np.vstack((pcd_colors, rgb))
 
         pcd_colors = pcd_colors[1:, :] / 255
@@ -298,8 +254,8 @@ class PlantExtractor:
 
         # Rviz commands
         # Call plot_pointcloud_rviz function to visualize PCs in Rviz
-        plot_pointcloud_rviz(self.src_pub, points[:, :3], self.frame_id)
-        plot_pointcloud_rviz(self.inliers_pub, inlier_points[:, :3], self.frame_id)
+        hp.publish_pc_no_color(self.src_pub, points[:, :3], self.frame_id)
+        hp.publish_pc_no_color(self.inliers_pub, inlier_points[:, :3], self.frame_id)
         # Call rviz_arrow function to see normal of the plane
         self.rviz_arrow(inliers_centroid, normal, name='normal', thickness=0.008, length_scale=0.15,
                         color='r')
@@ -320,7 +276,7 @@ class PlantExtractor:
 
         pcd_colors = np.array((0, 0, 0))
         for x in float_colors:
-            rgb = float_to_rgb(x)
+            rgb = hp.float_to_rgb(x)
             pcd_colors = np.vstack((pcd_colors, rgb))
 
         pcd_colors = pcd_colors[1:, :] / 255
@@ -422,9 +378,9 @@ class PlantExtractor:
             rospy.sleep(0.1)
         # Call plot_pointcloud_rviz function to visualize PCs in Rviz
         # Visualize all the point cloud as "source"
-        plot_pointcloud_rviz(self.src_pub, pcd_points[:, :3], self.frame_id)
+        hp.publish_pc_no_color(self.src_pub, pcd_points[:, :3], self.frame_id)
         # Visualize filtered green points as "inliers"
-        plot_pointcloud_rviz(self.inliers_pub, green_pcd_points[:, :3], self.frame_id)
+        hp.publish_pc_no_color(self.inliers_pub, green_pcd_points[:, :3], self.frame_id)
         # Call rviz_arrow function to see normal of the plane
         self.rviz_arrow(inlier_dirt_centroid, normal, name='normal', thickness=0.008, length_scale=0.15,
                         color='w')
