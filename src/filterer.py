@@ -17,6 +17,10 @@ class Filterer:
     def cluster_filter(self, pc):
         points = np.array(list(sensor_msgs.point_cloud2.read_points(pc)))
 
+        if points.shape[0] == 0:
+            rospy.loginfo("No points selected")
+            return
+
         # Perform a color filter
         # points = helpers.green_color_filter(points)
 

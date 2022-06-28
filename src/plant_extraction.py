@@ -242,6 +242,11 @@ class PlantExtractor:
         """
         # Load point cloud and visualize it
         points = np.array(list(pc2.read_points(selection)))
+
+        if points.shape[0] == 0:
+            rospy.loginfo("Select points")
+            return
+
         pcd_points = points[:, :3]
         float_colors = points[:, 3]
 
@@ -294,7 +299,8 @@ class PlantExtractor:
         # Apply DBSCAN to green points
         labels = np.array(green_pcd.cluster_dbscan(eps=0.02, min_points=10))
 
-        if labels.shape[0] == 1:
+        n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+        if n_clusters == 0:
             rospy.loginfo("Not enough points. Try again.")
             return
 
@@ -321,6 +327,10 @@ class PlantExtractor:
         plane_model, best_inliers = dirt_pcd.segment_plane(distance_threshold=0.0005,
                                                            ransac_n=3,
                                                            num_iterations=1000)
+
+        if len(best_inliers) == 0:
+            rospy.loginfo("Can't find dirt, Select both weed and dirt.")
+
         [a, b, c, _] = plane_model
         # Just save and continue working with the inlier points defined by the plane segmentation function
         inlier_dirt_points = dirt_points_xyz[best_inliers]
@@ -359,7 +369,6 @@ class PlantExtractor:
         # Display gripper
         for x in range(10):
             tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
-            # rospy.loginfo(camera2ee)
             rospy.sleep(0.05)
         # Call plot_pointcloud_rviz function to visualize PCs in Rviz
         # Visualize all the point cloud as "source"
