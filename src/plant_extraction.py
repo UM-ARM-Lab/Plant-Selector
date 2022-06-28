@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # Import useful libraries and functions
-import helpers as hp
 import argparse
 import sys
 from math import atan, sin, cos, pi
@@ -11,6 +10,7 @@ import open3d as o3d
 from matplotlib import colors
 from sklearn.decomposition import PCA
 
+import helpers as hp
 import ros_numpy
 import rospy
 from arc_utilities.tf2wrapper import TF2Wrapper
@@ -266,10 +266,14 @@ class PlantExtractor:
             green_points_indices = np.where((pcd_colors[:, 0] > r_low) & (pcd_colors[:, 0] < r_high) &
                                             (pcd_colors[:, 1] > g_low) & (pcd_colors[:, 1] < g_high) &
                                             (pcd_colors[:, 2] > b_low) & (pcd_colors[:, 2] < b_high))
+        if len(green_points_indices[0]) == 1:
+            rospy.loginfo("No green points found. Try again.")
+            return
 
         # Save xyzrgb info in green_points (type: numpy array)
         green_points_xyz = pcd_points[green_points_indices]
         green_points_rgb = pcd_colors[green_points_indices]
+
 
         # Create Open3D point cloud for green points
         green_pcd = o3d.geometry.PointCloud()
@@ -278,12 +282,21 @@ class PlantExtractor:
         green_pcd.colors = o3d.utility.Vector3dVector(green_points_rgb)
         # Apply radius outlier filter to green_pcd
         _, ind = green_pcd.remove_radius_outlier(nb_points=5, radius=0.02)
+
+        if len(green_points_indices[0]) == 0:
+            rospy.loginfo("Not enough points. Try again.")
+            return
+
         # Just keep the inlier points in the point cloud
         green_pcd = green_pcd.select_by_index(ind)
         green_pcd_points = np.asarray(green_pcd.points)
 
         # Apply DBSCAN to green points
         labels = np.array(green_pcd.cluster_dbscan(eps=0.02, min_points=10))
+
+        if labels.shape[0] == 1:
+            rospy.loginfo("Not enough points. Try again.")
+            return
 
         # Get labels of the biggest cluster
         biggest_cluster_indices = np.where(labels[:] == mode(labels))
