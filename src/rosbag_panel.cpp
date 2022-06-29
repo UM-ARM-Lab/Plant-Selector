@@ -6,6 +6,7 @@
 #include <QFileDialog>
 #include <QPushButton>
 #include <QLineEdit>
+#include <QString>
 
 #include "rviz/visualization_manager.h"
 #include "rviz/render_panel.h"
@@ -101,8 +102,11 @@ namespace rviz_custom_panel
      * After pressing "Bag Select", prompt the user with a file system to choose a bag, after that, load the first frame of the bag into rviz 
      */
     void RosbagPanel::set_bag() {
+        std::string default_bag_path_str = "";
+        ros::param::get("default_bag_path", default_bag_path_str);
+        QString default_directory = QString::fromStdString(default_bag_path_str);
         // change the default filepath below, example: home/christianforeman/catkin_ws/src/point_cloud_selector" 
-        std::string bag_filepath = QFileDialog::getOpenFileName(this, tr("Open Bag"), "/home/christianforeman/catkin_ws/src/plant_selector/bags", tr("Bags (*.bag)")).toStdString();
+        std::string bag_filepath = QFileDialog::getOpenFileName(this, tr("Open Bag"), default_directory, tr("Bags (*.bag)")).toStdString();
         // if its empty, return
         if(bag_filepath.empty()) {
             return;

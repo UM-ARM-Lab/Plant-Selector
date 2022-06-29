@@ -1,3 +1,5 @@
 bags/
 .idea/
 pcs/*
+*.rviz
+.vscode/

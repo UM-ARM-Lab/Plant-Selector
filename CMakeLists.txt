@@ -44,6 +44,11 @@ add_library(rosbag_panel
   ${MOC_FILES_ROSBAG}
   )
 
+add_executable(real_time_handler 
+  src/real_time_handler.cpp
+  include/plant_selector/real_time_handler.hpp
+  )
+
 target_link_libraries(publishing_selector
   ${QT_LIBRARIES}
   ${catkin_LIBRARIES}
@@ -59,7 +64,11 @@ target_link_libraries(rosbag_panel
   ${catkin_LIBRARIES}
   )
 
-install(TARGETS publishing_selector main_panel rosbag_panel
+target_link_libraries(real_time_handler
+  ${catkin_LIBRARIES}
+  )
+
+install(TARGETS publishing_selector main_panel rosbag_panel real_time_handler
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
