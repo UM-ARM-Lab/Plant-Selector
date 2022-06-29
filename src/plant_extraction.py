@@ -45,6 +45,13 @@ class PlantExtractor:
         self.mode = "Branch"
         self.pc_sub = rospy.Subscriber("/plant_selector/filtered", PointCloud2, self.select_plant)
 
+        # Fixing first selection
+        ident_matrix = np.eye(4)
+        tfw = TF2Wrapper()
+        for _ in range(10):
+            tfw.send_transform_matrix(ident_matrix, parent=self.frame_id, child='end_effector_left')
+            rospy.sleep(0.05)
+            
     def mode_change(self, new_mode):
         """
         Callback to a new mode type from /plant_selector/mode. Modes can be either Branch or Weed.
@@ -218,10 +225,7 @@ class PlantExtractor:
         tool2ee = tfw.get_transform(parent="left_tool", child="end_effector_left")
         # Chain effect: get transformation matrix from camera to end effector
         camera2ee = camera2tool @ tool2ee
-
-        for x in range(10):
-            tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
-            rospy.sleep(0.05)
+        tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
 
         # Rviz commands
         # Call plot_pointcloud_rviz function to visualize PCs in Rviz
@@ -366,10 +370,9 @@ class PlantExtractor:
         tool2ee = tfw.get_transform(parent="left_tool", child="end_effector_left")
         # Define transformation matrix from camera to end effector
         camera2ee = camera2tool @ tool2ee
+        test = np.random.random_sample((5, 5))
         # Display gripper
-        for x in range(10):
-            tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
-            rospy.sleep(0.05)
+        tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
         # Call plot_pointcloud_rviz function to visualize PCs in Rviz
         # Visualize all the point cloud as "source"
         hp.publish_pc_no_color(self.src_pub, pcd_points[:, :3], self.frame_id)
