@@ -43,7 +43,8 @@ class PlantExtractor:
 
         # Set the default mode to branch
         self.mode = "Branch"
-        self.pc_sub = rospy.Subscriber("/plant_selector/filtered", PointCloud2, self.select_plant)
+        self.branch_pc_sub = rospy.Subscriber("/plant_selector/filtered", PointCloud2, self.select_branch)
+        self.weed_pc_sub = rospy.Subscriber("/rviz_selected_points", PointCloud2, self.select_weed)
 
         # Fixing first selection
         ident_matrix = np.eye(4)
@@ -59,24 +60,7 @@ class PlantExtractor:
         :param new_mode: Ros string message
         """
         self.mode = new_mode.data
-        if self.mode == "Branch":
-            self.pc_sub = rospy.Subscriber("/plant_selector/filtered", PointCloud2, self.select_plant)
-        elif self.mode == "Weed":
-            self.pc_sub = rospy.Subscriber("/rviz_selected_points", PointCloud2, self.select_plant)
         rospy.loginfo("New mode: " + self.mode)
-
-    def select_plant(self, selection):
-        """
-        Callback to a new pointcloud message to /rviz_selected_points. This func calls a function to handle
-        branch or weed extraction depending on the type of mode is currently active.
-
-        :param selection: Ros pointcloud2 message
-        """
-        rospy.loginfo("About to detect plant in \"" + self.mode + "\" mode")
-        if self.mode == "Branch":
-            self.select_branch(selection)
-        elif self.mode == "Weed":
-            self.select_weed(selection)
 
     @staticmethod
     def project(u, n):
@@ -170,6 +154,9 @@ class PlantExtractor:
         :param selection: selected pointcloud from rviz
         :return: None.
         """
+        if self.mode != "Branch":
+            return
+
         # Transform open3d PC to numpy array
         green_points_xyz = np.array(list(pc2.read_points(selection)))[:, :3]
         # Save xyzrgb info in green_points (type: numpy array)
@@ -244,6 +231,9 @@ class PlantExtractor:
         :param selection: Selected pointcloud in Rviz.
         :return: None.
         """
+        if self.mode != "Weed":
+            return
+
         # Load point cloud and visualize it
         points = np.array(list(pc2.read_points(selection)))
 
