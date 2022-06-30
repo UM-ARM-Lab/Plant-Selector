@@ -273,14 +273,14 @@ class PlantExtractor:
         green_points_xyz = pcd_points[green_points_indices]
         green_points_rgb = pcd_colors[green_points_indices]
 
-
         # Create Open3D point cloud for green points
         green_pcd = o3d.geometry.PointCloud()
         # Save xyzrgb info in green_pcd (type: open3d.PointCloud)
         green_pcd.points = o3d.utility.Vector3dVector(green_points_xyz)
         green_pcd.colors = o3d.utility.Vector3dVector(green_points_rgb)
+
         # Apply radius outlier filter to green_pcd
-        _, ind = green_pcd.remove_radius_outlier(nb_points=5, radius=0.02)
+        _, ind = green_pcd.remove_radius_outlier(nb_points=5, radius=0.002)
 
         if len(green_points_indices[0]) == 0:
             rospy.loginfo("Not enough points. Try again.")
@@ -291,7 +291,7 @@ class PlantExtractor:
         green_pcd_points = np.asarray(green_pcd.points)
 
         # Apply DBSCAN to green points
-        labels = np.array(green_pcd.cluster_dbscan(eps=0.02, min_points=10))
+        labels = np.array(green_pcd.cluster_dbscan(eps=0.003, min_points=8))
 
         n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
         if n_clusters == 0:
@@ -360,7 +360,6 @@ class PlantExtractor:
         tool2ee = tfw.get_transform(parent="left_tool", child="end_effector_left")
         # Define transformation matrix from camera to end effector
         camera2ee = camera2tool @ tool2ee
-        test = np.random.random_sample((5, 5))
         # Display gripper
         tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
         # Call plot_pointcloud_rviz function to visualize PCs in Rviz
