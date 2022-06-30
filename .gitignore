@@ -3,3 +3,4 @@ bags/
 pcs/*
 *.rviz
 .vscode/
+__pycache__/*
