@@ -12,7 +12,7 @@ class Filterer:
         rospy.init_node('filterer', anonymous=True)
         rospy.Subscriber("/rviz_selected_points", PointCloud2, self.cluster_filter)
         self.filter_pub = rospy.Publisher("/plant_selector/filtered", PointCloud2, queue_size=10)
-        self.frame_id = "zed2i_left_camera_frame"
+        self.frame_id = str(rospy.get_param("frame_id")) 
 
     def cluster_filter(self, pc):
         points = np.array(list(sensor_msgs.point_cloud2.read_points(pc)))
@@ -55,7 +55,7 @@ class Filterer:
 
 
 def main():
-    filter_one = Filterer()
+    filterer = Filterer()
     rospy.spin()
 
 

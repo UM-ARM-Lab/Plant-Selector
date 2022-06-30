@@ -1,0 +1,22 @@
+<launch>
+    <param name="frame_id" value="camera_depth_optical_frame"/>
+    <param name="pc_source" value="/camera/depth/color/points"/>
+    
+    <param name="default_bag_path" value='$(find plant_selector)/bags'/>
+
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find plant_selector)/rviz/realsense.rviz"/>
+    <node pkg="tf2_ros" type="static_transform_publisher" name="camera_tf_offset" args="0 0 0 0 0 1.5707 camera_depth_optical_frame camera_rviz"/> -->
+
+    <rosparam command="load" file="$(find plant_selector)/urdf/gripper.urdf" param="gripper_description"/>
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="gripper_state_publisher">
+        <remap from="robot_description" to="gripper_description"/>
+    </node>
+
+    <!-- Python Scripts -->
+    <node name="plant_extraction" pkg="plant_selector" type="plant_extraction.py" output="screen"/>
+    <node name="filterer" pkg="plant_selector" type="filterer.py" output="screen"/>
+
+    <!-- Cpp Executables-->
+    <node name="real_time_handler" pkg="plant_selector" type="real_time_handler" output="screen"/>
+</launch>
+
