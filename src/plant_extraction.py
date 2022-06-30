@@ -279,8 +279,13 @@ class PlantExtractor:
         green_pcd.points = o3d.utility.Vector3dVector(green_points_xyz)
         green_pcd.colors = o3d.utility.Vector3dVector(green_points_rgb)
 
+        camera = str(rospy.get_param("camera"))
+
         # Apply radius outlier filter to green_pcd
-        _, ind = green_pcd.remove_radius_outlier(nb_points=5, radius=0.002)
+        if camera == "zed":
+            _, ind = green_pcd.remove_radius_outlier(nb_points=5, radius=0.002)
+        elif camera == "realsense":
+            _, ind = green_pcd.remove_radius_outlier(nb_points=5, radius=0.01)
 
         if len(green_points_indices[0]) == 0:
             rospy.loginfo("Not enough points. Try again.")
@@ -291,7 +296,10 @@ class PlantExtractor:
         green_pcd_points = np.asarray(green_pcd.points)
 
         # Apply DBSCAN to green points
-        labels = np.array(green_pcd.cluster_dbscan(eps=0.003, min_points=8))
+        if camera == "zed":
+            labels = np.array(green_pcd.cluster_dbscan(eps=0.003, min_points=8))
+        elif camera == "realsense":
+            labels = np.array(green_pcd.cluster_dbscan(eps=0.01, min_points=8))
 
         n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
         if n_clusters == 0:
@@ -332,28 +340,49 @@ class PlantExtractor:
         inlier_dirt_centroid = np.mean(inlier_dirt_points, axis=0)
         # The a, b, c coefficients of the plane equation are the components of the normal vector of that plane
         normal = np.asarray([a, b, c])
-        if normal[2] > 0:
-            normal = -normal
 
-        phi = atan(normal[1] / normal[2])
-        if phi < pi/2:
-            phi = phi + pi - 2 * phi
-        theta = atan(normal[0] / -normal[2])
+        # TODO: Select either zed or RS camera
+        if camera == "zed":
+            if normal[2] > 0:
+                normal = -normal
 
-        rx = np.asarray([[1, 0, 0],
-                         [0, cos(phi), -sin(phi)],
-                         [0, sin(phi), cos(phi)]])
-        ry = np.asarray([[cos(theta), 0, sin(theta)],
-                         [0, 1, 0],
-                         [-sin(theta), 0, cos(theta)]])
+            phi = atan(normal[1] / normal[2])
+            if phi < pi/2:
+                phi = phi + pi - 2 * phi
+            theta = atan(normal[0] / -normal[2])
 
-        frame2vector_rot = rx @ ry
+            rx = np.asarray([[1, 0, 0],
+                             [0, cos(phi), -sin(phi)],
+                             [0, sin(phi), cos(phi)]])
+            ry = np.asarray([[cos(theta), 0, sin(theta)],
+                             [0, 1, 0],
+                             [-sin(theta), 0, cos(theta)]])
+
+            frame2vector_rot = rx @ ry
+
+        elif camera == "realsense":
+            if normal[1] < 0:
+                normal = -normal
+
+            phi = -atan(normal[1] / normal[2])
+            print(np.rad2deg(phi))
+            theta = atan(normal[0] / normal[2])
+            print(np.rad2deg(theta))
+
+            rx = np.asarray([[1, 0, 0],
+                             [0, cos(phi), -sin(phi)],
+                             [0, sin(phi), cos(phi)]])
+            ry = np.asarray([[cos(theta), 0, sin(theta)],
+                             [0, 1, 0],
+                             [-sin(theta), 0, cos(theta)]])
+
+            frame2vector_rot = rx @ ry
 
         tfw = TF2Wrapper()
         # Construct transformation matrix from camera to tool of end effector
         camera2tool = np.zeros([4, 4])
         camera2tool[:3, :3] = frame2vector_rot
-        camera2tool[:3, 3] = weed_centroid
+        camera2tool[:3, 3] = np.zeros(3)  # weed_centroid
         camera2tool[3, 3] = 1
 
         # Define transformation matrix from tool to end effector
@@ -368,7 +397,7 @@ class PlantExtractor:
         # Visualize filtered green points as "inliers"
         hp.publish_pc_no_color(self.inliers_pub, green_pcd_points[:, :3], self.frame_id)
         # Call rviz_arrow function to see normal of the plane
-        self.rviz_arrow(inlier_dirt_centroid, normal, name='normal', thickness=0.008, length_scale=0.15,
+        self.rviz_arrow(np.zeros(3), normal, name='normal', thickness=0.008, length_scale=0.15,
                         color='w')
         # Call plot_plane function to visualize plane in Rviz
         self.plot_plane(inlier_dirt_centroid, normal, size=0.1, res=0.001)

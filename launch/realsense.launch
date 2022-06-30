@@ -1,6 +1,7 @@
 <launch>
     <param name="frame_id" value="camera_depth_optical_frame"/>
     <param name="pc_source" value="/camera/depth/color/points"/>
+    <param name="camera" value="realsense"/>
     
     <param name="default_bag_path" value='$(find plant_selector)/bags'/>
 

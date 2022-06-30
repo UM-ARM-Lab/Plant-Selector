@@ -1,6 +1,7 @@
 <launch>
     <param name="frame_id" value="zed2i_left_camera_frame"/>
     <param name="pc_source" value="/zed2i/zed_node/point_cloud/cloud_registered"/>
+    <param name="camera" value="zed"/>
 
     <node pkg="rviz" type="rviz" name="rviz" args="-d $(find plant_selector)/rviz/zed.rviz"/>
     <node pkg="tf2_ros" type="static_transform_publisher" name="gripper_offset" args="0 0 0 0 0 0 zed2i_left_camera_frame end_effector_left"/> -->
