@@ -1,6 +1,5 @@
 bags/
 .idea/
 pcs/*
-*.rviz
 .vscode/
 */__pycache__/*
