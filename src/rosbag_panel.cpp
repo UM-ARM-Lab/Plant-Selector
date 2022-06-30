@@ -63,7 +63,8 @@ namespace rviz_custom_panel
         setLayout(main_layout);
         frame_slider->setValue(0);
 
-        set_zed_defaults();
+        ros::param::get("pc_source", pc_topic);
+        pc_topic_label->setText(QString::fromUtf8(("Chosen Topic: " + pc_topic).c_str()));
  
         // Make signal/slot connections.
         connect(sel_bag, &QPushButton::clicked, this, &RosbagPanel::set_bag);
@@ -75,11 +76,6 @@ namespace rviz_custom_panel
         manager->startUpdate();
 
         frame_pub = n.advertise<sensor_msgs::PointCloud2>(pc_topic, 1);
-    }
-
-    void RosbagPanel::set_zed_defaults() {
-        pc_topic = "/zed2i/zed_node/point_cloud/cloud_registered";
-        pc_topic_label->setText(QString::fromUtf8(("Chosen Topic: " + pc_topic).c_str()));
     }
 
     /**
@@ -102,11 +98,10 @@ namespace rviz_custom_panel
      * After pressing "Bag Select", prompt the user with a file system to choose a bag, after that, load the first frame of the bag into rviz 
      */
     void RosbagPanel::set_bag() {
-        std::string default_bag_path_str = "";
-        ros::param::get("default_bag_path", default_bag_path_str);
-        QString default_directory = QString::fromStdString(default_bag_path_str);
-        // change the default filepath below, example: home/christianforeman/catkin_ws/src/point_cloud_selector" 
-        std::string bag_filepath = QFileDialog::getOpenFileName(this, tr("Open Bag"), default_directory, tr("Bags (*.bag)")).toStdString();
+        std::string default_bag_path;
+        ros::param::get("default_bag_path", default_bag_path);
+
+        std::string bag_filepath = QFileDialog::getOpenFileName(this, tr("Open Bag"), QString::fromStdString(default_bag_path), tr("Bags (*.bag)")).toStdString();
         // if its empty, return
         if(bag_filepath.empty()) {
             return;

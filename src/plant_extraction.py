@@ -23,7 +23,7 @@ from visualization_msgs.msg import Marker
 
 
 class PlantExtractor:
-    def __init__(self, camera_frame):
+    def __init__(self):
         """
         Initialize publishers for PCs, arrow and planes.
 
@@ -39,7 +39,7 @@ class PlantExtractor:
 
         rospy.Subscriber("/plant_selector/mode", String, self.mode_change)
 
-        self.frame_id = camera_frame
+        self.frame_id = str(rospy.get_param("frame_id"))
 
         # Set the default mode to branch
         self.mode = "Branch"
@@ -382,12 +382,7 @@ def main():
     :return: None.
     """
     rospy.init_node("plant_extraction")
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('frame', type=str)
-    args = parser.parse_args(rospy.myargv(sys.argv[1:]))
-
-    plant_extractor = PlantExtractor(args.frame)
+    plant_extractor = PlantExtractor()
     rospy.spin()
 
 
