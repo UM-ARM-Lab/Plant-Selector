@@ -283,7 +283,7 @@ class PlantExtractor:
 
         # Apply radius outlier filter to green_pcd
         if camera == "zed":
-            _, ind = green_pcd.remove_radius_outlier(nb_points=5, radius=0.002)
+            _, ind = green_pcd.remove_radius_outlier(nb_points=5, radius=0.003)
         elif camera == "realsense":
             _, ind = green_pcd.remove_radius_outlier(nb_points=5, radius=0.01)
 
@@ -297,7 +297,7 @@ class PlantExtractor:
 
         # Apply DBSCAN to green points
         if camera == "zed":
-            labels = np.array(green_pcd.cluster_dbscan(eps=0.003, min_points=8))
+            labels = np.array(green_pcd.cluster_dbscan(eps=0.005, min_points=8))
         elif camera == "realsense":
             labels = np.array(green_pcd.cluster_dbscan(eps=0.01, min_points=8))
 
@@ -382,7 +382,7 @@ class PlantExtractor:
         # Construct transformation matrix from camera to tool of end effector
         camera2tool = np.zeros([4, 4])
         camera2tool[:3, :3] = frame2vector_rot
-        camera2tool[:3, 3] = np.zeros(3)  # weed_centroid
+        camera2tool[:3, 3] = weed_centroid
         camera2tool[3, 3] = 1
 
         # Define transformation matrix from tool to end effector
@@ -393,11 +393,11 @@ class PlantExtractor:
         tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
         # Call plot_pointcloud_rviz function to visualize PCs in Rviz
         # Visualize all the point cloud as "source"
-        hp.publish_pc_no_color(self.src_pub, pcd_points[:, :3], self.frame_id)
+        hp.publish_pc_no_color(self.src_pub, dirt_points_xyz[:, :3], self.frame_id)
         # Visualize filtered green points as "inliers"
         hp.publish_pc_no_color(self.inliers_pub, green_pcd_points[:, :3], self.frame_id)
         # Call rviz_arrow function to see normal of the plane
-        self.rviz_arrow(np.zeros(3), normal, name='normal', thickness=0.008, length_scale=0.15,
+        self.rviz_arrow(inlier_dirt_centroid, normal, name='normal', thickness=0.008, length_scale=0.15,
                         color='w')
         # Call plot_plane function to visualize plane in Rviz
         self.plot_plane(inlier_dirt_centroid, normal, size=0.1, res=0.001)
