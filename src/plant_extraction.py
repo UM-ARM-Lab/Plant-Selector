@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 # Import useful libraries and functions
-import argparse
-import sys
 from math import atan, sin, cos, pi
 from statistics import mode
 
@@ -43,7 +41,7 @@ class PlantExtractor:
 
         # Set the default mode to branch
         self.mode = "Branch"
-        self.branch_pc_sub = rospy.Subscriber("/plant_selector/filtered", PointCloud2, self.select_branch)
+        self.branch_pc_sub = rospy.Subscriber("/rviz_selected_points", PointCloud2, self.select_branch)
         self.weed_pc_sub = rospy.Subscriber("/rviz_selected_points", PointCloud2, self.select_weed)
 
         # Fixing first selection
@@ -157,21 +155,21 @@ class PlantExtractor:
         if self.mode != "Branch":
             return
 
+        points_xyz = hp.cluster_filter(selection)[:, :3]
+
         # Transform open3d PC to numpy array
-        green_points_xyz = np.array(list(pc2.read_points(selection)))[:, :3]
-        # Save xyzrgb info in green_points (type: numpy array)
 
         # Create Open3D point cloud for green points
-        green_pcd = o3d.geometry.PointCloud()
+        pcd = o3d.geometry.PointCloud()
         # Save xyzrgb info in green_pcd (type: open3d.PointCloud)
-        green_pcd.points = o3d.utility.Vector3dVector(green_points_xyz)
+        pcd.points = o3d.utility.Vector3dVector(points_xyz)
 
         # Apply plane segmentation function from open3d and get the best inliers
-        _, best_inliers = green_pcd.segment_plane(distance_threshold=0.01,
+        _, best_inliers = pcd.segment_plane(distance_threshold=0.01,
                                                   ransac_n=3,
                                                   num_iterations=1000)
         # Just save and continue working with the inlier points defined by the plane segmentation function
-        inlier_points = green_points_xyz[best_inliers]
+        inlier_points = points_xyz[best_inliers]
         # Get the centroid of the inlier points
         # In Cartesian coordinates, the centroid is just the mean of the components. That is, axis=0 runs down the rows,
         # so at the end you get the mean of x, y and z components (centroid)
@@ -216,8 +214,8 @@ class PlantExtractor:
 
         # Rviz commands
         # Call plot_pointcloud_rviz function to visualize PCs in Rviz
-        hp.publish_pc_no_color(self.src_pub, green_points_xyz[:, :3], self.frame_id)
-        hp.publish_pc_no_color(self.inliers_pub, inlier_points[:, :3], self.frame_id)
+        hp.publish_pc_no_color(self.src_pub, points_xyz, self.frame_id)
+        hp.publish_pc_no_color(self.inliers_pub, inlier_points, self.frame_id)
         # Call rviz_arrow function to see normal of the plane
         self.rviz_arrow(inliers_centroid, normal, name='normal', thickness=0.008, length_scale=0.15,
                         color='r')

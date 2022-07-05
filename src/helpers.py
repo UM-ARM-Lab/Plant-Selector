@@ -1,10 +1,13 @@
 #!/usr/bin/env python
+import rospy
+import sensor_msgs
 from sensor_msgs import point_cloud2
 from sensor_msgs.msg import PointField
 from std_msgs.msg import Header
 import ctypes
 import struct
 import numpy as np
+from sklearn.cluster import DBSCAN
 
 
 def publish_pc_no_color(publisher, points, frame_id):
@@ -68,6 +71,44 @@ def float_to_rgb(float_rgb):
 
     return color
 
+def cluster_filter(pc):
+    points = np.array(list(sensor_msgs.point_cloud2.read_points(pc)))
+
+    if points.shape[0] == 0:
+        rospy.loginfo("No points selected")
+        return
+
+    # Perform a color filter
+    # points = helpers.green_color_filter(points)
+
+    # TODO: The eps value here might want to somehow change dynamically where points further away can have clusters more spread out?
+    # The eps value really depends on how good the video quality is and how far away points are from each other
+    clustering = DBSCAN(eps=0.015, min_samples=20).fit(points)
+    labels = clustering.labels_
+    n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+
+    # If there are no clusters, return
+    if n_clusters == 0:
+        rospy.loginfo("Invalid selection for branch selection")
+        return
+
+    # Find the cluster closest to the user
+    closest_cluster = 0
+    closest_cluster_dist = np.inf
+    # TODO: Figure out how to get the actual center of camera so it isnt hardcoded
+    camera_location = np.array((0, 0, 0))
+    for x in range(n_clusters):
+        sel_indices = np.argwhere(labels == x).squeeze(1)
+        this_cluster = points[sel_indices]
+        cluster_center = np.sum(this_cluster[:, :3], axis=0) / this_cluster.shape[0]
+        dist = np.linalg.norm(cluster_center - camera_location)
+        if dist < closest_cluster_dist:
+            closest_cluster_dist = dist
+            closest_cluster = x
+
+    sel_indices = np.argwhere(labels == closest_cluster).squeeze(1)
+    best_selection = points[sel_indices]
+    return best_selection
 
 # TODO: Eventually make this filter take in the upper/lowerbounds so it isnt just green
 def green_color_filter(points):
@@ -104,3 +145,5 @@ def green_color_filter(points):
                                         (pcd_colors[:, 2] > b_low) & (pcd_colors[:, 2] < b_high))
 
     return points[green_points_indices]
+
+
