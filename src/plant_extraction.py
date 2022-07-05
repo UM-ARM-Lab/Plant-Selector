@@ -18,6 +18,7 @@ from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import ColorRGBA
 from std_msgs.msg import String
 from visualization_msgs.msg import Marker
+import hdbscan
 
 
 class PlantExtractor:
@@ -281,7 +282,7 @@ class PlantExtractor:
 
         # Apply radius outlier filter to green_pcd
         if camera == "zed":
-            _, ind = green_pcd.remove_radius_outlier(nb_points=5, radius=0.003)
+            _, ind = green_pcd.remove_radius_outlier(nb_points=5, radius=0.005)
         elif camera == "realsense":
             _, ind = green_pcd.remove_radius_outlier(nb_points=5, radius=0.01)
 
@@ -295,9 +296,13 @@ class PlantExtractor:
 
         # Apply DBSCAN to green points
         if camera == "zed":
-            labels = np.array(green_pcd.cluster_dbscan(eps=0.005, min_points=8))
+            labels = np.array(green_pcd.cluster_dbscan(eps=0.01, min_points=7))
         elif camera == "realsense":
             labels = np.array(green_pcd.cluster_dbscan(eps=0.01, min_points=8))
+
+        # clusterer = hdbscan.HDBSCAN(min_cluster_size=8, min_samples=1, allow_single_cluster=1)
+        # clusterer.fit(green_pcd_points)
+        # labels = clusterer.labels_
 
         n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
         if n_clusters == 0:
