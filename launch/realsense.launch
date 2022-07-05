@@ -15,7 +15,6 @@
 
     <!-- Python Scripts -->
     <node name="plant_extraction" pkg="plant_selector" type="plant_extraction.py" output="screen"/>
-    <node name="filterer" pkg="plant_selector" type="filterer.py" output="screen"/>
 
     <!-- Cpp Executables-->
     <node name="real_time_handler" pkg="plant_selector" type="real_time_handler" output="screen"/>
