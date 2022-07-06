@@ -35,6 +35,7 @@ public Q_SLOTS:
 protected:
   int processSelectedArea();
   ros::NodeHandle n;
+  ros::Publisher rviz_ed_publisher;
   ros::Publisher rviz_selected_publisher;
   ros::Publisher is_selecting_pub;
   ros::Subscriber instant_sub;

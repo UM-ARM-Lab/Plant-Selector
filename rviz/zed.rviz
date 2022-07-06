@@ -9,7 +9,6 @@ Panels:
         - /Point Clouds1
         - /Grasp Pose1/Arrows1/Namespaces1
         - /Grasp Pose1/Frames1/Frames1
-        - /Weed Extraction1
         - /Weed Extraction1/Weed1
         - /Weed Extraction1/Normal1/Namespaces1
       Splitter Ratio: 0.41791045665740967
@@ -29,7 +28,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: RealTime Handler
+    SyncSource: ""
   - Class: rviz_custom_panel/MainPanel
     Name: MainPanel
   - Class: rviz_custom_panel/RosbagPanel
@@ -101,7 +100,7 @@ Visualization Manager:
           Color: 255; 255; 255
           Color Transformer: RGB8
           Decay Time: 0
-          Enabled: true
+          Enabled: false
           Invert Rainbow: false
           Max Color: 255; 255; 255
           Min Color: 0; 0; 0
@@ -116,7 +115,7 @@ Visualization Manager:
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
-          Value: true
+          Value: false
       Enabled: true
       Name: Point Clouds
     - Class: rviz/Group
@@ -423,6 +422,34 @@ Visualization Manager:
           Value: false
       Enabled: true
       Name: Weed Extraction
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: RGB8
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Min Color: 0; 0; 0
+      Name: PointCloud2
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.009999999776482582
+      Style: Points
+      Topic: /test_pc
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -441,7 +468,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 0.05861636996269226
+      Distance: 3.387186050415039
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -457,9 +484,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.17019414901733398
+      Pitch: 0.13019417226314545
       Target Frame: <Fixed Frame>
-      Yaw: 3.1023573875427246
+      Yaw: 3.0123555660247803
     Saved: ~
 Window Geometry:
   Displays:

@@ -3,3 +3,4 @@ bags/
 pcs/*
 .vscode/
 */__pycache__/*
+zed_pc_test.py
