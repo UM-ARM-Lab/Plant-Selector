@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
     
     // this is done to ensure the message is published, otherwise I get weird problems
     int i = 0;
-    while(i < 10) {
+    while(i < 100) {
         pub.publish(temp);
         ++i;
     }

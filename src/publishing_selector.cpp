@@ -34,9 +34,6 @@ PublishingSelector::~PublishingSelector() {}
 void PublishingSelector::updateTopic() {
     rviz_cloud_topic = std::string("/rviz_selected_points");
 
-    // Temporary
-    rviz_ed_publisher = n.advertise<sensor_msgs::PointCloud2>("/right_hand_camera/depth_registered/points", 1);
-
     rviz_selected_publisher = n.advertise<sensor_msgs::PointCloud2>(rviz_cloud_topic, 1);
     is_selecting_pub = n.advertise<std_msgs::Bool>("/plant_selector/is_selecting", 1);
     instant_sub = n.subscribe("/plant_selector/is_instant", 1000, &PublishingSelector::instant_pub_handler, this);
@@ -75,7 +72,6 @@ int PublishingSelector::processKeyEvent(QKeyEvent* event, rviz::RenderPanel* pan
         }
         else if (event->key() == 'p' || event->key() == 'P') {
             rviz_selected_publisher.publish(selected_points);
-            rviz_ed_publisher.publish(selected_points);
             clear_points();
         }
     }
@@ -199,6 +195,7 @@ int PublishingSelector::processSelectedArea() {
 
     if(is_instant) {
         rviz_selected_publisher.publish(selected_points);
+        rviz_ed_publisher.publish(selected_points);
         clear_points();
     }
     return 0;
