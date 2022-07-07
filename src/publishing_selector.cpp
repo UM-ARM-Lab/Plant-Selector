@@ -30,9 +30,8 @@ PublishingSelector::PublishingSelector() {
 
 PublishingSelector::~PublishingSelector() {}
 
-// TODO: Don't hardcode frame ids
 void PublishingSelector::updateTopic() {
-    rviz_cloud_topic = std::string("/rviz_selected_points");
+    rviz_cloud_topic = std::string("/zed2i/zed_node/point_cloud/cloud_registered");
 
     rviz_selected_publisher = n.advertise<sensor_msgs::PointCloud2>(rviz_cloud_topic, 1);
     is_selecting_pub = n.advertise<std_msgs::Bool>("/plant_selector/is_selecting", 1);
