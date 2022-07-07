@@ -41,5 +41,6 @@ int main(int argc, char** argv) {
     while(i < 100) {
         pub.publish(temp);
         ++i;
+        ros::Duration(0.1).sleep();
     }
 }
