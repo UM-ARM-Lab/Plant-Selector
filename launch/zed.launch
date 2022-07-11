@@ -1,6 +1,7 @@
 <launch>
     <param name="frame_id" value="zed2i_left_camera_frame"/>
     <param name="pc_source" value="/zed2i/zed_node/point_cloud/cloud_registered"/>
+    <param name="odom_source" value="/zed2i/zed_node/odom"/>
     <param name="camera" value="zed"/>
 
     <node pkg="rviz" type="rviz" name="rviz2" args="-d $(find plant_selector)/rviz/zed.rviz"/>
