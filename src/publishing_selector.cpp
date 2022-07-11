@@ -194,7 +194,6 @@ int PublishingSelector::processSelectedArea() {
 
     if(is_instant) {
         rviz_selected_publisher.publish(selected_points);
-        rviz_ed_publisher.publish(selected_points);
         clear_points();
     }
     return 0;
