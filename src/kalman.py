@@ -22,7 +22,6 @@ class Kalman:
         self.current_odom = dict({'position': Point(0, 0, 0), 'angular': Point(0, 0, 0)})
         self.diff = Point(0, 0, 0)
         self.tfw = TF2Wrapper()
-        self.transform = np.eye(4)
 
     # Unsure if this will be necessary, but will keep for now, may want a most recent pointcloud or something like that
     def pointcloud_callback(self, pc):
@@ -49,6 +48,7 @@ class Kalman:
         # Perhaps the vals with bar on top is based purely on dynamics and then with no bar is when estimated noise
         # is added in?
         # R(t) is a 4x4 matrix where the diagonal is full of values where you have to tune. This represents the noise
+        # The control is however you want the robot to move
 
         # Correction:
         #              Calculate the Kalman Gain
@@ -56,17 +56,21 @@ class Kalman:
         #              Update Sigma(t)
         #
         # Need to figure out what C(t) matrix is. "Describes how to map the state xt to an observed zt"
+        # The measurement is the odometry data
 
         # Note: Apparently you are supposed to kind of do a random initialization for the values for noise.
         # Should definitely look into how people initialize them
         # After this implementation, I will need to account for rotation. Should be easier once I figure out how the
         # regular kalman filter works and then move to the extended kalman filter
 
+        gripper = self.tfw.get_transform(self.frame_id, child='end_effector_left')
+        print(gripper)
+
         # Just a Test for how to send transforms to the gripper
-        self.transform[0, 3] = self.current_odom['position'].x
-        self.transform[1, 3] = self.current_odom['position'].y
-        self.transform[2, 3] = self.current_odom['position'].z
-        self.tfw.send_transform_matrix(self.transform, parent=self.frame_id, child='end_effector_left')
+        gripper[0, 3] += self.diff.x
+        gripper[1, 3] += self.diff.y
+        gripper[2, 3] += self.diff.z
+        # self.tfw.send_transform_matrix(gripper, parent=self.frame_id, child='end_effector_left')
 
     def is_diff_odom(self, new_odom):
         x_diff = new_odom.position.x - self.current_odom['position'].x

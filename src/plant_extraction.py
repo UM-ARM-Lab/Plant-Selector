@@ -36,6 +36,9 @@ class PlantExtractor:
         self.arrow_pub = rospy.Publisher("normal", Marker, queue_size=10)
         self.plane_pub = rospy.Publisher("plane", PointCloud2, queue_size=10)
 
+        self.green_pub = rospy.Publisher("green", PointCloud2, queue_size=10)
+        self.remove_rad_pub = rospy.Publisher("removed_rad", PointCloud2, queue_size=10)
+
         rospy.Subscriber("/plant_selector/mode", String, self.mode_change)
 
         self.frame_id = str(rospy.get_param("frame_id"))
@@ -196,7 +199,6 @@ class PlantExtractor:
         # 2nd principal component
         cut_y = np.cross(cut_direction_normalized, normal)
 
-        tfw = TF2Wrapper()
         # Get 3x3 rotation matrix
         # The first row is the x-axis of the tool frame in the camera frame
         camera2tool_rot = np.array([normal, cut_y, cut_direction_normalized]).T
@@ -207,10 +209,12 @@ class PlantExtractor:
         camera2tool[:3, 3] = inliers_centroid
         camera2tool[3, 3] = 1
 
+        tfw = TF2Wrapper()
         # Get transformation matrix between tool and end effector
         tool2ee = tfw.get_transform(parent="left_tool", child="end_effector_left")
+        # map2cam = tfw.get_transform(parent="map", child=self.frame_id)
         # Chain effect: get transformation matrix from camera to end effector
-        camera2ee = camera2tool @ tool2ee
+        camera2ee = camera2tool @ tool2ee  # Put map2cam first once we add in map part
         tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
 
         # Rviz commands
@@ -252,18 +256,12 @@ class PlantExtractor:
 
         # Filter the point cloud so that only the green points stay
         # Get the indices of the points with g parameter greater than x
-        r_low, g_low, b_low = 0, 0.6, 0
-        r_high, g_high, b_high = 1, 1, 1
+        r_low, g_low, b_low = 0.1, 0.3, 0.1
+        r_high, g_high, b_high = 0.8, 0.8, 0.6
         green_points_indices = np.where((pcd_colors[:, 0] > r_low) & (pcd_colors[:, 0] < r_high) &
                                         (pcd_colors[:, 1] > g_low) & (pcd_colors[:, 1] < g_high) &
                                         (pcd_colors[:, 2] > b_low) & (pcd_colors[:, 2] < b_high))
 
-        if len(green_points_indices[0]) == 1:
-            r_low, g_low, b_low = 0, 0.3, 0
-            r_high, g_high, b_high = 1, 1, 1
-            green_points_indices = np.where((pcd_colors[:, 0] > r_low) & (pcd_colors[:, 0] < r_high) &
-                                            (pcd_colors[:, 1] > g_low) & (pcd_colors[:, 1] < g_high) &
-                                            (pcd_colors[:, 2] > b_low) & (pcd_colors[:, 2] < b_high))
         if len(green_points_indices[0]) == 1:
             rospy.loginfo("No green points found. Try again.")
             return
@@ -271,6 +269,8 @@ class PlantExtractor:
         # Save xyzrgb info in green_points (type: numpy array)
         green_points_xyz = pcd_points[green_points_indices]
         green_points_rgb = pcd_colors[green_points_indices]
+
+        hp.publish_pc_no_color(self.green_pub, green_points_xyz, self.frame_id)
 
         # Create Open3D point cloud for green points
         green_pcd = o3d.geometry.PointCloud()
@@ -282,7 +282,7 @@ class PlantExtractor:
 
         # Apply radius outlier filter to green_pcd
         if camera == "zed":
-            _, ind = green_pcd.remove_radius_outlier(nb_points=5, radius=0.005)
+            _, ind = green_pcd.remove_radius_outlier(nb_points=7, radius=0.007)
         elif camera == "realsense":
             _, ind = green_pcd.remove_radius_outlier(nb_points=5, radius=0.01)
 
@@ -293,14 +293,19 @@ class PlantExtractor:
         # Just keep the inlier points in the point cloud
         green_pcd = green_pcd.select_by_index(ind)
         green_pcd_points = np.asarray(green_pcd.points)
+        hp.publish_pc_no_color(self.remove_rad_pub, green_pcd_points, self.frame_id)
 
+        labels = None
+        # Look into HDBSCAN
         # Apply DBSCAN to green points
         if camera == "zed":
-            labels = np.array(green_pcd.cluster_dbscan(eps=0.01, min_points=7))
+            labels = np.array(green_pcd.cluster_dbscan(eps=0.007, min_points=15))  # This is actually pretty good
         elif camera == "realsense":
             labels = np.array(green_pcd.cluster_dbscan(eps=0.01, min_points=8))
 
-        # clusterer = hdbscan.HDBSCAN(min_cluster_size=8, min_samples=1, allow_single_cluster=1)
+        # This is pretty good but struggles in some edge cases
+        # clusterer = hdbscan.HDBSCAN(min_cluster_size=30, gen_min_span_tree=True, min_samples=1, allow_single_cluster=1)
+        # # clusterer = hdbscan.HDBSCAN(min_cluster_size=8, min_samples=1, allow_single_cluster=1)
         # clusterer.fit(green_pcd_points)
         # labels = clusterer.labels_
 

@@ -165,6 +165,7 @@ int PublishingSelector::processSelectedArea() {
             QString nameOfChild = grandchild->getName();
             QString nameOfRgb("rgb");
 
+            // MAKE THIS CLEANER
             if (nameOfChild.contains(nameOfRgb)) {
                 rviz::ColorProperty* colorchild = (rviz::ColorProperty*)grandchild;
                 QColor thecolor = colorchild->getColor();

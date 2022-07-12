@@ -8,6 +8,7 @@ import ctypes
 import struct
 import numpy as np
 from sklearn.cluster import DBSCAN
+import hdbscan
 
 
 def publish_pc_no_color(publisher, points, frame_id):
@@ -84,6 +85,7 @@ def cluster_filter(pc):
     # TODO: The eps value here might want to somehow change dynamically where points further away can have clusters more spread out?
     # The eps value really depends on how good the video quality is and how far away points are from each other
     clustering = DBSCAN(eps=0.015, min_samples=20).fit(points)
+    # clustering = hdbscan.HDBSCAN(min_cluster_size=30, gen_min_span_tree=True, allow_single_cluster=1).fit(points)
     labels = clustering.labels_
     n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
 

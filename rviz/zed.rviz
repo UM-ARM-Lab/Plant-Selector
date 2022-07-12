@@ -9,10 +9,12 @@ Panels:
         - /Point Clouds1
         - /Grasp Pose1/Arrows1/Namespaces1
         - /Grasp Pose1/Frames1/Frames1
+        - /Weed Extraction1
         - /Weed Extraction1/Weed1
         - /Weed Extraction1/Normal1/Namespaces1
+        - /PointCloud22
       Splitter Ratio: 0.41791045665740967
-    Tree Height: 364
+    Tree Height: 271
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -263,10 +265,6 @@ Visualization Manager:
               Value: false
             leftgripper_link:
               Value: false
-            map:
-              Value: false
-            odom:
-              Value: true
             right_hand_camera_rgb_optical_frame:
               Value: false
             zed2i_baro_link:
@@ -274,8 +272,6 @@ Visualization Manager:
             zed2i_base_link:
               Value: false
             zed2i_camera_center:
-              Value: false
-            zed2i_imu_link:
               Value: false
             zed2i_left_camera_frame:
               Value: false
@@ -298,36 +294,32 @@ Visualization Manager:
           Show Axes: true
           Show Names: true
           Tree:
-            map:
-              odom:
-                base_link:
-                  zed2i_base_link:
-                    zed2i_camera_center:
-                      zed2i_baro_link:
+            base_link:
+              zed2i_base_link:
+                zed2i_camera_center:
+                  zed2i_baro_link:
+                    {}
+                  zed2i_left_camera_frame:
+                    end_effector_left:
+                      left_tool:
                         {}
-                      zed2i_left_camera_frame:
-                        end_effector_left:
-                          left_tool:
-                            {}
-                          leftgripper2_link:
-                            {}
-                          leftgripper_link:
-                            {}
-                        right_hand_camera_rgb_optical_frame:
-                          {}
-                        zed2i_imu_link:
-                          {}
-                        zed2i_left_camera_optical_frame:
-                          {}
-                        zed2i_temp_left_link:
-                          {}
-                      zed2i_mag_link:
+                      leftgripper2_link:
                         {}
-                      zed2i_right_camera_frame:
-                        zed2i_right_camera_optical_frame:
-                          {}
-                        zed2i_temp_right_link:
-                          {}
+                      leftgripper_link:
+                        {}
+                    right_hand_camera_rgb_optical_frame:
+                      {}
+                    zed2i_left_camera_optical_frame:
+                      {}
+                    zed2i_temp_left_link:
+                      {}
+                  zed2i_mag_link:
+                    {}
+                  zed2i_right_camera_frame:
+                    zed2i_right_camera_optical_frame:
+                      {}
+                    zed2i_temp_right_link:
+                      {}
           Update Interval: 0
           Value: true
         - Alpha: 1
@@ -443,7 +435,7 @@ Visualization Manager:
           Position Transformer: XYZ
           Queue Size: 10
           Selectable: true
-          Size (Pixels): 7
+          Size (Pixels): 10
           Size (m): 0.009999999776482582
           Style: Points
           Topic: /inliers_pc
@@ -499,7 +491,7 @@ Visualization Manager:
       Channel Name: intensity
       Class: rviz/PointCloud2
       Color: 255; 255; 255
-      Color Transformer: RGB8
+      Color Transformer: FlatColor
       Decay Time: 0
       Enabled: true
       Invert Rainbow: false
@@ -509,10 +501,38 @@ Visualization Manager:
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
-      Size (Pixels): 3
+      Size (Pixels): 5
       Size (m): 0.009999999776482582
       Style: Points
-      Topic: /test_pc
+      Topic: /green
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: intensity
+      Class: rviz/PointCloud2
+      Color: 204; 0; 0
+      Color Transformer: FlatColor
+      Decay Time: 0
+      Enabled: true
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Min Color: 0; 0; 0
+      Name: PointCloud2
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 7
+      Size (m): 0.009999999776482582
+      Style: Points
+      Topic: /removed_rad
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
@@ -535,7 +555,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 1.662477970123291
+      Distance: 1.0386707782745361
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -543,27 +563,27 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.03715302795171738
-        Y: -0.17031823098659515
-        Z: 0.06002381443977356
+        X: 0.8042312264442444
+        Y: -0.07682766020298004
+        Z: -0.3703107535839081
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.30519407987594604
-      Target Frame: <Fixed Frame>
-      Yaw: 3.0804555416107178
+      Pitch: 0.5165899991989136
+      Target Frame: zed2i_left_camera_frame
+      Yaw: 2.989922046661377
     Saved: ~
 Window Geometry:
   Displays:
     collapsed: false
   Height: 1043
   Hide Left Dock: false
-  Hide Right Dock: true
+  Hide Right Dock: false
   MainPanel:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd00000004000000000000022b00000375fc020000000dfb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d000001f7000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000001000530065006c00500061006e0065006c00000002460000006e0000000000000000fb0000000c00430061006d00650072006100000002d0000000c70000000000000000fb0000000a0049006d00610067006500000001a0000001f70000000000000000fb00000012004d00610069006e00500061006e0065006c010000023a000000be0000007f00fffffffb000000160052006f007300620061006700500061006e0065006c01000002fe000000b40000007700ffffff00000001000001000000035afc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d0000035a000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000007800000003efc0100000002fb0000000800540069006d0065010000000000000780000002eb00fffffffb0000000800540069006d006501000000000000045000000000000000000000054f0000037500000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd00000004000000000000022b00000375fc020000000dfb0000001200530065006c0065006300740069006f006e010000003d0000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c00610079007301000000de0000019a000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000001000530065006c00500061006e0065006c00000002460000006e0000000000000000fb0000000c00430061006d00650072006100000002d0000000c70000000000000000fb0000000a0049006d00610067006500000001a0000001f70000000000000000fb00000012004d00610069006e00500061006e0065006c010000027e0000009b0000007f00fffffffb000000160052006f007300620061006700500061006e0065006c010000031f000000930000007700ffffff000000010000010000000375fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073010000003d00000375000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000007800000003efc0100000002fb0000000800540069006d0065010000000000000780000002eb00fffffffb0000000800540069006d00650100000000000004500000000000000000000004490000037500000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   RosbagPanel:
     collapsed: false
   Selection:
@@ -573,7 +593,7 @@ Window Geometry:
   Tool Properties:
     collapsed: false
   Views:
-    collapsed: true
+    collapsed: false
   Width: 1920
   X: 0
   Y: 0
