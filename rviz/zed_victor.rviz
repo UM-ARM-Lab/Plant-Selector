@@ -5,12 +5,12 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /Grasp Pose1
         - /Grasp Pose1/Arrows1/Namespaces1
         - /Grasp Pose1/Frames1
         - /Grasp Pose1/Frames1/Frames1
         - /Weed Extraction1/Weed1
         - /Weed Extraction1/Normal1/Namespaces1
+        - /RobotModel1
       Splitter Ratio: 0.41791045665740967
     Tree Height: 271
   - Class: rviz/Selection
@@ -726,7 +726,7 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
-    - Alpha: 1
+    - Alpha: 0.5
       Class: rviz/RobotModel
       Collision Enabled: false
       Enabled: true
@@ -1046,7 +1046,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 2.268345832824707
+      Distance: 1.9543471336364746
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -1054,17 +1054,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.3234395384788513
-        Y: 0.08732705563306808
-        Z: 0.08281683176755905
+        X: 0.5830744504928589
+        Y: -0.0662066638469696
+        Z: -0.15006573498249054
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.6265901327133179
+      Pitch: 0.40659064054489136
       Target Frame: zed2i_left_camera_frame
-      Yaw: 1.8462520837783813
+      Yaw: 3.0162534713745117
     Saved: ~
 Window Geometry:
   Displays:
