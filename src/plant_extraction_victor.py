@@ -3,7 +3,6 @@
 from math import atan, sin, cos, pi
 from re import I
 from statistics import mode
-import sys, os
 
 import numpy as np
 import open3d as o3d
@@ -22,15 +21,12 @@ from std_msgs.msg import String
 from visualization_msgs.msg import Marker
 import hdbscan
 
-<<<<<<< HEAD
-=======
 # Victor stuff
 from arm_robots.victor import Victor
 from victor_hardware_interface_msgs.msg import ControlMode
 from arm_robots.robot_utils import make_follow_joint_trajectory_goal, PlanningResult, PlanningAndExecutionResult, \
     ExecutionResult, is_empty_trajectory, merge_joint_state_and_scene_msg
 
->>>>>>> b6cd1d387a1a52e7dfc45787c776d7845db10c02
 class PlantExtractor:
     def __init__(self):
         """
@@ -53,8 +49,6 @@ class PlantExtractor:
         self.frame_id = str(rospy.get_param("frame_id"))
         self.tfw = TF2Wrapper()
 
-<<<<<<< HEAD
-=======
         # Victor Code
         self.victor = Victor()
         self.victor.set_control_mode(control_mode=ControlMode.JOINT_POSITION, vel=0.1)
@@ -66,7 +60,6 @@ class PlantExtractor:
         self.victor.open_right_gripper()
         rospy.sleep(1)
 
->>>>>>> b6cd1d387a1a52e7dfc45787c776d7845db10c02
         # Set the default mode to branch
         self.mode = "Branch"
         self.branch_pc_sub = rospy.Subscriber("/rviz_selected_points", PointCloud2, self.select_branch)
@@ -303,14 +296,7 @@ class PlantExtractor:
         green_pcd.colors = o3d.utility.Vector3dVector(green_points_rgb)
 
         # Apply radius outlier filter to green_pcd
-<<<<<<< HEAD
-        if camera == "zed":
-            _, ind = green_pcd.remove_radius_outlier(nb_points=7, radius=0.005)
-        elif camera == "realsense":
-            _, ind = green_pcd.remove_radius_outlier(nb_points=5, radius=0.01)
-=======
         _, ind = green_pcd.remove_radius_outlier(nb_points=7, radius=0.007)
->>>>>>> b6cd1d387a1a52e7dfc45787c776d7845db10c02
 
         if len(green_points_indices[0]) == 0:
             rospy.loginfo("Not enough points. Try again.")
@@ -319,7 +305,6 @@ class PlantExtractor:
         # Just keep the inlier points in the point cloud
         green_pcd = green_pcd.select_by_index(ind)
         green_pcd_points = np.asarray(green_pcd.points)
-        print(f"Before: {len(green_pcd_points)}")
         hp.publish_pc_no_color(self.remove_rad_pub, green_pcd_points, self.frame_id)
 
         # Apply DBSCAN to green points
@@ -338,10 +323,8 @@ class PlantExtractor:
 
         # Get labels of the biggest cluster
         biggest_cluster_indices = np.where(labels[:] == mode(labels))
-        print(f"Labels: {labels}")
         # Just keep the points that correspond to the biggest cluster (weed)
         green_pcd_points = green_pcd_points[biggest_cluster_indices]
-        print(f"After: {len(green_pcd_points)}")
         # Get coordinates of the weed centroid
         weed_centroid = np.mean(green_pcd_points, axis=0)
 
@@ -370,9 +353,6 @@ class PlantExtractor:
         inlier_dirt_points = dirt_points_xyz[best_inliers]
         # Get centroid of dirt
         inlier_dirt_centroid = np.mean(inlier_dirt_points, axis=0)
-        dirt_pcd_send = o3d.geometry.PointCloud()
-        # Save points and color to the point cloud
-        dirt_pcd_send.points = o3d.utility.Vector3dVector(inlier_dirt_points)
         # The a, b, c coefficients of the plane equation are the components of the normal vector of that plane
         normal = np.asarray([a, b, c])
 
@@ -420,26 +400,10 @@ class PlantExtractor:
         # Combine
         frame_2_vector_rot = rx @ ry
 
-<<<<<<< HEAD
-        o3d.io.write_point_cloud('/home/miguel/catkin_ws/src/plant_selector/bags/pcds/weed-selection.pcd', green_pcd,
-                                 write_ascii=True,
-                                 print_progress=True)
-        o3d.io.write_point_cloud('/home/miguel/catkin_ws/src/plant_selector/bags/pcds/dirt-selection.pcd', dirt_pcd_send,
-                                 write_ascii=True,
-                                 print_progress=True)
-
-        tfw = TF2Wrapper()
-        # Construct transformation matrix from camera to tool of end effector
-        camera2tool = np.zeros([4, 4])
-        camera2tool[:3, :3] = frame2vector_rot
-        camera2tool[:3, 3] = weed_centroid
-        camera2tool[3, 3] = 1
-=======
         # Create camera to tool matrix
         camera_2_tool = np.eye(4)
         camera_2_tool[:3, :3] = frame_2_vector_rot
         camera_2_tool[:3, 3] = weed_centroid
->>>>>>> b6cd1d387a1a52e7dfc45787c776d7845db10c02
 
         # Define transformation matrix from tool to end effector
         tool2ee = self.tfw.get_transform(parent="left_tool", child="end_effector_left")
