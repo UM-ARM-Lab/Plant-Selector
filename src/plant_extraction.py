@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # Import useful libraries and functions
 from math import atan, sin, cos, pi
+from re import I
 from statistics import mode
 
 import numpy as np
@@ -20,6 +21,9 @@ from std_msgs.msg import String
 from visualization_msgs.msg import Marker
 import hdbscan
 
+# Victor stuff
+from arm_robots.victor import Victor
+from victor_hardware_interface_msgs.msg import ControlMode
 
 class PlantExtractor:
     def __init__(self):
@@ -30,7 +34,6 @@ class PlantExtractor:
         """
         # Initialize publishers for PCs, arrow and planes
         # SYNTAX: pub = rospy.Publisher('topic_name', geometry_msgs.msg.Point, queue_size=10)
-        # Second argument was imported in the beginning
         self.src_pub = rospy.Publisher("source_pc", PointCloud2, queue_size=10)
         self.inliers_pub = rospy.Publisher("inliers_pc", PointCloud2, queue_size=10)
         self.arrow_pub = rospy.Publisher("normal", Marker, queue_size=10)
@@ -43,12 +46,18 @@ class PlantExtractor:
 
         self.frame_id = str(rospy.get_param("frame_id"))
 
+        # Victor Code
+        self.victor = Victor()
+        self.victor.set_control_mode(control_mode=ControlMode.JOINT_POSITION, vel=0.1)
+        self.victor.connect()
+
         # Set the default mode to branch
         self.mode = "Branch"
         self.branch_pc_sub = rospy.Subscriber("/rviz_selected_points", PointCloud2, self.select_branch)
         self.weed_pc_sub = rospy.Subscriber("/rviz_selected_points", PointCloud2, self.select_weed)
 
         # Fixing first selection
+        # TODO: This isn't ideal, probs a better way to do this
         ident_matrix = np.eye(4)
         tfw = TF2Wrapper()
         for _ in range(10):
@@ -399,6 +408,7 @@ class PlantExtractor:
         camera2ee = camera2tool @ tool2ee
         # Display gripper
         tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
+        # self.victor.plan_to_pose(self.frame_id, self.victor.right_tool_name, [weed_centroid[0], weed_centroid[1], weed_centroid[2], 0, 0, 0])
         # Call plot_pointcloud_rviz function to visualize PCs in Rviz
         # Visualize all the point cloud as "source"
         hp.publish_pc_no_color(self.src_pub, dirt_points_xyz[:, :3], self.frame_id)
