@@ -303,14 +303,7 @@ class PlantExtractor:
         green_pcd.colors = o3d.utility.Vector3dVector(green_points_rgb)
 
         # Apply radius outlier filter to green_pcd
-<<<<<<< HEAD
-        if camera == "zed":
-            _, ind = green_pcd.remove_radius_outlier(nb_points=7, radius=0.005)
-        elif camera == "realsense":
-            _, ind = green_pcd.remove_radius_outlier(nb_points=5, radius=0.01)
-=======
         _, ind = green_pcd.remove_radius_outlier(nb_points=7, radius=0.007)
->>>>>>> b6cd1d387a1a52e7dfc45787c776d7845db10c02
 
         if len(green_points_indices[0]) == 0:
             rospy.loginfo("Not enough points. Try again.")
