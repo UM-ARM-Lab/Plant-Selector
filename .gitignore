@@ -6,3 +6,4 @@ pcs/*
 zed_pc_test.py
 random_launch/
 */particle_filter.rviz
+src/victor_basic_motion.py
