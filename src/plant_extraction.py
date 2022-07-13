@@ -22,15 +22,6 @@ from std_msgs.msg import String
 from visualization_msgs.msg import Marker
 import hdbscan
 
-<<<<<<< HEAD
-=======
-# Victor stuff
-from arm_robots.victor import Victor
-from victor_hardware_interface_msgs.msg import ControlMode
-from arm_robots.robot_utils import make_follow_joint_trajectory_goal, PlanningResult, PlanningAndExecutionResult, \
-    ExecutionResult, is_empty_trajectory, merge_joint_state_and_scene_msg
-
->>>>>>> b6cd1d387a1a52e7dfc45787c776d7845db10c02
 class PlantExtractor:
     def __init__(self):
         """
@@ -53,20 +44,6 @@ class PlantExtractor:
         self.frame_id = str(rospy.get_param("frame_id"))
         self.tfw = TF2Wrapper()
 
-<<<<<<< HEAD
-=======
-        # Victor Code
-        self.victor = Victor()
-        self.victor.set_control_mode(control_mode=ControlMode.JOINT_POSITION, vel=0.1)
-        self.victor.connect()
-
-        rospy.sleep(1)
-        self.victor.open_left_gripper()
-        rospy.sleep(1)
-        self.victor.open_right_gripper()
-        rospy.sleep(1)
-
->>>>>>> b6cd1d387a1a52e7dfc45787c776d7845db10c02
         # Set the default mode to branch
         self.mode = "Branch"
         self.branch_pc_sub = rospy.Subscriber("/rviz_selected_points", PointCloud2, self.select_branch)
@@ -413,26 +390,10 @@ class PlantExtractor:
         # Combine
         frame_2_vector_rot = rx @ ry
 
-<<<<<<< HEAD
-        o3d.io.write_point_cloud('/home/miguel/catkin_ws/src/plant_selector/bags/pcds/weed-selection.pcd', green_pcd,
-                                 write_ascii=True,
-                                 print_progress=True)
-        o3d.io.write_point_cloud('/home/miguel/catkin_ws/src/plant_selector/bags/pcds/dirt-selection.pcd', dirt_pcd_send,
-                                 write_ascii=True,
-                                 print_progress=True)
-
-        tfw = TF2Wrapper()
-        # Construct transformation matrix from camera to tool of end effector
-        camera2tool = np.zeros([4, 4])
-        camera2tool[:3, :3] = frame2vector_rot
-        camera2tool[:3, 3] = weed_centroid
-        camera2tool[3, 3] = 1
-=======
         # Create camera to tool matrix
         camera_2_tool = np.eye(4)
         camera_2_tool[:3, :3] = frame_2_vector_rot
         camera_2_tool[:3, 3] = weed_centroid
->>>>>>> b6cd1d387a1a52e7dfc45787c776d7845db10c02
 
         # Define transformation matrix from tool to end effector
         tool2ee = self.tfw.get_transform(parent="left_tool", child="end_effector_left")
