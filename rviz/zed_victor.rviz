@@ -5,7 +5,9 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
+        - /Grasp Pose1
         - /Grasp Pose1/Arrows1/Namespaces1
+        - /Grasp Pose1/Frames1
         - /Grasp Pose1/Frames1/Frames1
         - /Weed Extraction1/Weed1
         - /Weed Extraction1/Normal1/Namespaces1
@@ -26,7 +28,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: RealTime Handler
   - Class: rviz_custom_panel/MainPanel
     Name: MainPanel
   - Class: rviz_custom_panel/RosbagPanel
@@ -251,36 +253,38 @@ Visualization Manager:
           Frame Timeout: 1000
           Frames:
             All Enabled: false
+            arm_robots_goal:
+              Value: true
             base_link:
               Value: false
             end_effector_left:
-              Value: true
+              Value: false
             l_finger_1_link_0:
-              Value: true
+              Value: false
             l_finger_1_link_1:
-              Value: true
+              Value: false
             l_finger_1_link_2:
-              Value: true
+              Value: false
             l_finger_1_link_3:
-              Value: true
+              Value: false
             l_finger_2_link_0:
-              Value: true
+              Value: false
             l_finger_2_link_1:
-              Value: true
+              Value: false
             l_finger_2_link_2:
-              Value: true
+              Value: false
             l_finger_2_link_3:
-              Value: true
+              Value: false
             l_finger_middle_link_0:
-              Value: true
+              Value: false
             l_finger_middle_link_1:
-              Value: true
+              Value: false
             l_finger_middle_link_2:
-              Value: true
+              Value: false
             l_finger_middle_link_3:
-              Value: true
+              Value: false
             l_palm:
-              Value: true
+              Value: false
             left_tool:
               Value: false
             leftgripper2_link:
@@ -288,99 +292,99 @@ Visualization Manager:
             leftgripper_link:
               Value: false
             r_finger_1_link_0:
-              Value: true
+              Value: false
             r_finger_1_link_1:
-              Value: true
+              Value: false
             r_finger_1_link_2:
-              Value: true
+              Value: false
             r_finger_1_link_3:
-              Value: true
+              Value: false
             r_finger_2_link_0:
-              Value: true
+              Value: false
             r_finger_2_link_1:
-              Value: true
+              Value: false
             r_finger_2_link_2:
-              Value: true
+              Value: false
             r_finger_2_link_3:
-              Value: true
+              Value: false
             r_finger_middle_link_0:
-              Value: true
+              Value: false
             r_finger_middle_link_1:
-              Value: true
+              Value: false
             r_finger_middle_link_2:
-              Value: true
+              Value: false
             r_finger_middle_link_3:
-              Value: true
+              Value: false
             r_palm:
-              Value: true
+              Value: false
             right_hand_camera_rgb_optical_frame:
               Value: false
             right_tool:
-              Value: true
+              Value: false
             robot_root:
-              Value: true
+              Value: false
             victor_base_plate:
-              Value: true
+              Value: false
             victor_base_plate_mount:
-              Value: true
+              Value: false
             victor_left_arm_flange:
-              Value: true
+              Value: false
             victor_left_arm_flange_kuka:
-              Value: true
+              Value: false
             victor_left_arm_link_0:
-              Value: true
+              Value: false
             victor_left_arm_link_1:
-              Value: true
+              Value: false
             victor_left_arm_link_2:
-              Value: true
+              Value: false
             victor_left_arm_link_3:
-              Value: true
+              Value: false
             victor_left_arm_link_4:
-              Value: true
+              Value: false
             victor_left_arm_link_5:
-              Value: true
+              Value: false
             victor_left_arm_link_6:
-              Value: true
+              Value: false
             victor_left_arm_link_7:
-              Value: true
+              Value: false
             victor_left_arm_mount:
-              Value: true
+              Value: false
             victor_left_arm_world_frame_kuka:
-              Value: true
+              Value: false
             victor_left_gripper_mounting_bracket:
-              Value: true
+              Value: false
             victor_pedestal:
-              Value: true
+              Value: false
             victor_right_arm_flange:
-              Value: true
+              Value: false
             victor_right_arm_flange_kuka:
-              Value: true
+              Value: false
             victor_right_arm_link_0:
-              Value: true
+              Value: false
             victor_right_arm_link_1:
-              Value: true
+              Value: false
             victor_right_arm_link_2:
-              Value: true
+              Value: false
             victor_right_arm_link_3:
-              Value: true
+              Value: false
             victor_right_arm_link_4:
-              Value: true
+              Value: false
             victor_right_arm_link_5:
-              Value: true
+              Value: false
             victor_right_arm_link_6:
-              Value: true
+              Value: false
             victor_right_arm_link_7:
-              Value: true
+              Value: false
             victor_right_arm_mount:
-              Value: true
+              Value: false
             victor_right_arm_world_frame_kuka:
-              Value: true
+              Value: false
             victor_right_gripper_mounting_bracket:
-              Value: true
+              Value: false
             victor_root:
-              Value: true
+              Value: false
             world:
-              Value: true
+              Value: false
             zed2i_baro_link:
               Value: false
             zed2i_base_link:
@@ -423,6 +427,77 @@ Visualization Manager:
                         {}
                     right_hand_camera_rgb_optical_frame:
                       {}
+                    victor_root:
+                      robot_root:
+                        arm_robots_goal:
+                          {}
+                      victor_pedestal:
+                        victor_base_plate_mount:
+                          victor_base_plate:
+                            victor_left_arm_mount:
+                              victor_left_arm_link_0:
+                                victor_left_arm_link_1:
+                                  victor_left_arm_link_2:
+                                    victor_left_arm_link_3:
+                                      victor_left_arm_link_4:
+                                        victor_left_arm_link_5:
+                                          victor_left_arm_link_6:
+                                            victor_left_arm_link_7:
+                                              victor_left_arm_flange:
+                                                victor_left_arm_flange_kuka:
+                                                  {}
+                                                victor_left_gripper_mounting_bracket:
+                                                  l_palm:
+                                                    l_finger_1_link_0:
+                                                      l_finger_1_link_1:
+                                                        l_finger_1_link_2:
+                                                          l_finger_1_link_3:
+                                                            {}
+                                                    l_finger_2_link_0:
+                                                      l_finger_2_link_1:
+                                                        l_finger_2_link_2:
+                                                          l_finger_2_link_3:
+                                                            {}
+                                                    l_finger_middle_link_0:
+                                                      l_finger_middle_link_1:
+                                                        l_finger_middle_link_2:
+                                                          l_finger_middle_link_3:
+                                                            {}
+                              victor_left_arm_world_frame_kuka:
+                                {}
+                            victor_right_arm_mount:
+                              victor_right_arm_link_0:
+                                victor_right_arm_link_1:
+                                  victor_right_arm_link_2:
+                                    victor_right_arm_link_3:
+                                      victor_right_arm_link_4:
+                                        victor_right_arm_link_5:
+                                          victor_right_arm_link_6:
+                                            victor_right_arm_link_7:
+                                              right_tool:
+                                                {}
+                                              victor_right_arm_flange:
+                                                victor_right_arm_flange_kuka:
+                                                  {}
+                                                victor_right_gripper_mounting_bracket:
+                                                  r_palm:
+                                                    r_finger_1_link_0:
+                                                      r_finger_1_link_1:
+                                                        r_finger_1_link_2:
+                                                          r_finger_1_link_3:
+                                                            {}
+                                                    r_finger_2_link_0:
+                                                      r_finger_2_link_1:
+                                                        r_finger_2_link_2:
+                                                          r_finger_2_link_3:
+                                                            {}
+                                                    r_finger_middle_link_0:
+                                                      r_finger_middle_link_1:
+                                                        r_finger_middle_link_2:
+                                                          r_finger_middle_link_3:
+                                                            {}
+                              victor_right_arm_world_frame_kuka:
+                                {}
                     zed2i_left_camera_optical_frame:
                       {}
                     zed2i_temp_left_link:
@@ -971,7 +1046,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 5.685232162475586
+      Distance: 2.268345832824707
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -979,17 +1054,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.3641825318336487
-        Y: -0.03561890870332718
-        Z: -0.4078812003135681
+        X: 0.3234395384788513
+        Y: 0.08732705563306808
+        Z: 0.08281683176755905
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.36659014225006104
+      Pitch: 0.6265901327133179
       Target Frame: zed2i_left_camera_frame
-      Yaw: 1.5499063730239868
+      Yaw: 1.8462520837783813
     Saved: ~
 Window Geometry:
   Displays:
