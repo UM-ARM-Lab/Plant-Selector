@@ -65,84 +65,116 @@ def canny_edge_detection(img):
     plt.show()
 
 
-def skeletonization(img):
+def skeletonization(img, original):
     """================WORKS VERY GOOD================="""
-    img_or = cv.imread(img, 1)
+    # img_or = cv.imread(img, 1)
+
+    # Open Image
+
+    img_or = img
+    final_image = cv.imread(original, 1)
+
+    # Turn it into HSV and apply K-Means
 
     hsv = cv.cvtColor(img_or, cv.COLOR_BGR2HSV)
-    lower_green = np.array([0, 0, 250])
-    upper_green = np.array([50, 255, 255])
-    mask = cv.inRange(hsv, lower_green, upper_green)
-    res = cv.bitwise_and(img_or, img_or, mask=mask)
-
-    img_blurred = cv.medianBlur(res, 15)
-    kernel = cv.getStructuringElement(cv.MORPH_CROSS, (3, 3))
-    erosion = cv.erode(img_blurred, kernel, iterations=3)
-    # opening = cv.morphologyEx(erosion, cv.MORPH_OPEN, kernel)
-
-    erosion_reshaped = erosion.reshape((-1, 3))
+    erosion_reshaped = hsv.reshape((-1, 3))
     erosion_reshaped = np.float32(erosion_reshaped)
-    criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 100, 0.2)
-    k = 2
+    criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 1000, 0.01)
+    k = 5
     _, labels, (centers) = cv.kmeans(erosion_reshaped, k, None, criteria, 10, cv.KMEANS_RANDOM_CENTERS)
     # convert back to 8 bit values
     centers = np.uint8(centers)
-
     # flatten the labels array
     labels = labels.flatten()
-
     # convert all pixels to the color of the centroids
     segmented_image = centers[labels.flatten()]
     # reshape back to the original image dimension
-    segmented_image = segmented_image.reshape(erosion.shape)
+    segmented_image = segmented_image.reshape(hsv.shape)
+
+    # Only get the cluster that corresponds to the weed
+
+    # disable only the cluster number 2 (turn the pixel into black)
+    masked_image = np.copy(segmented_image)
+    # convert to the shape of a vector of pixel values
+    masked_image = masked_image.reshape((-1, 3))
+    # color (i.e cluster) to disable
+    cluster = 3
+    masked_image[labels != cluster] = [0, 0, 0]
+    # convert back to original shape
+    masked_image = masked_image.reshape(segmented_image.shape)
+
+    # Apply morphological transformations to the weed to fill in gaps
+
+    kernel = cv.getStructuringElement(cv.MORPH_ELLIPSE, (5, 5))
+    erosion = cv.erode(masked_image, kernel, iterations=2)
+    dilation = cv.dilate(erosion, kernel, iterations=3)
+    closing = cv.morphologyEx(dilation, cv.MORPH_CLOSE, kernel)
+    weed = cv.erode(closing, kernel, iterations=2)
+    weed = cv.cvtColor(weed, cv.COLOR_RGB2GRAY)
+
+    # Plot different images
 
     plt.figure(1)
-    plt.imshow(hsv), plt.xticks([]), plt.yticks([])
-    plt.title("HSV Image")
-    plt.figure(2)
-    plt.imshow(res), plt.xticks([]), plt.yticks([])
-    plt.title("After green mask")
-    plt.figure(3)
     plt.subplot(1, 2, 1)
-    plt.title("Image blurred")
-    plt.imshow(img_blurred), plt.xticks([]), plt.yticks([])
+    plt.imshow(img_or), plt.xticks([]), plt.yticks([])
+    plt.title("Original Image")
     plt.subplot(1, 2, 2)
-    plt.title("Erosion")
-    plt.imshow(erosion), plt.xticks([]), plt.yticks([])
-    plt.figure(4)
     plt.imshow(segmented_image), plt.xticks([]), plt.yticks([])
-    plt.title("K-Means")
+    plt.title("K-means")
 
-    cv.waitKey(0)
+    plt.figure(2)
+    plt.subplot(1, 3, 1)
+    plt.title("Masked Image")
+    plt.imshow(masked_image), plt.xticks([]), plt.yticks([])
+    plt.subplot(1, 3, 2)
+    plt.title("Closing Gaps")
+    plt.imshow(closing), plt.xticks([]), plt.yticks([])
+    plt.subplot(1, 3, 3)
+    plt.imshow(weed), plt.xticks([]), plt.yticks([])
+    plt.title("Final Weed")
+
+    # #################SKELETONIZATION PART########################
+    size = np.size(weed)
+    skel = np.zeros(weed.shape, np.uint8)
+
+    # img_blurred = cv.medianBlur(weed, 15)
+    # weed = cv.adaptiveThreshold(weed, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+    #                             cv.THRESH_BINARY, 3, 2)
+    element = cv.getStructuringElement(cv.MORPH_CROSS, (5, 5))
+    done = False
+
+    while not done:
+        eroded = cv.erode(weed, element)
+        temp = cv.dilate(eroded, element)
+        temp = cv.subtract(weed, temp)
+        skel = cv.bitwise_or(skel, temp)
+        weed = eroded.copy()
+
+        zeros = size - cv.countNonZero(weed)
+        if zeros == size:
+            done = True
+    plt.figure(3)
+    plt.imshow(skel, cmap='gray')
+    plt.title('Skeletonization'), plt.xticks([]), plt.yticks([])
+
+    # Final image is a copy of the original image. Here I "draw" the skeleton on top of the original image
+
+    for x in range(skel.shape[0]):
+        for y in range(skel.shape[1]):
+            if skel[x, y] != 0:
+                final_image[x, y, 0] = 255
+                final_image[x, y, 1] = 0
+                final_image[x, y, 2] = 0
+
+    # Display the final result: original image and skeleton of weed
+
+    plt.figure(4)
+    plt.imshow(final_image)
+    plt.title('Skeleton'), plt.xticks([]), plt.yticks([])
+
     plt.show()
+    cv.waitKey(0)
     cv.destroyAllWindows()
-
-    # ##################SKELETONIZATION PART########################
-    # size = np.size(img_or)
-    # skel = np.zeros(img_or.shape, np.uint8)
-    #
-    # img_blurred = cv.medianBlur(img_or, 15)
-    # img = cv.adaptiveThreshold(img_blurred, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
-    #                            cv.THRESH_BINARY, 3, 2)
-    # element = cv.getStructuringElement(cv.MORPH_CROSS, (3, 3))
-    # done = False
-    #
-    # while not done:
-    #     eroded = cv.erode(img, element)
-    #     temp = cv.dilate(eroded, element)
-    #     temp = cv.subtract(img, temp)
-    #     skel = cv.bitwise_or(skel, temp)
-    #     img = eroded.copy()
-    #
-    #     zeros = size - cv.countNonZero(img)
-    #     if zeros == size:
-    #         done = True
-    # plt.figure()
-    # plt.imshow(skel, cmap='gray')
-    # plt.title('Skeletonization'), plt.xticks([]), plt.yticks([])
-    # plt.show()
-    # cv.waitKey(0)
-    # cv.destroyAllWindows()
 
 
 def contours_canny(img):
@@ -155,7 +187,7 @@ def contours_canny(img):
     gray = cv.cvtColor(img, cv.COLOR_RGB2GRAY)
 
     # Find Canny edges
-    edged = cv.Canny(gray, 400, 450)
+    edged = cv.Canny(gray, 500, 700)
     cv.waitKey(0)
 
     # Finding Contours
@@ -182,14 +214,40 @@ def contours_canny(img):
     cv.destroyAllWindows()
 
 
+def remove_noise(img):
+    image = cv.imread(img, 1)
+
+    image_bw = cv.imread(img, 0)
+    strength = 20
+    noiseless_image_bw = cv.fastNlMeansDenoising(image_bw, None, strength, 7, 21)
+
+    noiseless_image_colored = cv.fastNlMeansDenoisingColored(image, None, 30, strength, 7, 21)
+
+    # titles = ['Original Image(colored)', 'Image after removing the noise (colored)', 'Original Image (grayscale)',
+    #           'Image after removing the noise (grayscale)']
+    # images = [image, noiseless_image_colored, image_bw, noiseless_image_bw]
+    # plt.figure(figsize=(13, 5))
+    # for i in range(4):
+    #     plt.subplot(2, 2, i + 1)
+    #     plt.imshow(cv.cvtColor(images[i], cv.COLOR_BGR2RGB))
+    #     plt.title(titles[i])
+    #     plt.xticks([])
+    #     plt.yticks([])
+    # plt.tight_layout()
+    # plt.show()
+    return noiseless_image_colored
+
+
 def main():
-    img = '/home/miguel/Downloads/weed-example.jpg'
+    img = '/home/miguel/Downloads/weed-alone.jpg'
     # adaptive_gaussian_thresholding(img)
     # otsu_thresholding(img)
     # canny_edge_detection(img)
-    skeletonization(img)
+    # skeletonization(img)
     # contours_canny(img)
-    # gabor_filter(img)
+    img_without_noise = remove_noise(img)
+    skeletonization(img_without_noise, img)
+
 
 if __name__ == '__main__':
     main()
