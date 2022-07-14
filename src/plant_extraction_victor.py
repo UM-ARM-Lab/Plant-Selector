@@ -224,6 +224,7 @@ class PlantExtractor:
         # The first row is the x-axis of the tool frame in the camera frame
         camera2tool_rot = np.array([normal, cut_y, cut_direction_normalized]).T
 
+        # Visualize gripper. TODO: Can make all of this a lot cleaner
         # Construct transformation matrix from camera to tool of end effector
         camera2tool = np.zeros([4, 4])
         camera2tool[:3, :3] = camera2tool_rot
@@ -236,17 +237,15 @@ class PlantExtractor:
         camera2ee = camera2tool @ tool2ee  # Put map2cam first once we add in map part
         self.tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
 
-        x_rot, y_rot, z_rot = euler_from_matrix(camera2tool_rot)
+        # Visualize Point Clouds
+        self.publish_pc_data(points_xyz, inlier_points, inliers_centroid, normal)
 
-        self.rviz_arrow(inliers_centroid, cut_direction_normalized, name='normal', thickness=0.01, length_scale=0.3,
-                        color='w')
+        x_rot, y_rot, z_rot = euler_from_matrix(camera2tool_rot)
 
         vicroot2cam = self.tfw.get_transform(parent='victor_root', child=self.frame_id)
         result = vicroot2cam @ camera2tool
         goal = [result[0, 3], result[1, 3], result[2, 3], x_rot, y_rot, z_rot]
         self.victor_plan(goal)
-
-        # self.publish_pc_data(points_xyz, inlier_points, inliers_centroid, normal)
 
     def select_weed(self, selection):
         """
