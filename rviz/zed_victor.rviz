@@ -5,6 +5,7 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
+        - /Grasp Pose1
         - /Grasp Pose1/Arrows1/Namespaces1
         - /Grasp Pose1/Frames1
         - /Grasp Pose1/Frames1/Frames1
@@ -177,13 +178,13 @@ Visualization Manager:
           Use rainbow: true
           Value: false
         - Class: rviz/Marker
-          Enabled: false
+          Enabled: true
           Marker Topic: /normal
           Name: Arrows
           Namespaces:
-            {}
+            normal: true
           Queue Size: 100
-          Value: false
+          Value: true
         - Alpha: 0.05000000074505806
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -254,7 +255,7 @@ Visualization Manager:
           Frames:
             All Enabled: false
             arm_robots_goal:
-              Value: true
+              Value: false
             base_link:
               Value: false
             end_effector_left:
@@ -286,7 +287,7 @@ Visualization Manager:
             l_palm:
               Value: false
             left_tool:
-              Value: false
+              Value: true
             leftgripper2_link:
               Value: false
             leftgripper_link:
@@ -320,7 +321,7 @@ Visualization Manager:
             right_hand_camera_rgb_optical_frame:
               Value: false
             right_tool:
-              Value: false
+              Value: true
             robot_root:
               Value: false
             victor_base_plate:
@@ -392,7 +393,7 @@ Visualization Manager:
             zed2i_camera_center:
               Value: false
             zed2i_left_camera_frame:
-              Value: false
+              Value: true
             zed2i_left_camera_optical_frame:
               Value: false
             zed2i_mag_link:
@@ -1046,7 +1047,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 1.9543471336364746
+      Distance: 0.5541919469833374
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -1054,17 +1055,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.5830744504928589
-        Y: -0.0662066638469696
-        Z: -0.15006573498249054
+        X: 0.5156026482582092
+        Y: -0.4734713137149811
+        Z: -0.20443016290664673
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.40659064054489136
+      Pitch: 0.5065920948982239
       Target Frame: zed2i_left_camera_frame
-      Yaw: 3.0162534713745117
+      Yaw: 3.091224193572998
     Saved: ~
 Window Geometry:
   Displays:
