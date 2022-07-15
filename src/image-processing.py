@@ -130,7 +130,7 @@ def skeletonization(img, original):
     plt.title("Closing Gaps")
     plt.imshow(closing), plt.xticks([]), plt.yticks([])
     plt.subplot(1, 3, 3)
-    plt.imshow(weed), plt.xticks([]), plt.yticks([])
+    plt.imshow(weed, cmap='gray'), plt.xticks([]), plt.yticks([])
     plt.title("Final Weed")
 
     # #################SKELETONIZATION PART########################
@@ -158,6 +158,7 @@ def skeletonization(img, original):
     plt.title('Skeletonization'), plt.xticks([]), plt.yticks([])
 
     # Final image is a copy of the original image. Here I "draw" the skeleton on top of the original image
+    skel = cv.dilate(skel, kernel)
 
     for x in range(skel.shape[0]):
         for y in range(skel.shape[1]):
