@@ -46,12 +46,12 @@ plane_model, best_inliers = dirt_pcd.segment_plane(distance_threshold=0.0005,
 [a, b, c, _] = plane_model
 normal = np.asarray([a, b, c])
 
-raw_points = np.asarray(pcd.points)
+points = np.asarray(pcd.points)
 
 # o3d.visualization.draw_geometries([pcd])
 
-_, filtered_points = pcd.remove_radius_outlier(nb_points=8, radius=0.005)
-points = raw_points[filtered_points]
+# _, filtered_points = pcd.remove_radius_outlier(nb_points=8, radius=0.005)
+# points = raw_points[filtered_points]
 
 # Define a point in the plane, as well as its normal
 point_in_plane = np.asarray(np.mean(points, axis=0))
@@ -82,42 +82,37 @@ print(f"DBSCAN found: {n_clusters} clusters")
 colors = plt.get_cmap("tab20")(labels / (n_clusters if n_clusters > 0 else 1))
 colors[labels < 0] = 0
 weed_projected.colors = o3d.utility.Vector3dVector(colors[:, :3])
-o3d.visualization.draw_geometries([weed_projected])
+# o3d.visualization.draw_geometries([weed_projected])
 
 # Define coordinates for each leaf and find centroid
 leaves = list()
-centroids = list()
+pcas = list()
+fitted_pcas = list()
+origins = list()
+pcs = list()
+vectors = list()
+# centroids = list()
 for cluster in range(n_clusters):
     leaves.append(points_projected[np.where(labels[:] == cluster)])
-    centroids.append(np.mean(leaves[cluster], axis=0))
+    pcas.append(PCA(n_components=1))
+    fitted_pcas.append(pcas[cluster].fit(leaves[cluster]))
+    origins.append(np.mean(leaves[cluster], axis=0))
+    pcs.append(pcas[cluster].components_[0])
+    vectors.append(np.append(origins[cluster], pcs[cluster]))
+    # centroids.append(np.mean(leaves[cluster], axis=0))
 
-centroid_of_centroids = np.mean(centroids[:], axis=0)
-centroids = np.asarray(centroids)
-# # Apply PCA and get just one principal component
-# pca1 = PCA(n_components=1)
-# pca2 = PCA(n_components=1)
-# pca3 = PCA(n_components=1)
-# # Fit the PCA to each leaf
-# pca1.fit(leaf1)
-# pca2.fit(leaf2)
-# pca3.fit(leaf3)
-# # Origin of each principal component
-# origin1, origin2, origin3 = np.mean(leaf1, axis=0), np.mean(leaf2, axis=0), np.mean(leaf3, axis=0)
-# pc1, pc2, pc3 = pca1.components_[0], pca2.components_[0], pca3.components_[0]
-# vector1 = np.append(origin1, pc1)
-# vector2 = np.append(origin2, pc2)
-# vector3 = np.append(origin3, pc3)
-#
-# soa = np.asarray([vector1, vector2, vector3])
-# X, Y, Z, U, V, W = zip(*soa)
-# ax.quiver(X, Y, Z, U, V, W)
+# centroid_of_centroids = np.mean(centroids[:], axis=0)
+# centroids = np.asarray(centroids)
+
+soa = np.asarray(vectors)
+X, Y, Z, U, V, W = zip(*soa)
 
 # Create plane function
 xx, yy, z = plot_plane_points(point_in_plane, normal, size=0.01)
 
 # Plot both plane and points
 fig = plt.figure(1)
-handlers = ['Projected points', 'Centroid per leaf', 'Centroid of centroids', 'General centroid', 'Leaves to stem']
+handlers = ['Projected points', 'General Centroid', 'Centroid of centroids', 'General centroid', 'Leaves to stem']
 ax = fig.add_subplot(projection='3d')
 # Plot the surface
 ax.plot_surface(xx, yy, z, alpha=0.2)
@@ -125,29 +120,29 @@ ax.plot_surface(xx, yy, z, alpha=0.2)
 # Projected points (green)
 ax.scatter(points_projected[:, 0], points_projected[:, 1], points_projected[:, 2],
            c='g', s=50, label=handlers[0])
-# Centroids per leaf (red)
-ax.scatter(centroids[:, 0], centroids[:, 1], centroids[:, 2],
-           c='r', s=100, label=handlers[1])
-# Centroid of centroids (black)
-ax.scatter(centroid_of_centroids[0], centroid_of_centroids[1], centroid_of_centroids[2],
-           c='k', s=100, label=handlers[2])
+# # Centroids per leaf (red)
+# ax.scatter(centroids[:, 0], centroids[:, 1], centroids[:, 2],
+#            c='r', s=100, label=handlers[1])
+# # Centroid of centroids (black)
+# ax.scatter(centroid_of_centroids[0], centroid_of_centroids[1], centroid_of_centroids[2],
+#            c='k', s=100, label=handlers[2])
 # General centroid of the hole weed (blue)
 ax.scatter(gen_centroid[0], gen_centroid[1], gen_centroid[2],
-           c='b', s=100, label=handlers[3])
-# Plot lines connecting individual centroids to centroid of centroids
-for centroid in range(n_clusters):
-    if centroid == 0:
-        ax.plot([centroids[centroid][0], centroid_of_centroids[0]],
-                [centroids[centroid][1], centroid_of_centroids[1]],
-                [centroids[centroid][2], centroid_of_centroids[2]],
-                'k--', label=handlers[4])
-    else:
-        ax.plot([centroids[centroid][0], centroid_of_centroids[0]],
-                [centroids[centroid][1], centroid_of_centroids[1]],
-                [centroids[centroid][2], centroid_of_centroids[2]],
-                'k--', label='_nolegend_')
-
-plt.title("Finding the actual stem of the weed", fontsize=20, fontweight='bold')
+           c='b', s=100, label=handlers[1])
+# # Plot lines connecting individual centroids to centroid of centroids
+# for centroid in range(n_clusters):
+#     if centroid == 0:
+#         ax.plot([centroids[centroid][0], centroid_of_centroids[0]],
+#                 [centroids[centroid][1], centroid_of_centroids[1]],
+#                 [centroids[centroid][2], centroid_of_centroids[2]],
+#                 'k--', label=handlers[4])
+#     else:
+#         ax.plot([centroids[centroid][0], centroid_of_centroids[0]],
+#                 [centroids[centroid][1], centroid_of_centroids[1]],
+#                 [centroids[centroid][2], centroid_of_centroids[2]],
+#                 'k--', label='_nolegend_')
+ax.quiver(X, Y, Z, U, V, W)
+plt.title("PCA per Leaf", fontsize=20, fontweight='bold')
 ax.set_xlabel("x-coordinates", fontsize=20)
 ax.set_ylabel("y-coordinates", fontsize=20)
 ax.set_zlabel("z-coordinates", fontsize=20)
