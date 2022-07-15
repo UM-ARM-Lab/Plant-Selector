@@ -30,7 +30,6 @@ PublishingSelector::PublishingSelector() {
 
 PublishingSelector::~PublishingSelector() {}
 
-// TODO: Don't hardcode frame ids
 void PublishingSelector::updateTopic() {
     rviz_cloud_topic = std::string("/rviz_selected_points");
 
@@ -38,6 +37,8 @@ void PublishingSelector::updateTopic() {
     is_selecting_pub = n.advertise<std_msgs::Bool>("/plant_selector/is_selecting", 1);
     instant_sub = n.subscribe("/plant_selector/is_instant", 1000, &PublishingSelector::instant_pub_handler, this);
     is_instant = true;
+
+    ros::param::get("frame_id", frame_id);
 
     num_selected_points = 0;
 }
@@ -52,7 +53,7 @@ void PublishingSelector::clear_points() {
     selection_manager->removeSelection(selection);
     visualization_msgs::Marker marker;
     // Set the frame ID and timestamp.  See the TF tutorials for information on these.
-    marker.header.frame_id = context_->getFixedFrame().toStdString().c_str();
+    marker.header.frame_id = frame_id; 
     marker.header.stamp = ros::Time::now();
     marker.ns = "basic_shapes";
     marker.id = 0;
@@ -111,7 +112,7 @@ int PublishingSelector::processSelectedArea() {
     rviz::M_Picked selection = selection_manager->getSelection();
     rviz::PropertyTreeModel* model = selection_manager->getPropertyModel();
 
-    selected_points.header.frame_id = context_->getFixedFrame().toStdString();
+    selected_points.header.frame_id = frame_id; 
     selected_points.height = 1;
     selected_points.point_step = 4 * 4;
     selected_points.is_dense = false;
@@ -164,6 +165,7 @@ int PublishingSelector::processSelectedArea() {
             QString nameOfChild = grandchild->getName();
             QString nameOfRgb("rgb");
 
+            // MAKE THIS CLEANER
             if (nameOfChild.contains(nameOfRgb)) {
                 rviz::ColorProperty* colorchild = (rviz::ColorProperty*)grandchild;
                 QColor thecolor = colorchild->getColor();

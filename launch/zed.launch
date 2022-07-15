@@ -1,8 +1,15 @@
 <launch>
-    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find plant_selector)/default.rviz"/>
-    <node pkg="tf2_ros" type="static_transform_publisher" name="camera_tf_offset" args="0 0 0 0 0 0 zed2i_left_camera_frame end_effector_left"/> -->
-    <!-- load ZED URDF -->
+    <param name="frame_id" value="zed2i_left_camera_frame"/>
+    <param name="pc_source" value="/zed2i/zed_node/point_cloud/cloud_registered"/>
+    <param name="odom_source" value="/zed2i/zed_node/odom"/>
+    <param name="camera" value="zed"/>
+
+    <node pkg="rviz" type="rviz" name="rviz2" args="-d $(find plant_selector)/rviz/zed.rviz"/>
+    <node pkg="tf2_ros" type="static_transform_publisher" name="gripper_offset" args="0 0 0 0 0 0 zed2i_left_camera_frame end_effector_left"/>
+    <node pkg="tf2_ros" type="static_transform_publisher" name="ed_tf" args="0 0 0 0 0 0 zed2i_left_camera_frame right_hand_camera_rgb_optical_frame"/>
     <param name="default_bag_path" value='$(find plant_selector)/bags'/>
+
+    <!-- load ZED URDF -->
     <param name="zed2i_description" command="$(find xacro)/xacro '$(find zed_wrapper)/urdf/zed_descr.urdf.xacro'
                     camera_name:=zed2i
                     camera_model:=zed2i
@@ -17,12 +24,9 @@
     </node>
 
     <!-- Python Scripts -->
-    <arg name="frame_id" default="zed2i_left_camera_frame"/>
-    <node name="plant_extraction" pkg="plant_selector" type="plant_extraction.py" output="screen" args="$(arg frame_id)"/>
-    <node name="filterer" pkg="plant_selector" type="filterer.py" output="screen"/>
+    <node name="plant_extraction" pkg="plant_selector" type="plant_extraction.py" output="screen"/>
 
     <!-- Cpp Executables-->
-    <arg name="pc_source" default="/zed2i/zed_node/point_cloud/cloud_registered"/>
-    <node name="real_time_handler" pkg="plant_selector" type="real_time_handler" output="screen" args="$(arg pc_source)"/>
+    <node name="real_time_handler" pkg="plant_selector" type="real_time_handler" output="screen"/>
 </launch>
 

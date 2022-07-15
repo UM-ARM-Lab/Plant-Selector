@@ -10,7 +10,8 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_conversions
   pcl_ros
   rviz
-  pluginlib)
+  pluginlib
+  )
 
 catkin_package()
 
@@ -49,6 +50,10 @@ add_executable(real_time_handler
   include/plant_selector/real_time_handler.hpp
   )
 
+add_executable(send_pcd_msg 
+  src/send_pcd_msg.cpp
+  )
+
 target_link_libraries(publishing_selector
   ${QT_LIBRARIES}
   ${catkin_LIBRARIES}
@@ -68,7 +73,11 @@ target_link_libraries(real_time_handler
   ${catkin_LIBRARIES}
   )
 
-install(TARGETS publishing_selector main_panel rosbag_panel real_time_handler
+target_link_libraries(send_pcd_msg
+  ${catkin_LIBRARIES}
+
+  )
+install(TARGETS publishing_selector main_panel rosbag_panel real_time_handler send_pcd_msg
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

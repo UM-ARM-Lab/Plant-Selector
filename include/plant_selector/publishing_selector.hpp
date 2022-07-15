@@ -41,6 +41,7 @@ protected:
 
   std::string tf_frame;
   std::string rviz_cloud_topic;
+  std::string frame_id;
 
   sensor_msgs::PointCloud2 selected_points;
 

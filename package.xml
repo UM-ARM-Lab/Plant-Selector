@@ -26,6 +26,7 @@
   <build_depend>libqt5-core</build_depend>
   <build_depend>libqt5-gui</build_depend>
   <build_depend>libqt5-widgets</build_depend>
+  <build_depend>OpenCV</build_depend>
 
   <build_export_depend>roscpp</build_export_depend>
   <build_export_depend>rospy</build_export_depend>
@@ -38,6 +39,7 @@
   <build_export_depend>libqt5-core</build_export_depend>
   <build_export_depend>libqt5-gui</build_export_depend>
   <build_export_depend>libqt5-widgets</build_export_depend>
+  <build_export_depend>OpenCV</build_export_depend>
 
   <exec_depend>roscpp</exec_depend>
   <exec_depend>rospy</exec_depend>
@@ -50,6 +52,7 @@
   <exec_depend>libqt5-core</exec_depend>
   <exec_depend>libqt5-gui</exec_depend>
   <exec_depend>libqt5-widgets</exec_depend>
+  <exec_depend>OpenCV</exec_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

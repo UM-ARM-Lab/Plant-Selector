@@ -3,7 +3,6 @@
 from math import atan, sin, cos, pi
 from re import I
 from statistics import mode
-import sys, os
 
 import numpy as np
 import open3d as o3d
@@ -20,7 +19,14 @@ from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import ColorRGBA
 from std_msgs.msg import String
 from visualization_msgs.msg import Marker
+from tf.transformations import euler_from_matrix
 import hdbscan
+
+# Victor stuff
+from arm_robots.victor import Victor
+from victor_hardware_interface_msgs.msg import ControlMode
+from arm_robots.robot_utils import make_follow_joint_trajectory_goal, PlanningResult, PlanningAndExecutionResult, \
+    ExecutionResult, is_empty_trajectory, merge_joint_state_and_scene_msg
 
 class PlantExtractor:
     def __init__(self):
@@ -44,10 +50,21 @@ class PlantExtractor:
         self.frame_id = str(rospy.get_param("frame_id"))
         self.tfw = TF2Wrapper()
 
+        # Victor Code
+        self.victor = Victor()
+        self.victor.set_control_mode(control_mode=ControlMode.JOINT_POSITION, vel=0.1)
+        self.victor.connect()
+        self.victor.plan_to_joint_config('both_arms', 'zero')
+
+        rospy.sleep(1)
+        self.victor.open_left_gripper()
+        rospy.sleep(1)
+        self.victor.open_right_gripper()
+        rospy.sleep(1)
+
         # Set the default mode to branch
         self.mode = "Branch"
-        self.branch_pc_sub = rospy.Subscriber("/rviz_selected_points", PointCloud2, self.select_branch)
-        self.weed_pc_sub = rospy.Subscriber("/rviz_selected_points", PointCloud2, self.select_weed)
+        self.plant_pc_sub = rospy.Subscriber("/rviz_selected_points", PointCloud2, self.plant_extraction)
 
         # Fixing first selection
         # TODO: This isn't ideal, probs a better way to do this
@@ -64,6 +81,13 @@ class PlantExtractor:
         """
         self.mode = new_mode.data
         rospy.loginfo("New mode: " + self.mode)
+        self.victor.plan_to_joint_config('both_arms', 'zero')
+
+    def plant_extraction(self, pc):
+        if self.mode == "Branch":
+            self.select_branch(pc)
+        elif self.mode == "Weed":
+            self.select_weed(pc)
 
     @staticmethod
     def project(u, n):
@@ -160,6 +184,7 @@ class PlantExtractor:
         if self.mode != "Branch":
             return
 
+        # Perform Depth Filter
         points_xyz = hp.cluster_filter(selection)[:, :3]
 
         # Transform open3d PC to numpy array
@@ -200,33 +225,33 @@ class PlantExtractor:
         # 2nd principal component
         cut_y = np.cross(cut_direction_normalized, normal)
 
+
         # Get 3x3 rotation matrix
         # The first row is the x-axis of the tool frame in the camera frame
         camera2tool_rot = np.array([normal, cut_y, cut_direction_normalized]).T
 
+        # Visualize gripper. TODO: Can make all of this a lot cleaner
         # Construct transformation matrix from camera to tool of end effector
         camera2tool = np.zeros([4, 4])
         camera2tool[:3, :3] = camera2tool_rot
         camera2tool[:3, 3] = inliers_centroid
         camera2tool[3, 3] = 1
-
-        tfw = TF2Wrapper()
         # Get transformation matrix between tool and end effector
-        tool2ee = tfw.get_transform(parent="left_tool", child="end_effector_left")
+        tool2ee = self.tfw.get_transform(parent="left_tool", child="end_effector_left")
         # map2cam = tfw.get_transform(parent="map", child=self.frame_id)
         # Chain effect: get transformation matrix from camera to end effector
         camera2ee = camera2tool @ tool2ee  # Put map2cam first once we add in map part
-        tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
+        self.tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
 
-        # Rviz commands
-        # Call plot_pointcloud_rviz function to visualize PCs in Rviz
-        hp.publish_pc_no_color(self.src_pub, points_xyz, self.frame_id)
-        hp.publish_pc_no_color(self.inliers_pub, inlier_points, self.frame_id)
-        # Call rviz_arrow function to see normal of the plane
-        self.rviz_arrow(inliers_centroid, normal, name='normal', thickness=0.008, length_scale=0.15,
-                        color='r')
-        # Call plot_plane function to visualize plane in Rviz
-        self.plot_plane(inliers_centroid, normal, size=0.1, res=0.001)
+        # Visualize Point Clouds
+        self.publish_pc_data(points_xyz, inlier_points, inliers_centroid, normal)
+
+        x_rot, y_rot, z_rot = euler_from_matrix(camera2tool_rot)
+
+        vicroot2cam = self.tfw.get_transform(parent='victor_root', child=self.frame_id)
+        result = vicroot2cam @ camera2tool
+        goal = [result[0, 3], result[1, 3], result[2, 3], x_rot, y_rot, z_rot]
+        self.victor_plan(goal)
 
     def select_weed(self, selection):
         """
@@ -289,7 +314,6 @@ class PlantExtractor:
         # Just keep the inlier points in the point cloud
         green_pcd = green_pcd.select_by_index(ind)
         green_pcd_points = np.asarray(green_pcd.points)
-        print(f"Before: {len(green_pcd_points)}")
         hp.publish_pc_no_color(self.remove_rad_pub, green_pcd_points, self.frame_id)
 
         # Apply DBSCAN to green points
@@ -308,10 +332,8 @@ class PlantExtractor:
 
         # Get labels of the biggest cluster
         biggest_cluster_indices = np.where(labels[:] == mode(labels))
-        print(f"Labels: {labels}")
         # Just keep the points that correspond to the biggest cluster (weed)
         green_pcd_points = green_pcd_points[biggest_cluster_indices]
-        print(f"After: {len(green_pcd_points)}")
         # Get coordinates of the weed centroid
         weed_centroid = np.mean(green_pcd_points, axis=0)
 
@@ -334,15 +356,13 @@ class PlantExtractor:
 
         if len(best_inliers) == 0:
             rospy.loginfo("Can't find dirt, Select both weed and dirt.")
+            return
 
         [a, b, c, _] = plane_model
         # Just save and continue working with the inlier points defined by the plane segmentation function
         inlier_dirt_points = dirt_points_xyz[best_inliers]
         # Get centroid of dirt
         inlier_dirt_centroid = np.mean(inlier_dirt_points, axis=0)
-        dirt_pcd_send = o3d.geometry.PointCloud()
-        # Save points and color to the point cloud
-        dirt_pcd_send.points = o3d.utility.Vector3dVector(inlier_dirt_points)
         # The a, b, c coefficients of the plane equation are the components of the normal vector of that plane
         normal = np.asarray([a, b, c])
 
@@ -359,8 +379,45 @@ class PlantExtractor:
         camera2tool = np.eye(4)
         camera2tool[:3, 3] = weed_centroid
 
+        # Victor Stuff
+        vicroot2cam = self.tfw.get_transform(parent='victor_root', child=self.frame_id)
+        result = vicroot2cam @ camera2tool
+        
+        # Visualize pcs and gripper
         self.visualize_gripper(phi, theta, weed_centroid)
-        self.publish_weed_debug_data(dirt_points_xyz, green_pcd_points, inlier_dirt_centroid, normal)
+        self.publish_pc_data(dirt_points_xyz, green_pcd_points, inlier_dirt_centroid, normal)
+
+        # Plan to the pose 
+        goal = [result[0, 3], result[1, 3], result[2, 3], phi, -theta, 0]
+        self.victor_plan(goal)
+
+
+    def victor_plan(self, xyzrpy):
+        # Find a plan and execute it
+        plan_exec_res = self.victor.plan_to_pose(self.victor.right_arm_group, self.victor.right_tool_name, xyzrpy)
+        was_success = plan_exec_res.planning_result.success
+        # If there is no possible plan, try the left arm
+        if was_success == False:
+            rospy.loginfo("Can't find path, will try with left arm.")
+            
+            plan_exec_res = self.victor.plan_to_pose(self.victor.left_arm_group, self.victor.left_tool_name, xyzrpy)
+            was_success = plan_exec_res.planning_result.success
+            if was_success == False:
+                rospy.loginfo("Can't find a path with either arm, return to zero state")
+            else:
+                # Was a success, grasp it
+                self.victor.close_left_gripper()
+                rospy.sleep(2)
+                self.victor.open_left_gripper()
+        else:
+            # Was a success, grasp it
+            self.victor.close_right_gripper()
+            rospy.sleep(2)
+            self.victor.open_right_gripper()
+        
+        # Return to zero state
+        rospy.sleep(2)
+        self.victor.plan_to_joint_config('both_arms', 'zero')
 
 
     def visualize_gripper(self, phi, theta, weed_centroid):
@@ -391,7 +448,7 @@ class PlantExtractor:
 
 
 
-    def publish_weed_debug_data(self, dirt_points_xyz, green_pcd_points, inlier_dirt_centroid, normal):
+    def publish_pc_data(self, dirt_points_xyz, green_pcd_points, inlier_dirt_centroid, normal):
         hp.publish_pc_no_color(self.src_pub, dirt_points_xyz[:, :3], self.frame_id)
         # Visualize filtered green points as "inliers"
         hp.publish_pc_no_color(self.inliers_pub, green_pcd_points[:, :3], self.frame_id)

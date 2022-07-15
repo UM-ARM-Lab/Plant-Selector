@@ -64,8 +64,6 @@ namespace rviz_custom_panel
             void set_frame(int new_frame_num);
             void set_topic();
 
-            void set_zed_defaults();
-
         /**
          *  Finally, we close up with protected member variables
          */
