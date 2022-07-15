@@ -7,7 +7,7 @@
     <node pkg="rviz" type="rviz" name="rviz2" args="-d $(find plant_selector)/rviz/zed_victor.rviz"/>
     <node pkg="tf2_ros" type="static_transform_publisher" name="gripper_offset" args="0 0 0 0 0 0 zed2i_left_camera_frame end_effector_left"/>
     <!-- Might want it victor_base_plate instead -->
-    <node pkg="tf2_ros" type="static_transform_publisher" name="victor_tf" args="0 0 -1.5 0 0 0 zed2i_left_camera_frame victor_root"/>
+    <node pkg="tf2_ros" type="static_transform_publisher" name="victor_tf" args="-0.1 0 -1.5 0 0 0 zed2i_left_camera_frame victor_root"/>
     <node pkg="tf2_ros" type="static_transform_publisher" name="ed_tf" args="0 0 0 0 0 0 zed2i_left_camera_frame right_hand_camera_rgb_optical_frame"/>
     <param name="default_bag_path" value='$(find plant_selector)/bags'/>
 

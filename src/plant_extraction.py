@@ -359,21 +359,6 @@ class PlantExtractor:
         camera2tool = np.eye(4)
         camera2tool[:3, 3] = weed_centroid
 
-        # Victor Stuff
-        vicroot2cam = self.tfw.get_transform(parent='victor_root', child=self.frame_id)
-        result = vicroot2cam @ camera2tool
-        
-        # plan_exec_res = self.victor.plan_to_pose(self.victor.right_arm_group, self.victor.right_tool_name, [result[0, 3], result[1, 3], result[2, 3], phi, -theta, 0])
-        plan_exec_res = self.victor.plan_to_pose(self.victor.right_arm_group, self.victor.right_tool_name, [result[0, 3], result[1, 3], result[2, 3], phi, -theta, 0])
-        was_success = plan_exec_res.planning_result.success
-        if was_success == False:
-            rospy.loginfo('Cant find path, will try with left arm.')
-            
-            plan_exec_res = self.victor.plan_to_pose(self.victor.left_arm_group, self.victor.left_tool_name, [result[0, 3], result[1, 3], result[2, 3], phi, -theta, 0])
-            was_success = plan_exec_res.planning_result.success
-            if was_success == False:
-                rospy.loginfo("can't find a path")
-
         self.visualize_gripper(phi, theta, weed_centroid)
         self.publish_weed_debug_data(dirt_points_xyz, green_pcd_points, inlier_dirt_centroid, normal)
 

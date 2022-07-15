@@ -64,8 +64,7 @@ class PlantExtractor:
 
         # Set the default mode to branch
         self.mode = "Branch"
-        self.branch_pc_sub = rospy.Subscriber("/rviz_selected_points", PointCloud2, self.select_branch)
-        self.weed_pc_sub = rospy.Subscriber("/rviz_selected_points", PointCloud2, self.select_weed)
+        self.plant_pc_sub = rospy.Subscriber("/rviz_selected_points", PointCloud2, self.plant_extraction)
 
         # Fixing first selection
         # TODO: This isn't ideal, probs a better way to do this
@@ -82,6 +81,13 @@ class PlantExtractor:
         """
         self.mode = new_mode.data
         rospy.loginfo("New mode: " + self.mode)
+        self.victor.plan_to_joint_config('both_arms', 'zero')
+
+    def plant_extraction(self, pc):
+        if self.mode == "Branch":
+            self.select_branch(pc)
+        elif self.mode == "Weed":
+            self.select_weed(pc)
 
     @staticmethod
     def project(u, n):
@@ -398,7 +404,6 @@ class PlantExtractor:
             was_success = plan_exec_res.planning_result.success
             if was_success == False:
                 rospy.loginfo("Can't find a path with either arm, return to zero state")
-                self.victor.plan_to_joint_config('both_arms', 'zero')
             else:
                 # Was a success, grasp it
                 self.victor.close_left_gripper()
@@ -409,6 +414,10 @@ class PlantExtractor:
             self.victor.close_right_gripper()
             rospy.sleep(2)
             self.victor.open_right_gripper()
+        
+        # Return to zero state
+        rospy.sleep(2)
+        self.victor.plan_to_joint_config('both_arms', 'zero')
 
 
     def visualize_gripper(self, phi, theta, weed_centroid):
