@@ -18,6 +18,7 @@ from sensor_msgs import point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import ColorRGBA
 from std_msgs.msg import String
+from std_msgs.msg import Bool
 from visualization_msgs.msg import Marker
 from tf.transformations import euler_from_matrix
 import hdbscan
@@ -46,6 +47,7 @@ class PlantExtractor:
         self.remove_rad_pub = rospy.Publisher("removed_rad", PointCloud2, queue_size=10)
 
         rospy.Subscriber("/plant_selector/mode", String, self.mode_change)
+        rospy.Subscriber("/plant_selector/verification", Bool, self.move_robot)
 
         self.frame_id = str(rospy.get_param("frame_id"))
         self.tfw = TF2Wrapper()
@@ -55,6 +57,7 @@ class PlantExtractor:
         self.victor.set_control_mode(control_mode=ControlMode.JOINT_POSITION, vel=0.1)
         self.victor.connect()
         self.victor.plan_to_joint_config('both_arms', 'zero')
+        self.goal = None
 
         rospy.sleep(1)
         self.victor.open_left_gripper()
@@ -82,6 +85,10 @@ class PlantExtractor:
         self.mode = new_mode.data
         rospy.loginfo("New mode: " + self.mode)
         self.victor.plan_to_joint_config('both_arms', 'zero')
+
+    def move_robot(self, is_verified):
+        if is_verified.data:
+            self.victor_plan()
 
     def plant_extraction(self, pc):
         if self.mode == "Branch":
@@ -250,8 +257,7 @@ class PlantExtractor:
 
         vicroot2cam = self.tfw.get_transform(parent='victor_root', child=self.frame_id)
         result = vicroot2cam @ camera2tool
-        goal = [result[0, 3], result[1, 3], result[2, 3], x_rot, y_rot, z_rot]
-        self.victor_plan(goal)
+        self.goal = [result[0, 3], result[1, 3], result[2, 3], x_rot, y_rot, z_rot]
 
     def select_weed(self, selection):
         """
@@ -388,13 +394,12 @@ class PlantExtractor:
         self.publish_pc_data(dirt_points_xyz, green_pcd_points, inlier_dirt_centroid, normal)
 
         # Plan to the pose 
-        goal = [result[0, 3], result[1, 3], result[2, 3], phi, -theta, 0]
-        self.victor_plan(goal)
+        self.goal = [result[0, 3], result[1, 3], result[2, 3], phi, -theta, 0]
 
 
-    def victor_plan(self, xyzrpy):
+    def victor_plan(self):
         # Find a plan and execute it
-        plan_exec_res = self.victor.plan_to_pose(self.victor.right_arm_group, self.victor.right_tool_name, xyzrpy)
+        plan_exec_res = self.victor.plan_to_pose(self.victor.right_arm_group, self.victor.right_tool_name, self.goal)
         was_success = plan_exec_res.planning_result.success
         # If there is no possible plan, try the left arm
         if was_success:
@@ -405,7 +410,7 @@ class PlantExtractor:
         else:
             rospy.loginfo("Can't find path, will try with left arm.")
             
-            plan_exec_res = self.victor.plan_to_pose(self.victor.left_arm_group, self.victor.left_tool_name, xyzrpy)
+            plan_exec_res = self.victor.plan_to_pose(self.victor.left_arm_group, self.victor.left_tool_name, self.goal)
             was_success = plan_exec_res.planning_result.success
             if was_success:
                 # Was a success, grasp it

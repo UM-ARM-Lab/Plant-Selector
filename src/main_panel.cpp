@@ -30,6 +30,8 @@ namespace rviz_custom_panel
         // setup ros connections
         mode_pub = n.advertise<std_msgs::String>("/plant_selector/mode", 1);
         publish_time_pub = n.advertise<std_msgs::Bool>("/plant_selector/is_instant", 1);
+        verification_pub = n.advertise<std_msgs::Bool>("/plant_selector/verification", 1);
+        verification_sub = n.subscribe("/plant_selector/need_verification", 1000, &MainPanel::verification_callback, this);
 
         QLabel* publishing_label = new QLabel("Instantly Publish Selection?", this);
 
@@ -44,7 +46,7 @@ namespace rviz_custom_panel
         combo->addItems(commands);
 
         // eventually want to hide this and only show it when appropriate
-        verification_label = new QLabel("Verification", this);
+        verification_label = new QLabel("", this);
         yes_button = new QPushButton("&Yes", this);
         yes_button->setEnabled(false);
         no_button = new QPushButton("&No", this);
@@ -74,6 +76,8 @@ namespace rviz_custom_panel
         connect(pub_combo, &QComboBox::currentTextChanged, this, &MainPanel::publish_time_changed);
         connect(combo, &QComboBox::currentTextChanged, this, &MainPanel::command_changed);
         connect(cancel_button, &QPushButton::clicked, this, &MainPanel::cancel_button_handler);
+        connect(yes_button, &QPushButton::clicked, this, &MainPanel::yes_button_handler);
+        connect(no_button, &QPushButton::clicked, this, &MainPanel::no_button_handler);
 
         manager = new rviz::VisualizationManager(render_panel);
         manager->initialize();
@@ -94,6 +98,12 @@ namespace rviz_custom_panel
      */
     void MainPanel::load(const rviz::Config & config) {
         rviz::Panel::load(config);
+    }
+
+    void MainPanel::verification_callback(const std_msgs::Bool::ConstPtr& msg) {
+        verification_label->setText("Grasp this?");
+        yes_button->setEnabled(true);
+        no_button->setEnabled(true);
     }
 
     void MainPanel::publish_time_changed(const QString& command_text) {
@@ -120,6 +130,24 @@ namespace rviz_custom_panel
         std_msgs::String msg;
         msg.data = "Cancel";
         mode_pub.publish(msg);
+    }
+
+    void MainPanel::yes_button_handler() {
+        std_msgs::Bool msg;
+        msg.data = true;
+        verification_pub.publish(msg);
+        verification_label->setText("");
+        yes_button->setEnabled(false);
+        no_button->setEnabled(false);
+    }
+
+    void MainPanel::no_button_handler() {
+        std_msgs::Bool msg;
+        msg.data = false;
+        verification_pub.publish(msg);
+        verification_label->setText("");
+        yes_button->setEnabled(false);
+        no_button->setEnabled(false);
     }
 } // namespace rviz_custom_panel
 

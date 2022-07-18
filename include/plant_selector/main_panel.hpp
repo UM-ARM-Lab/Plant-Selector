@@ -8,6 +8,7 @@
 #include <QWidget>
 #include <QPushButton>
 #include <QLabel>
+#include <std_msgs/Bool.h>
 
 namespace rviz
 {
@@ -57,9 +58,12 @@ namespace rviz_custom_panel
          */
         private Q_SLOTS:
 
+            void verification_callback(const std_msgs::Bool::ConstPtr& msg);
             void publish_time_changed(const QString& command_text);
             void command_changed(const QString& command_text);
             void cancel_button_handler();
+            void yes_button_handler();
+            void no_button_handler();
 
         /**
          *  Finally, we close up with protected member variables
@@ -68,6 +72,9 @@ namespace rviz_custom_panel
             ros::NodeHandle n;
             ros::Publisher mode_pub;
             ros::Publisher publish_time_pub;
+            ros::Publisher verification_pub;
+            ros::Subscriber verification_sub;
+
             rviz::VisualizationManager* manager;
             rviz::RenderPanel* render_panel;
 
