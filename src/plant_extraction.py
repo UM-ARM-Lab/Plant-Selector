@@ -289,7 +289,6 @@ class PlantExtractor:
         # Just keep the inlier points in the point cloud
         green_pcd = green_pcd.select_by_index(ind)
         green_pcd_points = np.asarray(green_pcd.points)
-        print(f"Before: {len(green_pcd_points)}")
         hp.publish_pc_no_color(self.remove_rad_pub, green_pcd_points, self.frame_id)
 
         # Apply DBSCAN to green points
@@ -308,10 +307,8 @@ class PlantExtractor:
 
         # Get labels of the biggest cluster
         biggest_cluster_indices = np.where(labels[:] == mode(labels))
-        print(f"Labels: {labels}")
         # Just keep the points that correspond to the biggest cluster (weed)
         green_pcd_points = green_pcd_points[biggest_cluster_indices]
-        print(f"After: {len(green_pcd_points)}")
         # Get coordinates of the weed centroid
         weed_centroid = np.mean(green_pcd_points, axis=0)
 
