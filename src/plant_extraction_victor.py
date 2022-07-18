@@ -397,25 +397,25 @@ class PlantExtractor:
         plan_exec_res = self.victor.plan_to_pose(self.victor.right_arm_group, self.victor.right_tool_name, xyzrpy)
         was_success = plan_exec_res.planning_result.success
         # If there is no possible plan, try the left arm
-        if was_success == False:
-            rospy.loginfo("Can't find path, will try with left arm.")
-            
-            plan_exec_res = self.victor.plan_to_pose(self.victor.left_arm_group, self.victor.left_tool_name, xyzrpy)
-            was_success = plan_exec_res.planning_result.success
-            if was_success == False:
-                rospy.loginfo("Can't find a path with either arm, return to zero state")
-            else:
-                # Was a success, grasp it
-                self.victor.close_left_gripper()
-                rospy.sleep(2)
-                self.victor.open_left_gripper()
-        else:
+        if was_success:
             # Was a success, grasp it
             self.victor.close_right_gripper()
             rospy.sleep(2)
             self.victor.open_right_gripper()
+        else:
+            rospy.loginfo("Can't find path, will try with left arm.")
+            
+            plan_exec_res = self.victor.plan_to_pose(self.victor.left_arm_group, self.victor.left_tool_name, xyzrpy)
+            was_success = plan_exec_res.planning_result.success
+            if was_success:
+                # Was a success, grasp it
+                self.victor.close_left_gripper()
+                rospy.sleep(2)
+                self.victor.open_left_gripper()
+            else:
+                rospy.loginfo("Can't find a path with either arm, return to zero state")
         
-        # Return to zero state
+        # Return to zero state at the end, no matter what
         rospy.sleep(2)
         self.victor.plan_to_joint_config('both_arms', 'zero')
 

@@ -46,7 +46,9 @@ namespace rviz_custom_panel
         // eventually want to hide this and only show it when appropriate
         verification_label = new QLabel("Verification", this);
         yes_button = new QPushButton("&Yes", this);
+        yes_button->setEnabled(false);
         no_button = new QPushButton("&No", this);
+        no_button->setEnabled(false);
 
         cancel_button = new QPushButton("&Cancel", this);
 
