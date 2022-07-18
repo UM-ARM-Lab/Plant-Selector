@@ -355,6 +355,11 @@ class PlantExtractor:
         dirt_pcd.points = o3d.utility.Vector3dVector(dirt_points_xyz)
         dirt_pcd.colors = o3d.utility.Vector3dVector(dirt_points_rgb)
 
+        green_pcd.points = o3d.utility.Vector3dVector(green_pcd_points)
+
+        o3d.io.write_point_cloud('/home/christianforeman/catkin_ws/src/plant_selector/bags/weed-selection.pcd', green_pcd)
+        o3d.io.write_point_cloud('/home/christianforeman/catkin_ws/src/plant_selector/bags/dirt_points.pcd', dirt_pcd)
+
         # Apply plane segmentation function from open3d and get the best inliers
         plane_model, best_inliers = dirt_pcd.segment_plane(distance_threshold=0.0005,
                                                            ransac_n=3,
