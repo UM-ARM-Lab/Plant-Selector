@@ -1,9 +1,6 @@
 #!/usr/bin/env python
 # Import useful libraries and functions
-from math import atan, sin, cos, pi
-from re import I
 from statistics import mode
-import sys, os
 
 import numpy as np
 import open3d as o3d
@@ -19,15 +16,14 @@ from sensor_msgs import point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import ColorRGBA
 from std_msgs.msg import String
+from tf.transformations import rotation_matrix
 from visualization_msgs.msg import Marker
-import hdbscan
+
 
 class PlantExtractor:
     def __init__(self):
         """
         Initialize publishers for PCs, arrow and planes.
-
-        :param camera_frame: Name of the camera frame to be used.
         """
         # Initialize publishers for PCs, arrow and planes
         # SYNTAX: pub = rospy.Publisher('topic_name', geometry_msgs.msg.Point, queue_size=10)
@@ -55,7 +51,7 @@ class PlantExtractor:
         for _ in range(10):
             self.tfw.send_transform_matrix(ident_matrix, parent=self.frame_id, child='end_effector_left')
             rospy.sleep(0.05)
-            
+
     def mode_change(self, new_mode):
         """
         Callback to a new mode type from /plant_selector/mode. Modes can be either Branch or Weed.
@@ -171,8 +167,8 @@ class PlantExtractor:
 
         # Apply plane segmentation function from open3d and get the best inliers
         _, best_inliers = pcd.segment_plane(distance_threshold=0.01,
-                                                  ransac_n=3,
-                                                  num_iterations=1000)
+                                            ransac_n=3,
+                                            num_iterations=1000)
         # Just save and continue working with the inlier points defined by the plane segmentation function
         inlier_points = points_xyz[best_inliers]
         # Get the centroid of the inlier points
@@ -187,46 +183,11 @@ class PlantExtractor:
         # The first component (vector) is the normal of the plane we are looking for
         normal = pca.components_[0]
 
-        # Since camera position is lost, define an approximate position
-        camera_position = np.array([0, 0, 0])
-        # This is the "main vector" going from the camera to the centroid of the PC
-        camera_to_centroid = inliers_centroid - camera_position
+        # Display gripper
+        self.visualize_gripper(inliers_centroid, normal)
 
-        # Call the project function to get the cut direction vector
-        cut_direction = self.project(camera_to_centroid, normal)
-        # Normalize the projected vector
-        cut_direction_normalized = cut_direction / np.linalg.norm(cut_direction)
-        # Cross product between normalized cut director vector and the normal of the plane to obtain the
-        # 2nd principal component
-        cut_y = np.cross(cut_direction_normalized, normal)
-
-        # Get 3x3 rotation matrix
-        # The first row is the x-axis of the tool frame in the camera frame
-        camera2tool_rot = np.array([normal, cut_y, cut_direction_normalized]).T
-
-        # Construct transformation matrix from camera to tool of end effector
-        camera2tool = np.zeros([4, 4])
-        camera2tool[:3, :3] = camera2tool_rot
-        camera2tool[:3, 3] = inliers_centroid
-        camera2tool[3, 3] = 1
-
-        tfw = TF2Wrapper()
-        # Get transformation matrix between tool and end effector
-        tool2ee = tfw.get_transform(parent="left_tool", child="end_effector_left")
-        # map2cam = tfw.get_transform(parent="map", child=self.frame_id)
-        # Chain effect: get transformation matrix from camera to end effector
-        camera2ee = camera2tool @ tool2ee  # Put map2cam first once we add in map part
-        tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
-
-        # Rviz commands
-        # Call plot_pointcloud_rviz function to visualize PCs in Rviz
-        hp.publish_pc_no_color(self.src_pub, points_xyz, self.frame_id)
-        hp.publish_pc_no_color(self.inliers_pub, inlier_points, self.frame_id)
-        # Call rviz_arrow function to see normal of the plane
-        self.rviz_arrow(inliers_centroid, normal, name='normal', thickness=0.008, length_scale=0.15,
-                        color='r')
-        # Call plot_plane function to visualize plane in Rviz
-        self.plot_plane(inliers_centroid, normal, size=0.1, res=0.001)
+        # Publish rviz data
+        self.publish_debug_data(points_xyz, inlier_points, inliers_centroid, normal)
 
     def select_weed(self, selection):
         """
@@ -289,17 +250,10 @@ class PlantExtractor:
         # Just keep the inlier points in the point cloud
         green_pcd = green_pcd.select_by_index(ind)
         green_pcd_points = np.asarray(green_pcd.points)
-        print(f"Before: {len(green_pcd_points)}")
         hp.publish_pc_no_color(self.remove_rad_pub, green_pcd_points, self.frame_id)
 
         # Apply DBSCAN to green points
         labels = np.array(green_pcd.cluster_dbscan(eps=0.007, min_points=15))  # This is actually pretty good
-
-        # This is pretty good but struggles in some edge cases
-        # clusterer = hdbscan.HDBSCAN(min_cluster_size=30, gen_min_span_tree=True, min_samples=1, allow_single_cluster=1)
-        # # clusterer = hdbscan.HDBSCAN(min_cluster_size=8, min_samples=1, allow_single_cluster=1)
-        # clusterer.fit(green_pcd_points)
-        # labels = clusterer.labels_
 
         n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
         if n_clusters == 0:
@@ -308,11 +262,11 @@ class PlantExtractor:
 
         # Get labels of the biggest cluster
         biggest_cluster_indices = np.where(labels[:] == mode(labels))
-        print(f"Labels: {labels}")
         # Just keep the points that correspond to the biggest cluster (weed)
         green_pcd_points = green_pcd_points[biggest_cluster_indices]
-        print(f"After: {len(green_pcd_points)}")
         # Get coordinates of the weed centroid
+        # print(f"x-distance: {np.mean(green_pcd_points, axis=0)[0]}")
+
         weed_centroid = np.mean(green_pcd_points, axis=0)
 
         dirt_indices = np.arange(0, len(pcd_points))
@@ -344,62 +298,58 @@ class PlantExtractor:
         # Save points and color to the point cloud
         dirt_pcd_send.points = o3d.utility.Vector3dVector(inlier_dirt_points)
         # The a, b, c coefficients of the plane equation are the components of the normal vector of that plane
-        normal = np.asarray([a, b, c])
+        if a < 0:
+            normal = np.asarray([a, b, c])
+        else:
+            normal = -np.asarray([a, b, c])
 
-        # Currently only for zed
-        if normal[2] > 0:
-            normal = -normal
+        # Display gripper
+        self.visualize_gripper(weed_centroid, normal)
 
-        phi = atan(normal[1] / normal[2])
-        if phi < pi/2:
-            phi = phi + pi - 2 * phi
-        theta = atan(normal[0] / -normal[2])
+        # Publish rviz data
+        self.publish_debug_data(dirt_points_xyz, green_pcd_points, inlier_dirt_centroid, normal)
+
+    def visualize_gripper(self, camera2target, normal):
+        # Call the project function to get the cut direction vector
+        cut_direction = self.project(camera2target, normal)
+        # Normalize the projected vector
+        cut_direction_normalized = cut_direction / np.linalg.norm(cut_direction)
+        # Cross product between normalized cut director vector and the normal of the plane to obtain the
+        # 2nd principal component
+        cut_y = np.cross(cut_direction_normalized, normal)
+
+        # Get 3x3 rotation matrix
+        # The first row is the x-axis of the tool frame in the camera frame
+        camera2tool_rot = np.array([normal, cut_y, cut_direction_normalized]).T
 
         # Construct transformation matrix from camera to tool of end effector
         camera2tool = np.eye(4)
-        camera2tool[:3, 3] = weed_centroid
+        camera2tool[:3, :3] = camera2tool_rot
 
-        self.visualize_gripper(phi, theta, weed_centroid)
-        self.publish_weed_debug_data(dirt_points_xyz, green_pcd_points, inlier_dirt_centroid, normal)
-
-
-    def visualize_gripper(self, phi, theta, weed_centroid):
-        # Generate Rotation Matrices
-        rx = np.asarray([[1, 0, 0],
-                            [0, cos(phi), -sin(phi)],
-                            [0, sin(phi), cos(phi)]])
-        ry = np.asarray([[cos(theta), 0, sin(theta)],
-                            [0, 1, 0],
-                            [-sin(theta), 0, cos(theta)]])
-
-        # Combine
-        frame_2_vector_rot = rx @ ry
-
-        # Create camera to tool matrix
-        camera_2_tool = np.eye(4)
-        camera_2_tool[:3, :3] = frame_2_vector_rot
-        camera_2_tool[:3, 3] = weed_centroid
+        # If selecting weed, apply a dynamic angle for the robot
+        if self.mode == 'Weed':
+            max_len_arm, angle = 1, -60
+            # Get the rotation matrix from the parameters above
+            rotation = rotation_matrix(np.deg2rad(camera2target[0] * angle / max_len_arm), cut_y, point=camera2target)
+            # Get new camera2tool matrix
+            camera2tool = rotation @ camera2tool
+        # Assign translation for the transformation matrix
+        camera2tool[:3, 3] = camera2target
 
         # Define transformation matrix from tool to end effector
         tool2ee = self.tfw.get_transform(parent="left_tool", child="end_effector_left")
-        
+
         # Get transform from camera to end effector
-        camera_2_ee = camera_2_tool @ tool2ee
+        camera2ee = camera2tool @ tool2ee
 
         # Display gripper
-        self.tfw.send_transform_matrix(camera_2_ee, parent=self.frame_id, child='end_effector_left')
+        self.tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
 
-
-
-    def publish_weed_debug_data(self, dirt_points_xyz, green_pcd_points, inlier_dirt_centroid, normal):
-        hp.publish_pc_no_color(self.src_pub, dirt_points_xyz[:, :3], self.frame_id)
-        # Visualize filtered green points as "inliers"
-        hp.publish_pc_no_color(self.inliers_pub, green_pcd_points[:, :3], self.frame_id)
-        # Call rviz_arrow function to see normal of the plane
-        self.rviz_arrow(inlier_dirt_centroid, normal, name='normal', thickness=0.008, length_scale=0.15,
-                        color='w')
-        # Call plot_plane function to visualize plane in Rviz
-        self.plot_plane(inlier_dirt_centroid, normal, size=0.1, res=0.001)
+    def publish_debug_data(self, source, inliers, origin, normal):
+        hp.publish_pc_no_color(self.src_pub, source[:, :3], self.frame_id)
+        hp.publish_pc_no_color(self.inliers_pub, inliers[:, :3], self.frame_id)
+        self.rviz_arrow(origin, normal, name='normal', thickness=0.008, length_scale=0.15, color='w')
+        self.plot_plane(origin, normal, size=0.1, res=0.001)
 
 
 def main():
