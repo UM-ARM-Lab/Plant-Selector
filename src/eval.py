@@ -8,11 +8,14 @@ import numpy as np
 import open3d as o3d
 
 import helpers as hp
+import rospy
+from sensor_msgs.msg import PointCloud2
 
 
-def calculate_weed_centroid(list_files, centroids):
+def calculate_weed_centroid(list_files, centroids, path_pcs):
     row = 0
     for file in list_files:
+        file = path_pcs + file
         points = np.load(file)
 
         # All the weed extraction algorithm
@@ -80,46 +83,75 @@ def calculate_weed_centroid(list_files, centroids):
     return centroids
 
 
-def compute_distances(centroids, manual_labels):
-    return np.linalg.norm(manual_labels[:, :3] - centroids[:, :3])
+class WeedMetrics:
+    def __init__(self, path_pcs, path_manual_labels, pred_model):
+        """
+                Initialize publishers for PCs, arrow and planes.
+            """
+        # Initialize publishers for PCs
+        self.pc_pub = rospy.Publisher("point_cloud", PointCloud2, queue_size=10)
+        self.centroid_pub = rospy.Publisher("centroid", PointCloud2, queue_size=10)
+        self.stem_pub = rospy.Publisher("stem", PointCloud2, queue_size=10)
 
+        self.list_files_pcs = os.listdir(path_pcs)
+        self.list_files_manual_labels = os.listdir(path_manual_labels)
 
-def get_manual_labels(list_files_manual_labels, manual_labels):
-    row = 0
-    for label in list_files_manual_labels:
-        return
+        self.path_pcs = path_pcs
+        self.pred_model = pred_model
+        self.error = None
+
+        self.centroids = np.zeros(shape=(len(self.list_files_pcs), 3))
+        self.manual_labels = np.zeros(shape=(len(self.list_files_manual_labels), 3))
+
+        self.get_manual_labels(self.list_files_manual_labels, path_manual_labels)
+
+        # self.frame_id = str(rospy.get_param("zed2i_left_camera_frame"))
+        self.frame_id = "zed2i_left_camera_frame"
+
+    def run_eval(self):
+        pred_centroids = self.pred_model(self.list_files_pcs, self.centroids, self.path_pcs)
+        self.compute_distances(pred_centroids)
+        self.metric_printer()
+
+        for sample in range(len(self.error)):
+            file = self.path_pcs + self.list_files_pcs[sample]
+            pc = np.load(file)
+            mean_pc = np.mean(pc[:, :3], axis=0)
+            pc_norm = pc
+            pc_norm[:, :3] = pc[:, :3] - mean_pc
+            centroid_norm = pred_centroids[sample].reshape(1, 3) - mean_pc
+            manual_labels = self.manual_labels[sample].reshape(1, 3) - mean_pc
+
+            hp.publish_pc_with_color(self.pc_pub, pc_norm, self.frame_id)
+            hp.publish_pc_no_color(self.centroid_pub, centroid_norm, self.frame_id)
+            hp.publish_pc_no_color(self.stem_pub, manual_labels, self.frame_id)
+            input(f"Sample {sample + 1}")
+
+    def compute_distances(self, centroids):
+        self.error = np.linalg.norm(self.manual_labels[:, :3] - centroids[:, :3], axis=1)
+
+    def get_manual_labels(self, list_files_manual_labels, path_manual_labels):
+        row = 0
+        for label in list_files_manual_labels:
+            self.manual_labels[row, :3] = np.load(path_manual_labels + label)[:, :3]
+            row += 1
+
+    def metric_printer(self):
+        print(f"Mean: {np.mean(self.error)}")
+        print(f"Median: {np.median(self.error)}")
+        print(f"Std: {np.std(self.error)}")
 
 
 def main():
-    """
-    STEPS:
+    rospy.init_node('weed_eval')
 
-    DONE:
-    - Run through the point clouds of "weed_eval/" folder
-    - Get the centroid and save it in an array.
-    - Get the manual labels.
-    - Get the distance between each one.
-    - Print results, graphs, etc.
-    :return:
-    """
     # Create paths for pcs and manual labels
-    path_pcs = "/home/miguel/catkin_ws/src/plant_selector/weed_eval/pcs"
-    path_manual_labels = "/home/miguel/catkin_ws/src/plant_selector/weed_eval/manual_labels"
+    path_pcs = "/home/miguel/catkin_ws/src/plant_selector/weed_eval/pcs/"
+    path_manual_labels = "/home/miguel/catkin_ws/src/plant_selector/weed_eval/manual_labels/"
 
-    # Return the list of files and directories present in a specified directory path.
-    list_files_pcs = os.listdir(path_pcs)
-    list_files_manual_labels = os.listdir(path_manual_labels)
-
-    # Create empty arrays for centroids and manual_labels
-    centroids = np.zeros(shape=(len(list_files_pcs), 3))
-    manual_labels = np.zeros(shape=(len(list_files_manual_labels), 3))
-
-    # Fill in the arrays
-    centroids = calculate_weed_centroid(list_files_pcs, centroids)
-    manual_labels = get_manual_labels(list_files_manual_labels, manual_labels)
-
-    error = compute_distances(centroids, manual_labels)
-    print(np.mean(error))
+    # Run the evaluation
+    evaluator = WeedMetrics(path_pcs, path_manual_labels, calculate_weed_centroid)
+    evaluator.run_eval()
 
 
 if __name__ == '__main__':
