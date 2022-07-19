@@ -33,8 +33,9 @@ PublishingSelector::~PublishingSelector() {}
 void PublishingSelector::updateTopic() {
     rviz_cloud_topic = std::string("/rviz_selected_points");
 
-    rviz_selected_publisher = n.advertise<sensor_msgs::PointCloud2>(rviz_cloud_topic, 1);
+    rviz_selected_pub = n.advertise<sensor_msgs::PointCloud2>(rviz_cloud_topic, 1);
     is_selecting_pub = n.advertise<std_msgs::Bool>("/plant_selector/is_selecting", 1);
+    verification_pub = n.advertise<std_msgs::Bool>("/plant_selector/need_verification", 1);
     instant_sub = n.subscribe("/plant_selector/is_instant", 1000, &PublishingSelector::instant_pub_handler, this);
     is_instant = true;
 
@@ -70,7 +71,10 @@ int PublishingSelector::processKeyEvent(QKeyEvent* event, rviz::RenderPanel* pan
             clear_points();
         }
         else if (event->key() == 'p' || event->key() == 'P') {
-            rviz_selected_publisher.publish(selected_points);
+            rviz_selected_pub.publish(selected_points);
+            std_msgs::Bool msg;
+            msg.data = true;
+            verification_pub.publish(msg);
             clear_points();
         }
     }
@@ -194,7 +198,10 @@ int PublishingSelector::processSelectedArea() {
     selected_points.header.stamp = ros::Time::now();
 
     if(is_instant) {
-        rviz_selected_publisher.publish(selected_points);
+        rviz_selected_pub.publish(selected_points);
+        std_msgs::Bool msg;
+        msg.data = true;
+        verification_pub.publish(msg);
         clear_points();
     }
     return 0;
