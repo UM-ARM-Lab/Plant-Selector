@@ -21,7 +21,7 @@ class WeedDataCollector:
         rospy.Subscriber("/rviz_selected_points", PointCloud2, self.selection_callback)
 
         # Initialize parent directory for getting data
-        self.parent_directory = "/home/christianforeman/catkin_ws/src/plant_selector/weed_pcs/"
+        self.parent_directory = "/home/christianforeman/catkin_ws/src/plant_selector/weed_eval/"
 
         # Need to find a way to initialize this number
         self.number = 1
@@ -34,18 +34,22 @@ class WeedDataCollector:
 
         if self.selection_type == SelectionType.WEED_PC:
             # Create filename and save
-            filename += "weed_" + str(self.number) + "_pc.npy"
+            filename += "pcs/" + str(self.number) + ".npy"
             np.save(filename, points)
 
             # Next selection should be for a weed center
             self.selection_type = SelectionType.WEED_CENTER
         else:
+            if points.shape[0] != 1:
+                print("More points than one selected for the center, do it again please!")
+                return
             # Create filename and save
-            filename += "weed_" + str(self.number) + "_center.npy"
+            filename += "manual_labels/" + str(self.number) + ".npy"
             np.save(filename, points)
 
             # Next Selection should be a brand new weed pc
             self.selection_type = SelectionType.WEED_PC
+            print("Just logged weed #" + str(self.number) + "\'s center. Select pc of next weed")
             self.number += 1
 
 
