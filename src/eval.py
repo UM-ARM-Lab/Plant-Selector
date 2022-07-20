@@ -88,7 +88,7 @@ class WeedMetrics:
         self.data_directory = data_directory
         self.pc_filenames = os.listdir(self.data_directory + 'pcs/')
         self.manual_labels = None
-        self.get_manual_labels()
+        # self.get_manual_labels()
 
         self.pred_model = pred_model
         self.error = None
@@ -101,6 +101,7 @@ class WeedMetrics:
         # Start with an empty array
         pred_stems = []
         parent_directory = self.data_directory + "pcs/"
+        good_pc_filenames = []  # an array containing filenames corresponding to files that resulted in a prediction
         # Fill the array with predicted stem
         for file in self.pc_filenames:
             points = np.load(parent_directory + file)
@@ -109,6 +110,7 @@ class WeedMetrics:
             # if there is a valid prediction, add it, otherwise, ignore
             if stem_pred is not None:
                 pred_stems.append(stem_pred)
+                good_pc_filenames.append(file)
             else:
                 # We did not get a prediction, ignore this case
                 self.skipped_weeds += 1
@@ -118,22 +120,17 @@ class WeedMetrics:
 
         # Remove the files in the array of file names that were unable to make a prediction
         # Remove the stems of weeds that are associated with a point cloud that couldn't make a stem prediction
-        i = 0
-        for pc_file in self.pc_filenames:
-            if pc_file in self.skipped_weeds_filenames:
-                self.pc_filenames.remove(pc_file)
-                self.manual_labels = np.delete(self.manual_labels, i, 0)
-            else:
-                i += 1
-
-        # Reshape
+        self.manual_labels = []
+        for filename in good_pc_filenames:
+            self.manual_labels.append(np.load(self.data_directory + "manual_labels/" + filename)[:, :3])
+        self.manual_labels = np.asarray(self.manual_labels)
         self.manual_labels = self.manual_labels.reshape(self.manual_labels.shape[0], 3)
 
         self.compute_distances(pred_stems)
         self.metric_printer()
 
         for sample in range(len(self.error)):
-            file = parent_directory + self.pc_filenames[sample]
+            file = parent_directory + good_pc_filenames[sample]
             pc = np.load(file)
             mean_pc = np.mean(pc[:, :3], axis=0)
             pc_norm = pc
@@ -144,7 +141,9 @@ class WeedMetrics:
             hp.publish_pc_with_color(self.pc_pub, pc_norm, self.frame_id)
             hp.publish_pc_no_color(self.centroid_pub, pred_stem_norm, self.frame_id)
             hp.publish_pc_no_color(self.stem_pub, true_stem_norm, self.frame_id)
-            input(f"Currently viewing {str(self.pc_filenames[sample])}. Press enter to see next sample.")
+            print(self.manual_labels[sample].reshape(1, 3))
+            input(f"Currently viewing {str(good_pc_filenames[sample])}. Error of {self.error[sample]}.\n"
+                  f"Press enter to see next sample.")
 
     def compute_distances(self, centroids):
         self.error = np.linalg.norm(self.manual_labels[:, :3] - centroids[:, :3], axis=1)
