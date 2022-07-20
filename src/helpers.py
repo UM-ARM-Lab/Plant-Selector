@@ -1,14 +1,19 @@
 #!/usr/bin/env python
-import rospy
-import sensor_msgs
-from sensor_msgs import point_cloud2
-from sensor_msgs.msg import PointField
-from std_msgs.msg import Header
 import ctypes
 import struct
-import numpy as np
-from sklearn.cluster import DBSCAN
+
 import hdbscan
+import numpy as np
+from matplotlib import colors
+
+import ros_numpy
+import rospy
+import sensor_msgs
+from geometry_msgs.msg import Point
+from sensor_msgs import point_cloud2
+from sensor_msgs.msg import PointField
+from std_msgs.msg import Header, ColorRGBA
+from visualization_msgs.msg import Marker
 
 
 def publish_pc_no_color(publisher, points, frame_id):
@@ -72,6 +77,7 @@ def float_to_rgb(float_rgb):
 
     return color
 
+
 def cluster_filter(pc):
     points = np.array(list(sensor_msgs.point_cloud2.read_points(pc)))
 
@@ -114,6 +120,8 @@ def cluster_filter(pc):
     return best_selection
 
 # TODO: Eventually make this filter take in the upper/lowerbounds so it isnt just green
+
+
 def green_color_filter(points):
     """
     Filters out points that are not green
@@ -150,3 +158,103 @@ def green_color_filter(points):
     return points[green_points_indices]
 
 
+def rotation_matrix_from_vectors(vec1, vec2):
+    """ Find the rotation matrix that aligns vec1 to vec2
+    :param vec1: A 3d "source" vector
+    :param vec2: A 3d "destination" vector
+    :return mat: A transform matrix (3x3) which when applied to vec1, aligns it with vec2.
+    """
+    a, b = (vec1 / np.linalg.norm(vec1)).reshape(3), (vec2 / np.linalg.norm(vec2)).reshape(3)
+    v = np.cross(a, b)
+    c = np.dot(a, b)
+    s = np.linalg.norm(v)
+    kmat = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+    rotation_matrix = np.eye(3) + kmat + kmat.dot(kmat) * ((1 - c) / (s ** 2))
+    return rotation_matrix
+
+
+def rviz_arrow(frame_id, arrow_pub, start, direction, name, thickness, length_scale, color):
+    """
+    This function displays an arrow in Rviz.
+
+    :param start: vector with coordinates of the start point (origin)
+    :param direction: vector that defines de direction of the arrow
+    :param name: namespace to display in Rviz
+    :param thickness: thickness of the arrow
+    :param length_scale: length of the arrow
+    :param color: color of the arrow
+    :return: None
+    """
+    color_msg = ColorRGBA(*colors.to_rgba(color))
+
+    # Define ROS message
+    msg = Marker()
+    msg.type = Marker.ARROW
+    msg.action = Marker.ADD
+    msg.ns = name
+    msg.header.frame_id = frame_id
+    msg.color = color_msg
+
+    # Define endpoint of the arrow, given by the start point, the direction and a length_scale parameter
+    end = start + direction * length_scale
+    # Construct ROS message for the start and end of the arrow
+    msg.points = [
+        ros_numpy.msgify(Point, start),
+        ros_numpy.msgify(Point, end),
+    ]
+    msg.pose.orientation.w = 1
+    msg.scale.x = thickness
+    msg.scale.y = thickness * 2
+
+    # Publish message
+    arrow_pub.publish(msg)
+
+
+def plot_plane(frame_id, plane_pub, centroid, normal, size: float = 1, res: float = 0.01):
+    """
+    This function plots a plane in Rviz.
+
+    :param centroid: centroid of the inliers
+    :param normal: normal vector of the plane
+    :param size: size of the plane
+    :param res: resolution of the plane (there will be a point every "res" distance)
+    :return: None
+    """
+    # Get three orthogonal vectors
+    # Create a random vector from the normal vector
+    r = normal + [1, 0, 0]
+    # Normalize normal vector
+    r = r / np.linalg.norm(r)
+    # Normalize normal vector
+    v0 = normal / np.linalg.norm(normal)
+    # The other two orthogonal vectors
+    v1 = np.cross(v0, r)
+    v2 = np.cross(v0, v1)
+
+    # Define the size and resolution of the plane
+    t = np.arange(-size, size, res)
+
+    # Construct 't' by 3 matrix
+    v1s = t[:, None] * v1[None, :]
+    v2s = t[:, None] * v2[None, :]
+
+    # Construct a 't' by 't' by 3 matrix for the plane
+    v1s_repeated = np.tile(v1s, [t.size, 1, 1])
+    # Define the points that will construct the plane
+    points = centroid + v1s_repeated + v2s[:, None]
+    # Flatten the points
+    points_flat = points.reshape([-1, 3])
+
+    # Call the function to plot plane as a PC
+    publish_pc_no_color(plane_pub, points_flat[:, :3], frame_id)
+
+
+def project(u, n):
+    """
+    This functions projects a vector "u" to a plane "n" following a mathematical equation.
+
+    :param u: vector that is going to be projected. (numpy array)
+    :param n: normal vector of the plane (numpy array)
+    :return: vector projected onto the plane (numpy array)
+    """
+    return u - np.dot(u, n) / np.linalg.norm(n) * n

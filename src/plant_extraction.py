@@ -4,17 +4,13 @@ from statistics import mode
 
 import numpy as np
 import open3d as o3d
-from matplotlib import colors
 from sklearn.decomposition import PCA
 
 import helpers as hp
-import ros_numpy
 import rospy
 from arc_utilities.tf2wrapper import TF2Wrapper
-from geometry_msgs.msg import Point
 from sensor_msgs import point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2
-from std_msgs.msg import ColorRGBA
 from std_msgs.msg import String
 from tf.transformations import rotation_matrix
 from visualization_msgs.msg import Marker
@@ -60,91 +56,6 @@ class PlantExtractor:
         """
         self.mode = new_mode.data
         rospy.loginfo("New mode: " + self.mode)
-
-    @staticmethod
-    def project(u, n):
-        """
-        This functions projects a vector "u" to a plane "n" following a mathematical equation.
-
-        :param u: vector that is going to be projected. (numpy array)
-        :param n: normal vector of the plane (numpy array)
-        :return: vector projected onto the plane (numpy array)
-        """
-        return u - np.dot(u, n) / np.linalg.norm(n) * n
-
-    def rviz_arrow(self, start, direction, name, thickness, length_scale, color):
-        """
-        This function displays an arrow in Rviz.
-
-        :param start: vector with coordinates of the start point (origin)
-        :param direction: vector that defines de direction of the arrow
-        :param name: namespace to display in Rviz
-        :param thickness: thickness of the arrow
-        :param length_scale: length of the arrow
-        :param color: color of the arrow
-        :return: None
-        """
-        color_msg = ColorRGBA(*colors.to_rgba(color))
-
-        # Define ROS message
-        msg = Marker()
-        msg.type = Marker.ARROW
-        msg.action = Marker.ADD
-        msg.ns = name
-        msg.header.frame_id = self.frame_id
-        msg.color = color_msg
-
-        # Define endpoint of the arrow, given by the start point, the direction and a length_scale parameter
-        end = start + direction * length_scale
-        # Construct ROS message for the start and end of the arrow
-        msg.points = [
-            ros_numpy.msgify(Point, start),
-            ros_numpy.msgify(Point, end),
-        ]
-        msg.pose.orientation.w = 1
-        msg.scale.x = thickness
-        msg.scale.y = thickness * 2
-
-        # Publish message
-        self.arrow_pub.publish(msg)
-
-    def plot_plane(self, centroid, normal, size: float = 1, res: float = 0.01):
-        """
-        This function plots a plane in Rviz.
-
-        :param centroid: centroid of the inliers
-        :param normal: normal vector of the plane
-        :param size: size of the plane
-        :param res: resolution of the plane (there will be a point every "res" distance)
-        :return: None
-        """
-        # Get three orthogonal vectors
-        # Create a random vector from the normal vector
-        r = normal + [1, 0, 0]
-        # Normalize normal vector
-        r = r / np.linalg.norm(r)
-        # Normalize normal vector
-        v0 = normal / np.linalg.norm(normal)
-        # The other two orthogonal vectors
-        v1 = np.cross(v0, r)
-        v2 = np.cross(v0, v1)
-
-        # Define the size and resolution of the plane
-        t = np.arange(-size, size, res)
-
-        # Construct 't' by 3 matrix
-        v1s = t[:, None] * v1[None, :]
-        v2s = t[:, None] * v2[None, :]
-
-        # Construct a 't' by 't' by 3 matrix for the plane
-        v1s_repeated = np.tile(v1s, [t.size, 1, 1])
-        # Define the points that will construct the plane
-        points = centroid + v1s_repeated + v2s[:, None]
-        # Flatten the points
-        points_flat = points.reshape([-1, 3])
-
-        # Call the function to plot plane as a PC
-        hp.publish_pc_no_color(self.plane_pub, points_flat[:, :3], self.frame_id)
 
     def select_branch(self, selection):
         """
@@ -311,7 +222,7 @@ class PlantExtractor:
 
     def visualize_gripper(self, camera2target, normal):
         # Call the project function to get the cut direction vector
-        cut_direction = self.project(camera2target, normal)
+        cut_direction = hp.project(camera2target, normal)
         # Normalize the projected vector
         cut_direction_normalized = cut_direction / np.linalg.norm(cut_direction)
         # Cross product between normalized cut director vector and the normal of the plane to obtain the
@@ -348,8 +259,9 @@ class PlantExtractor:
     def publish_debug_data(self, source, inliers, origin, normal):
         hp.publish_pc_no_color(self.src_pub, source[:, :3], self.frame_id)
         hp.publish_pc_no_color(self.inliers_pub, inliers[:, :3], self.frame_id)
-        self.rviz_arrow(origin, normal, name='normal', thickness=0.008, length_scale=0.15, color='w')
-        self.plot_plane(origin, normal, size=0.1, res=0.001)
+        hp.rviz_arrow(self.frame_id, self.arrow_pub, origin, normal, name='normal', thickness=0.008, length_scale=0.15,
+                      color='w')
+        hp.plot_plane(self.frame_id, self.plane_pub, origin, normal, size=0.1, res=0.001)
 
 
 def main():
