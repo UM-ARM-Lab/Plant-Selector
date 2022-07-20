@@ -100,7 +100,7 @@ class WeedMetrics:
     def run_eval(self):
         # Start with an empty array
         pred_stems = []
-        parent_directory = self.data_directory + "pcs/"
+        pc_parent_directory = self.data_directory + "pcs/"
         good_pc_filenames = []  # an array containing filenames corresponding to files that resulted in a prediction
         # Fill the array with predicted stem
         for file in self.pc_filenames:
@@ -121,8 +121,9 @@ class WeedMetrics:
         # Remove the files in the array of file names that were unable to make a prediction
         # Remove the stems of weeds that are associated with a point cloud that couldn't make a stem prediction
         self.manual_labels = []
+        man_labels_parent_directory = self.data_directory + "manual_labels/"
         for filename in good_pc_filenames:
-            self.manual_labels.append(np.load(self.data_directory + "manual_labels/" + filename)[:, :3])
+            self.manual_labels.append(np.load(man_labels_parent_directory + "manual_labels/" + filename)[:, :3])
         self.manual_labels = np.asarray(self.manual_labels)
         self.manual_labels = self.manual_labels.reshape(self.manual_labels.shape[0], 3)
 
@@ -130,7 +131,7 @@ class WeedMetrics:
         self.metric_printer()
 
         for sample in range(len(self.error)):
-            file = parent_directory + good_pc_filenames[sample]
+            file = pc_parent_directory + good_pc_filenames[sample]
             pc = np.load(file)
             mean_pc = np.mean(pc[:, :3], axis=0)
             pc_norm = pc
