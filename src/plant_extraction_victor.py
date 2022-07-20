@@ -232,7 +232,6 @@ class PlantExtractor:
         # 2nd principal component
         cut_y = np.cross(cut_direction_normalized, normal)
 
-
         # Get 3x3 rotation matrix
         # The first row is the x-axis of the tool frame in the camera frame
         camera2tool_rot = np.array([normal, cut_y, cut_direction_normalized]).T

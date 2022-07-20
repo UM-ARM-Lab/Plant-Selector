@@ -40,7 +40,7 @@ def calculate_weed_centroid(list_files, centroids, path_pcs):
 
         if len(green_points_indices[0]) == 1:
             print("No green points found. Try again.")
-            return
+            continue
 
         # Save xyzrgb info in green_points (type: numpy array)
         green_points_xyz = pcd_points[green_points_indices]
@@ -57,7 +57,7 @@ def calculate_weed_centroid(list_files, centroids, path_pcs):
 
         if len(green_points_indices[0]) == 0:
             print("Not enough points. Try again.")
-            return
+            continue
 
         # Just keep the inlier points in the point cloud
         green_pcd = green_pcd.select_by_index(ind)
@@ -69,7 +69,7 @@ def calculate_weed_centroid(list_files, centroids, path_pcs):
         n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
         if n_clusters == 0:
             print("Not enough points. Try again.")
-            return
+            continue
         # Get labels of the biggest cluster
         biggest_cluster_indices = np.where(labels[:] == mode(labels))
         # Just keep the points that correspond to the biggest cluster (weed)
@@ -125,7 +125,7 @@ class WeedMetrics:
             hp.publish_pc_with_color(self.pc_pub, pc_norm, self.frame_id)
             hp.publish_pc_no_color(self.centroid_pub, centroid_norm, self.frame_id)
             hp.publish_pc_no_color(self.stem_pub, manual_labels, self.frame_id)
-            input(f"Sample {sample + 1}")
+            input(f"Currently viewing {str(self.list_files_pcs[sample])}. Press enter to see next sample.")
 
     def compute_distances(self, centroids):
         self.error = np.linalg.norm(self.manual_labels[:, :3] - centroids[:, :3], axis=1)
@@ -146,8 +146,8 @@ def main():
     rospy.init_node('weed_eval')
 
     # Create paths for pcs and manual labels
-    path_pcs = "/home/miguel/catkin_ws/src/plant_selector/weed_eval/pcs/"
-    path_manual_labels = "/home/miguel/catkin_ws/src/plant_selector/weed_eval/manual_labels/"
+    path_pcs = "/home/christianforeman/catkin_ws/src/plant_selector/weed_eval/pcs/"
+    path_manual_labels = "/home/christianforeman/catkin_ws/src/plant_selector/weed_eval/manual_labels/"
 
     # Run the evaluation
     evaluator = WeedMetrics(path_pcs, path_manual_labels, calculate_weed_centroid)
