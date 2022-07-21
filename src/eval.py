@@ -10,6 +10,7 @@ import open3d as o3d
 import helpers as hp
 import rospy
 from sensor_msgs.msg import PointCloud2
+from visualization_msgs.msg import Marker
 
 
 def calculate_weed_centroid(points):
@@ -72,7 +73,41 @@ def calculate_weed_centroid(points):
     # Get coordinates of the weed centroid
     weed_centroid = np.mean(green_pcd_points, axis=0)
 
-    return weed_centroid
+    dirt_indices = np.arange(0, len(pcd_points))
+    # These are the indices for dirt
+    dirt_indices = np.setdiff1d(dirt_indices, green_points_indices)
+    # Save xyzrgb info in dirt_points (type: numpy array) from remaining indices of green points filter
+    dirt_points_xyz = pcd_points[dirt_indices]
+    dirt_points_rgb = pcd_colors[dirt_indices]
+    # Create PC for dirt points
+    dirt_pcd = o3d.geometry.PointCloud()
+    # Save points and color to the point cloud
+    dirt_pcd.points = o3d.utility.Vector3dVector(dirt_points_xyz)
+    dirt_pcd.colors = o3d.utility.Vector3dVector(dirt_points_rgb)
+
+    # Apply plane segmentation function from open3d and get the best inliers
+    plane_model, best_inliers = dirt_pcd.segment_plane(distance_threshold=0.0005,
+                                                       ransac_n=3,
+                                                       num_iterations=1000)
+
+    if len(best_inliers) == 0:
+        rospy.loginfo("Can't find dirt, Select both weed and dirt.")
+
+    [a, b, c, _] = plane_model
+    # Just save and continue working with the inlier points defined by the plane segmentation function
+    inlier_dirt_points = dirt_points_xyz[best_inliers]
+    # Get centroid of dirt
+    inlier_dirt_centroid = np.mean(inlier_dirt_points, axis=0)
+    dirt_pcd_send = o3d.geometry.PointCloud()
+    # Save points and color to the point cloud
+    dirt_pcd_send.points = o3d.utility.Vector3dVector(inlier_dirt_points)
+    # The a, b, c coefficients of the plane equation are the components of the normal vector of that plane
+    if a < 0:
+        normal = np.asarray([a, b, c])
+    else:
+        normal = -np.asarray([a, b, c])
+
+    return weed_centroid, normal
 
 
 class WeedMetrics:
@@ -84,6 +119,7 @@ class WeedMetrics:
         self.pc_pub = rospy.Publisher("point_cloud", PointCloud2, queue_size=10)
         self.centroid_pub = rospy.Publisher("centroid", PointCloud2, queue_size=10)
         self.stem_pub = rospy.Publisher("stem", PointCloud2, queue_size=10)
+        self.arrow_pub = rospy.Publisher("normal_rotations", Marker, queue_size=10)
 
         self.data_directory = data_directory
         self.pc_filenames = os.listdir(self.data_directory + 'pcs/')
@@ -100,21 +136,24 @@ class WeedMetrics:
     def run_eval(self):
         # Start with an empty array
         pred_stems = []
+        normals = []
         parent_directory = self.data_directory + "pcs/"
         # Fill the array with predicted stem
         for file in self.pc_filenames:
             points = np.load(parent_directory + file)
-            stem_pred = self.pred_model(points)
+            stem_pred, normal = self.pred_model(points)
 
             # if there is a valid prediction, add it, otherwise, ignore
             if stem_pred is not None:
                 pred_stems.append(stem_pred)
+                normals.append(normal)
             else:
                 # We did not get a prediction, ignore this case
                 self.skipped_weeds += 1
                 self.skipped_weeds_filenames.append(file)
 
         pred_stems = np.asarray(pred_stems)
+        normals = np.asarray(normals)
 
         # Remove the files in the array of file names that were unable to make a prediction
         # Remove the stems of weeds that are associated with a point cloud that couldn't make a stem prediction
@@ -133,17 +172,27 @@ class WeedMetrics:
         self.metric_printer()
 
         for sample in range(len(self.error)):
+            mat = hp.rotation_matrix_from_vectors(normals[sample], np.asarray([0, 0, 1]))
+            normal_rot = mat.dot(normals[sample])
+
             file = parent_directory + self.pc_filenames[sample]
             pc = np.load(file)
             mean_pc = np.mean(pc[:, :3], axis=0)
             pc_norm = pc
             pc_norm[:, :3] = pc[:, :3] - mean_pc
+            pc_trans = np.transpose(pc_norm[:, :3])
+            for point in range(pc_trans.shape[1]):
+                pc_norm[point, :3] = np.matmul(mat, pc_trans[:, point])
             pred_stem_norm = pred_stems[sample].reshape(1, 3) - mean_pc
             true_stem_norm = self.manual_labels[sample].reshape(1, 3) - mean_pc
 
             hp.publish_pc_with_color(self.pc_pub, pc_norm, self.frame_id)
             hp.publish_pc_no_color(self.centroid_pub, pred_stem_norm, self.frame_id)
             hp.publish_pc_no_color(self.stem_pub, true_stem_norm, self.frame_id)
+            hp.rviz_arrow(self.frame_id, self.arrow_pub, np.asarray([0, 0, 0]), normals[sample], name='normal',
+                          thickness=0.008, length_scale=0.15, color='r')
+            hp.rviz_arrow(self.frame_id, self.arrow_pub, np.asarray([0, 0, 0]), normal_rot, name='normal_rot',
+                          thickness=0.008, length_scale=0.15, color='b')
             input(f"Currently viewing {str(self.pc_filenames[sample])}. Press enter to see next sample.")
 
     def compute_distances(self, centroids):
@@ -172,7 +221,7 @@ def main():
     rospy.init_node('weed_eval')
 
     # Create paths for pcs and manual labels
-    data_directory = "/home/christianforeman/catkin_ws/src/plant_selector/weed_eval/"
+    data_directory = "/home/miguel/catkin_ws/src/plant_selector/weed_eval/"
 
     # Run the evaluation
     evaluator = WeedMetrics(data_directory, calculate_weed_centroid)
