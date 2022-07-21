@@ -132,7 +132,7 @@ def calculate_weed_centroid(points):
     else:
         normal = -np.asarray([a, b, c])
 
-    return weed_centroid, normal
+    return weed_centroid
 
 
 class WeedMetrics:
@@ -163,38 +163,27 @@ class WeedMetrics:
 
     def run_eval(self):
         # Start with an empty array
+        good_pc_filenames = []
         pred_stems = []
-<<<<<<< HEAD
-        normals = []
-        parent_directory = self.data_directory + "pcs/"
-        # Fill the array with predicted stem
-        for file in self.pc_filenames:
-            points = np.load(parent_directory + file)
-            stem_pred, normal = self.pred_model(points)
-=======
+        # normals = []
         pc_parent_directory = self.data_directory + "pcs/"
-        good_pc_filenames = []  # an array containing filenames corresponding to files that resulted in a prediction
         # Fill the array with predicted stem
         for file in self.pc_filenames:
             points = np.load(pc_parent_directory + file)
             stem_pred = self.pred_model(points)
->>>>>>> 8aba3459ed2a9fb4e18d042a41d1a3ebfb35a3e1
 
             # if there is a valid prediction, add it, otherwise, ignore
             if stem_pred is not None:
                 pred_stems.append(stem_pred)
-<<<<<<< HEAD
-                normals.append(normal)
-=======
+                # normals.append(normal)
                 good_pc_filenames.append(file)
->>>>>>> 8aba3459ed2a9fb4e18d042a41d1a3ebfb35a3e1
             else:
                 # We did not get a prediction, ignore this case
                 self.skipped_weeds += 1
                 self.skipped_weeds_filenames.append(file)
 
         pred_stems = np.asarray(pred_stems)
-        normals = np.asarray(normals)
+        # normals = np.asarray(normals)
 
         # Remove the files in the array of file names that were unable to make a prediction
         # Remove the stems of weeds that are associated with a point cloud that couldn't make a stem prediction
@@ -209,40 +198,31 @@ class WeedMetrics:
         self.metric_printer()
 
         for sample in range(len(self.error)):
-<<<<<<< HEAD
-            mat = hp.rotation_matrix_from_vectors(normals[sample], np.asarray([0, 0, 1]))
-            normal_rot = mat.dot(normals[sample])
+            # mat = hp.rotation_matrix_from_vectors(normals[sample], np.asarray([0, 0, 1]))
+            # normal_rot = mat.dot(normals[sample])
 
-            file = parent_directory + self.pc_filenames[sample]
-=======
             file = pc_parent_directory + good_pc_filenames[sample]
->>>>>>> 8aba3459ed2a9fb4e18d042a41d1a3ebfb35a3e1
             pc = np.load(file)
             mean_pc = np.mean(pc[:, :3], axis=0)
             pc_norm = pc
             pc_norm[:, :3] = pc[:, :3] - mean_pc
             pc_trans = np.transpose(pc_norm[:, :3])
-            for point in range(pc_trans.shape[1]):
-                pc_norm[point, :3] = np.matmul(mat, pc_trans[:, point])
+            # for point in range(pc_trans.shape[1]):
+            #     pc_norm[point, :3] = np.matmul(mat, pc_trans[:, point])
             pred_stem_norm = pred_stems[sample].reshape(1, 3) - mean_pc
             true_stem_norm = self.manual_labels[sample].reshape(1, 3) - mean_pc
 
             hp.publish_pc_with_color(self.pc_pub, pc_norm, self.frame_id)
             hp.publish_pc_no_color(self.centroid_pub, pred_stem_norm, self.frame_id)
             hp.publish_pc_no_color(self.stem_pub, true_stem_norm, self.frame_id)
-<<<<<<< HEAD
-            hp.rviz_arrow(self.frame_id, self.arrow_pub, np.asarray([0, 0, 0]), normals[sample], name='normal',
-                          thickness=0.008, length_scale=0.15, color='r')
-            hp.rviz_arrow(self.frame_id, self.arrow_pub, np.asarray([0, 0, 0]), normal_rot, name='normal_rot',
-                          thickness=0.008, length_scale=0.15, color='b')
-            input(f"Currently viewing {str(self.pc_filenames[sample])}. Press enter to see next sample.")
-=======
+            # hp.rviz_arrow(self.frame_id, self.arrow_pub, np.asarray([0, 0, 0]), normals[sample], name='normal',
+            #               thickness=0.008, length_scale=0.15, color='r')
+            # hp.rviz_arrow(self.frame_id, self.arrow_pub, np.asarray([0, 0, 0]), normal_rot, name='normal_rot',
+            #               thickness=0.008, length_scale=0.15, color='b')
             input(f"Currently viewing {str(good_pc_filenames[sample])}. Error of {self.error[sample]}.\n"
                   f"Press enter to see next sample.")
 
         # Clear out the prediction/actual to clear up rviz
-        hp.publish_pc_no_color(self.centroid_pub, np.array([]), self.frame_id)
-        hp.publish_pc_no_color(self.stem_pub, np.array([]), self.frame_id)
         print("\n\n\n\nNow viewing the cases where a weed stem could not be predicted.")
         for no_pred_weed in self.skipped_weeds_filenames:
             file = pc_parent_directory + no_pred_weed
@@ -252,7 +232,6 @@ class WeedMetrics:
             pc_norm[:, :3] = pc[:, :3] - mean_pc
             hp.publish_pc_with_color(self.pc_pub, pc_norm, self.frame_id)
             input(f"Currently viewing {no_pred_weed}. Could not make a prediction.")
->>>>>>> 8aba3459ed2a9fb4e18d042a41d1a3ebfb35a3e1
 
     def compute_distances(self, centroids):
         self.error = np.linalg.norm(self.manual_labels[:, :3] - centroids[:, :3], axis=1)
@@ -285,7 +264,7 @@ def main():
     rospy.init_node('weed_eval')
 
     # Create paths for pcs and manual labels
-    data_directory = "/home/miguel/catkin_ws/src/plant_selector/weed_eval/"
+    data_directory = "/home/christianforeman/catkin_ws/src/plant_selector/weed_eval/"
 
     # Run the evaluation
     evaluator = WeedMetrics(data_directory, calculate_weed_centroid, gripper_size=0.015)
