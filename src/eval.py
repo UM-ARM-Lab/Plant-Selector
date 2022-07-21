@@ -104,7 +104,7 @@ class WeedMetrics:
         good_pc_filenames = []  # an array containing filenames corresponding to files that resulted in a prediction
         # Fill the array with predicted stem
         for file in self.pc_filenames:
-            points = np.load(parent_directory + file)
+            points = np.load(pc_parent_directory + file)
             stem_pred = self.pred_model(points)
 
             # if there is a valid prediction, add it, otherwise, ignore
@@ -123,7 +123,7 @@ class WeedMetrics:
         self.manual_labels = []
         man_labels_parent_directory = self.data_directory + "manual_labels/"
         for filename in good_pc_filenames:
-            self.manual_labels.append(np.load(man_labels_parent_directory + "manual_labels/" + filename)[:, :3])
+            self.manual_labels.append(np.load(man_labels_parent_directory + filename)[:, :3])
         self.manual_labels = np.asarray(self.manual_labels)
         self.manual_labels = self.manual_labels.reshape(self.manual_labels.shape[0], 3)
 
