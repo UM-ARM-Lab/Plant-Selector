@@ -131,6 +131,8 @@ class PlantExtractor:
         # Get the indices of the points with g parameter greater than x
         green_points_indices = np.where((pcd_colors[:, 1] - pcd_colors[:, 0] > pcd_colors[:, 1] / 10.0) &
                                         (pcd_colors[:, 1] - pcd_colors[:, 2] > pcd_colors[:, 1] / 10.0))
+        # green_points_indices = np.where((pcd_colors[:, 1] - pcd_colors[:, 0] > 8) &
+        #                                 (pcd_colors[:, 1] - pcd_colors[:, 2] > 8))
         green_points_xyz = pcd_points[green_points_indices]
         green_points_rgb = pcd_colors[green_points_indices]
 

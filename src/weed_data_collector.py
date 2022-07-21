@@ -24,7 +24,7 @@ class WeedDataCollector:
         self.parent_directory = "/home/christianforeman/catkin_ws/src/plant_selector/weed_eval/"
 
         # Need to find a way to initialize this number
-        self.number = 51
+        self.number = 76
         self.selection_type = SelectionType.WEED_PC
 
     # Unsure if this will be necessary, but will keep for now, may want a most recent pointcloud or something like that

@@ -223,6 +223,9 @@ class WeedMetrics:
                   f"Press enter to see next sample.")
 
         # Clear out the prediction/actual to clear up rviz
+        hp.publish_pc_no_color(self.centroid_pub, np.array([]), self.frame_id)
+        hp.publish_pc_no_color(self.stem_pub, np.array([]), self.frame_id)
+
         print("\n\n\n\nNow viewing the cases where a weed stem could not be predicted.")
         for no_pred_weed in self.skipped_weeds_filenames:
             file = pc_parent_directory + no_pred_weed
