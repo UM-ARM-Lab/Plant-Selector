@@ -46,8 +46,8 @@ def calculate_weed_centroid(points):
 
     # Filter the point cloud so that only the green points stay
     # Get the indices of the points with g parameter greater than x
-    green_points_indices = np.where((pcd_colors[:, 1] - pcd_colors[:, 0] > 12) &
-                                    (pcd_colors[:, 1] - pcd_colors[:, 2] > 12))
+    green_points_indices = np.where((pcd_colors[:, 1] - pcd_colors[:, 0] > pcd_colors[:, 1] / 12.0) &
+                                    (pcd_colors[:, 1] - pcd_colors[:, 2] > pcd_colors[:, 1] / 12.0))
     green_points_xyz = pcd_points[green_points_indices]
     green_points_rgb = pcd_colors[green_points_indices]
 
