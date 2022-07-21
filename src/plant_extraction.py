@@ -125,23 +125,28 @@ class PlantExtractor:
             rgb = hp.float_to_rgb(x)
             pcd_colors = np.vstack((pcd_colors, rgb))
 
-        pcd_colors = pcd_colors[1:, :] / 255
+        pcd_colors = pcd_colors[1:, :]
 
         # Filter the point cloud so that only the green points stay
         # Get the indices of the points with g parameter greater than x
-        r_low, g_low, b_low = 0.1, 0.3, 0.1
-        r_high, g_high, b_high = 0.8, 0.8, 0.6
-        green_points_indices = np.where((pcd_colors[:, 0] > r_low) & (pcd_colors[:, 0] < r_high) &
-                                        (pcd_colors[:, 1] > g_low) & (pcd_colors[:, 1] < g_high) &
-                                        (pcd_colors[:, 2] > b_low) & (pcd_colors[:, 2] < b_high))
+        green_points_indices = np.where((pcd_colors[:, 1] - pcd_colors[:, 0] > pcd_colors[:, 1] / 10.0) &
+                                        (pcd_colors[:, 1] - pcd_colors[:, 2] > pcd_colors[:, 1] / 10.0))
+        green_points_xyz = pcd_points[green_points_indices]
+        green_points_rgb = pcd_colors[green_points_indices]
+
+        r_low, g_low, b_low = 10, 20, 10
+        r_high, g_high, b_high = 240, 240, 240
+        green_points_indices = np.where((green_points_rgb[:, 0] > r_low) & (green_points_rgb[:, 0] < r_high) &
+                                        (green_points_rgb[:, 1] > g_low) & (green_points_rgb[:, 1] < g_high) &
+                                        (green_points_rgb[:, 2] > b_low) & (green_points_rgb[:, 2] < b_high))
 
         if len(green_points_indices[0]) == 1:
             rospy.loginfo("No green points found. Try again.")
             return
 
         # Save xyzrgb info in green_points (type: numpy array)
-        green_points_xyz = pcd_points[green_points_indices]
-        green_points_rgb = pcd_colors[green_points_indices]
+        green_points_xyz = green_points_xyz[green_points_indices]
+        green_points_rgb = green_points_rgb[green_points_indices]
 
         hp.publish_pc_no_color(self.green_pub, green_points_xyz, self.frame_id)
 
@@ -164,7 +169,7 @@ class PlantExtractor:
         hp.publish_pc_no_color(self.remove_rad_pub, green_pcd_points, self.frame_id)
 
         # Apply DBSCAN to green points
-        labels = np.array(green_pcd.cluster_dbscan(eps=0.007, min_points=15))  # This is actually pretty good
+        labels = np.array(green_pcd.cluster_dbscan(eps=0.0055, min_points=15))  # This is actually pretty good
 
         n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
         if n_clusters == 0:
