@@ -22,23 +22,48 @@ def calculate_weed_centroid(points):
         rgb = hp.float_to_rgb(x)
         pcd_colors = np.vstack((pcd_colors, rgb))
 
-    pcd_colors = pcd_colors[1:, :] / 255
+    # # OG Color Filter
+    # pcd_colors = pcd_colors[1:, :] / 255
+    #
+    # # Filter the point cloud so that only the green points stay
+    # # Get the indices of the points with g parameter greater than x
+    # r_low, g_low, b_low = 0.1, 0.3, 0.1
+    # r_high, g_high, b_high = 0.8, 0.8, 0.6
+    # green_points_indices = np.where((pcd_colors[:, 0] > r_low) & (pcd_colors[:, 0] < r_high) &
+    #                                 (pcd_colors[:, 1] > g_low) & (pcd_colors[:, 1] < g_high) &
+    #                                 (pcd_colors[:, 2] > b_low) & (pcd_colors[:, 2] < b_high))
+    #
+    # if len(green_points_indices[0]) == 1:
+    #     print("No green points found. Try again.")
+    #     return None
+    #
+    # # Save xyzrgb info in green_points (type: numpy array)
+    # green_points_xyz = pcd_points[green_points_indices]
+    # green_points_rgb = pcd_colors[green_points_indices]
+
+    # Alternate green color filter
+    pcd_colors = pcd_colors[1:, :]
 
     # Filter the point cloud so that only the green points stay
     # Get the indices of the points with g parameter greater than x
-    r_low, g_low, b_low = 0.1, 0.3, 0.1
-    r_high, g_high, b_high = 0.8, 0.8, 0.6
-    green_points_indices = np.where((pcd_colors[:, 0] > r_low) & (pcd_colors[:, 0] < r_high) &
-                                    (pcd_colors[:, 1] > g_low) & (pcd_colors[:, 1] < g_high) &
-                                    (pcd_colors[:, 2] > b_low) & (pcd_colors[:, 2] < b_high))
-
-    if len(green_points_indices[0]) == 1:
-        print("No green points found. Try again.")
-        return None
-
-    # Save xyzrgb info in green_points (type: numpy array)
+    green_points_indices = np.where((pcd_colors[:, 1] - pcd_colors[:, 0] > 12) &
+                                    (pcd_colors[:, 1] - pcd_colors[:, 2] > 12))
     green_points_xyz = pcd_points[green_points_indices]
     green_points_rgb = pcd_colors[green_points_indices]
+
+    r_low, g_low, b_low = 10, 20, 10
+    r_high, g_high, b_high = 240, 240, 240
+    green_points_indices = np.where((green_points_rgb[:, 0] > r_low) & (green_points_rgb[:, 0] < r_high) &
+                                    (green_points_rgb[:, 1] > g_low) & (green_points_rgb[:, 1] < g_high) &
+                                    (green_points_rgb[:, 2] > b_low) & (green_points_rgb[:, 2] < b_high))
+
+    if len(green_points_indices[0]) == 1:
+        rospy.loginfo("No green points found. Try again.")
+        return
+
+    # Save xyzrgb info in green_points (type: numpy array)
+    green_points_xyz = green_points_xyz[green_points_indices]
+    green_points_rgb = green_points_rgb[green_points_indices]
 
     # Create Open3D point cloud for green points
     green_pcd = o3d.geometry.PointCloud()
@@ -58,7 +83,7 @@ def calculate_weed_centroid(points):
     green_pcd_points = np.asarray(green_pcd.points)
 
     # Apply DBSCAN to green points
-    labels = np.array(green_pcd.cluster_dbscan(eps=0.007, min_points=15))  # This is actually pretty good
+    labels = np.array(green_pcd.cluster_dbscan(eps=0.0055, min_points=15))  # This is actually pretty good
 
     n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
     if n_clusters == 0:
@@ -76,7 +101,7 @@ def calculate_weed_centroid(points):
 
 
 class WeedMetrics:
-    def __init__(self, data_directory, pred_model):
+    def __init__(self, data_directory, pred_model, gripper_size):
         """
                 Initialize publishers for PCs, arrow and planes.
             """
@@ -90,8 +115,11 @@ class WeedMetrics:
         self.manual_labels = None
         # self.get_manual_labels()
 
+        self.gripper_size = gripper_size
         self.pred_model = pred_model
         self.error = None
+        self.successes = None
+
         self.skipped_weeds = 0
         self.skipped_weeds_filenames = []
 
@@ -142,12 +170,25 @@ class WeedMetrics:
             hp.publish_pc_with_color(self.pc_pub, pc_norm, self.frame_id)
             hp.publish_pc_no_color(self.centroid_pub, pred_stem_norm, self.frame_id)
             hp.publish_pc_no_color(self.stem_pub, true_stem_norm, self.frame_id)
-            print(self.manual_labels[sample].reshape(1, 3))
             input(f"Currently viewing {str(good_pc_filenames[sample])}. Error of {self.error[sample]}.\n"
                   f"Press enter to see next sample.")
 
+        # Clear out the prediction/actual to clear up rviz
+        hp.publish_pc_no_color(self.centroid_pub, np.array([]), self.frame_id)
+        hp.publish_pc_no_color(self.stem_pub, np.array([]), self.frame_id)
+        print("\n\n\n\nNow viewing the cases where a weed stem could not be predicted.")
+        for no_pred_weed in self.skipped_weeds_filenames:
+            file = pc_parent_directory + no_pred_weed
+            pc = np.load(file)
+            mean_pc = np.mean(pc[:, :3], axis=0)
+            pc_norm = pc
+            pc_norm[:, :3] = pc[:, :3] - mean_pc
+            hp.publish_pc_with_color(self.pc_pub, pc_norm, self.frame_id)
+            input(f"Currently viewing {no_pred_weed}. Could not make a prediction.")
+
     def compute_distances(self, centroids):
         self.error = np.linalg.norm(self.manual_labels[:, :3] - centroids[:, :3], axis=1)
+        self.successes = np.sum(np.where(self.error < self.gripper_size / 2, 1, 0))
 
     def get_manual_labels(self):
         parent_directory = self.data_directory + "manual_labels/"
@@ -159,13 +200,17 @@ class WeedMetrics:
         self.manual_labels = np.asarray(self.manual_labels)
 
     def metric_printer(self):
-        print(f"Mean: {np.mean(self.error)}")
+        print(f"\nMean: {np.mean(self.error)}")
         print(f"Median: {np.median(self.error)}")
-        print(f"Std: {np.std(self.error)}")
+        print(f"Std: {np.std(self.error)}\n")
+        print(f"Theoretical Successes: {str(self.successes)}")
+        print(f"Theoretical Failures: {str(len(self.error) - self.successes )}")
+        print(f"Theoretical Success Rate: {str(self.successes / len(self.error))}\n")
 
         if self.skipped_weeds != 0:
             print(f"Unable to make predictions on the following {self.skipped_weeds} files:")
             print(self.skipped_weeds_filenames)
+            print("\n")
 
 
 def main():
@@ -175,7 +220,7 @@ def main():
     data_directory = "/home/christianforeman/catkin_ws/src/plant_selector/weed_eval/"
 
     # Run the evaluation
-    evaluator = WeedMetrics(data_directory, calculate_weed_centroid)
+    evaluator = WeedMetrics(data_directory, calculate_weed_centroid, gripper_size=0.015)
     evaluator.run_eval()
 
 
