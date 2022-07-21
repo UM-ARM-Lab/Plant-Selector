@@ -59,8 +59,8 @@ def calculate_weed_centroid(points):
                                     (green_points_rgb[:, 2] > b_low) & (green_points_rgb[:, 2] < b_high))
 
     if len(green_points_indices[0]) == 1:
-        rospy.loginfo("No green points found. Try again.")
-        return
+        # rospy.loginfo("No green points found. Try again.")
+        return None, None
 
     # Save xyzrgb info in green_points (type: numpy array)
     green_points_xyz = green_points_xyz[green_points_indices]
@@ -76,8 +76,8 @@ def calculate_weed_centroid(points):
     _, ind = green_pcd.remove_radius_outlier(nb_points=7, radius=0.007)
 
     if len(green_points_indices[0]) == 0:
-        print("Not enough points. Try again.")
-        return None
+        # print("Not enough points. Try again.")
+        return None, None
 
     # Just keep the inlier points in the point cloud
     green_pcd = green_pcd.select_by_index(ind)
@@ -88,8 +88,8 @@ def calculate_weed_centroid(points):
 
     n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
     if n_clusters == 0:
-        print("Not enough points. Try again.")
-        return None
+        # print("Not enough points. Try again.")
+        return None, None
     # Get labels of the biggest cluster
     biggest_cluster_indices = np.where(labels[:] == mode(labels))
     # Just keep the points that correspond to the biggest cluster (weed)
@@ -117,29 +117,20 @@ def calculate_weed_centroid(points):
 
     if len(best_inliers) == 0:
         rospy.loginfo("Can't find dirt, Select both weed and dirt.")
-
     [a, b, c, _] = plane_model
-    # Just save and continue working with the inlier points defined by the plane segmentation function
-    inlier_dirt_points = dirt_points_xyz[best_inliers]
-    # Get centroid of dirt
-    inlier_dirt_centroid = np.mean(inlier_dirt_points, axis=0)
-    dirt_pcd_send = o3d.geometry.PointCloud()
-    # Save points and color to the point cloud
-    dirt_pcd_send.points = o3d.utility.Vector3dVector(inlier_dirt_points)
-    # The a, b, c coefficients of the plane equation are the components of the normal vector of that plane
     if a < 0:
         normal = np.asarray([a, b, c])
     else:
         normal = -np.asarray([a, b, c])
 
-    return weed_centroid
+    return weed_centroid, normal
 
 
 class WeedMetrics:
     def __init__(self, data_directory, pred_model, gripper_size):
         """
-                Initialize publishers for PCs, arrow and planes.
-            """
+            Initialize publishers for PCs, arrow and planes.
+        """
         # Initialize publishers for PCs
         self.pc_pub = rospy.Publisher("point_cloud", PointCloud2, queue_size=10)
         self.centroid_pub = rospy.Publisher("centroid", PointCloud2, queue_size=10)
@@ -165,17 +156,17 @@ class WeedMetrics:
         # Start with an empty array
         good_pc_filenames = []
         pred_stems = []
-        # normals = []
+        normals = []
         pc_parent_directory = self.data_directory + "pcs/"
         # Fill the array with predicted stem
         for file in self.pc_filenames:
             points = np.load(pc_parent_directory + file)
-            stem_pred = self.pred_model(points)
+            stem_pred, normal = self.pred_model(points)
 
             # if there is a valid prediction, add it, otherwise, ignore
             if stem_pred is not None:
                 pred_stems.append(stem_pred)
-                # normals.append(normal)
+                normals.append(normal)
                 good_pc_filenames.append(file)
             else:
                 # We did not get a prediction, ignore this case
@@ -183,7 +174,7 @@ class WeedMetrics:
                 self.skipped_weeds_filenames.append(file)
 
         pred_stems = np.asarray(pred_stems)
-        # normals = np.asarray(normals)
+        normals = np.asarray(normals)
 
         # Remove the files in the array of file names that were unable to make a prediction
         # Remove the stems of weeds that are associated with a point cloud that couldn't make a stem prediction
@@ -198,8 +189,8 @@ class WeedMetrics:
         self.metric_printer()
 
         for sample in range(len(self.error)):
-            # mat = hp.rotation_matrix_from_vectors(normals[sample], np.asarray([0, 0, 1]))
-            # normal_rot = mat.dot(normals[sample])
+            mat = hp.rotation_matrix_from_vectors(normals[sample], np.asarray([0, 0, 1]))
+            normal_rot = mat.dot(normals[sample])
 
             file = pc_parent_directory + good_pc_filenames[sample]
             pc = np.load(file)
@@ -207,18 +198,18 @@ class WeedMetrics:
             pc_norm = pc
             pc_norm[:, :3] = pc[:, :3] - mean_pc
             pc_trans = np.transpose(pc_norm[:, :3])
-            # for point in range(pc_trans.shape[1]):
-            #     pc_norm[point, :3] = np.matmul(mat, pc_trans[:, point])
-            pred_stem_norm = pred_stems[sample].reshape(1, 3) - mean_pc
-            true_stem_norm = self.manual_labels[sample].reshape(1, 3) - mean_pc
+            for point in range(pc_trans.shape[1]):
+                pc_norm[point, :3] = np.matmul(mat, pc_trans[:, point])
+            pred_stem_norm = np.matmul(mat, np.transpose(pred_stems[sample].reshape(1, 3) - mean_pc)).transpose()
+            true_stem_norm = np.matmul(mat, np.transpose(self.manual_labels[sample].reshape(1, 3) - mean_pc)).transpose()
 
             hp.publish_pc_with_color(self.pc_pub, pc_norm, self.frame_id)
             hp.publish_pc_no_color(self.centroid_pub, pred_stem_norm, self.frame_id)
             hp.publish_pc_no_color(self.stem_pub, true_stem_norm, self.frame_id)
-            # hp.rviz_arrow(self.frame_id, self.arrow_pub, np.asarray([0, 0, 0]), normals[sample], name='normal',
-            #               thickness=0.008, length_scale=0.15, color='r')
-            # hp.rviz_arrow(self.frame_id, self.arrow_pub, np.asarray([0, 0, 0]), normal_rot, name='normal_rot',
-            #               thickness=0.008, length_scale=0.15, color='b')
+            hp.rviz_arrow(self.frame_id, self.arrow_pub, np.asarray([0, 0, 0]), normals[sample], name='normal',
+                          thickness=0.008, length_scale=0.15, color='r')
+            hp.rviz_arrow(self.frame_id, self.arrow_pub, np.asarray([0, 0, 0]), normal_rot, name='normal_rot',
+                          thickness=0.008, length_scale=0.15, color='b')
             input(f"Currently viewing {str(good_pc_filenames[sample])}. Error of {self.error[sample]}.\n"
                   f"Press enter to see next sample.")
 
@@ -247,24 +238,27 @@ class WeedMetrics:
         self.manual_labels = np.asarray(self.manual_labels)
 
     def metric_printer(self):
-        print(f"\nMean: {np.mean(self.error)}")
+        print("-------------------------------------")
+        print("METRICS")
+        print("-------------------------------------")
+        print(f"Mean: {np.mean(self.error)}")
         print(f"Median: {np.median(self.error)}")
         print(f"Std: {np.std(self.error)}\n")
         print(f"Theoretical Successes: {str(self.successes)}")
         print(f"Theoretical Failures: {str(len(self.error) - self.successes )}")
-        print(f"Theoretical Success Rate: {str(self.successes / len(self.error))}\n")
+        print(f"Theoretical Success Rate: {str(self.successes / len(self.error))}")
+        print("-------------------------------------")
 
+        print(f"\n\nUnable to make predictions on the following {self.skipped_weeds} files:")
         if self.skipped_weeds != 0:
-            print(f"Unable to make predictions on the following {self.skipped_weeds} files:")
-            print(self.skipped_weeds_filenames)
-            print("\n")
+            print(self.skipped_weeds_filenames, "\n\n")
 
 
 def main():
     rospy.init_node('weed_eval')
 
     # Create paths for pcs and manual labels
-    data_directory = "/home/christianforeman/catkin_ws/src/plant_selector/weed_eval/"
+    data_directory = "/home/miguel/catkin_ws/src/plant_selector/weed_eval/"
 
     # Run the evaluation
     evaluator = WeedMetrics(data_directory, calculate_weed_centroid, gripper_size=0.015)
