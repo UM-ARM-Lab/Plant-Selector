@@ -122,7 +122,7 @@ def cluster_filter(pc):
 # TODO: Eventually make this filter take in the upper/lowerbounds so it isnt just green
 
 
-def green_color_filter(points):
+def green_color_filter(pcd_points, pcd_colors):
     """
     Filters out points that are not green
     Args:
@@ -131,31 +131,27 @@ def green_color_filter(points):
     Returns: an Nx4 numpy array that only has green points
 
     """
-    float_colors = points[:, 3]
-
-    pcd_colors = np.array((0, 0, 0))
-    for x in float_colors:
-        rgb = float_to_rgb(x)
-        pcd_colors = np.vstack((pcd_colors, rgb))
-
-    pcd_colors = pcd_colors[1:, :] / 255
-
     # Filter the point cloud so that only the green points stay
     # Get the indices of the points with g parameter greater than x
-    r_low, g_low, b_low = 0, 0.6, 0
-    r_high, g_high, b_high = 1, 1, 1
-    green_points_indices = np.where((pcd_colors[:, 0] > r_low) & (pcd_colors[:, 0] < r_high) &
-                                    (pcd_colors[:, 1] > g_low) & (pcd_colors[:, 1] < g_high) &
-                                    (pcd_colors[:, 2] > b_low) & (pcd_colors[:, 2] < b_high))
+    green_points_indices = np.where((pcd_colors[:, 1] - pcd_colors[:, 0] > pcd_colors[:, 1] / 12.0) &
+                                    (pcd_colors[:, 1] - pcd_colors[:, 2] > pcd_colors[:, 1] / 12.0))
+    green_points_xyz = pcd_points[green_points_indices]
+    green_points_rgb = pcd_colors[green_points_indices]
+
+    r_low, g_low, b_low = 10, 20, 10
+    r_high, g_high, b_high = 240, 240, 240
+    green_points_indices = np.where((green_points_rgb[:, 0] > r_low) & (green_points_rgb[:, 0] < r_high) &
+                                    (green_points_rgb[:, 1] > g_low) & (green_points_rgb[:, 1] < g_high) &
+                                    (green_points_rgb[:, 2] > b_low) & (green_points_rgb[:, 2] < b_high))
 
     if len(green_points_indices[0]) == 1:
-        r_low, g_low, b_low = 0, 0.3, 0
-        r_high, g_high, b_high = 1, 1, 1
-        green_points_indices = np.where((pcd_colors[:, 0] > r_low) & (pcd_colors[:, 0] < r_high) &
-                                        (pcd_colors[:, 1] > g_low) & (pcd_colors[:, 1] < g_high) &
-                                        (pcd_colors[:, 2] > b_low) & (pcd_colors[:, 2] < b_high))
+        # rospy.loginfo("No green points found. Try again.")
+        return None, None
 
-    return points[green_points_indices]
+    # Save xyzrgb info in green_points (type: numpy array)
+    green_points_xyz = green_points_xyz[green_points_indices]
+    green_points_rgb = green_points_rgb[green_points_indices]
+    return green_points_xyz, green_points_rgb
 
 
 def rotation_matrix_from_vectors(vec1, vec2):

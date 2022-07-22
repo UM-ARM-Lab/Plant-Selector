@@ -23,25 +23,6 @@ def calculate_weed_centroid(points):
         rgb = hp.float_to_rgb(x)
         pcd_colors = np.vstack((pcd_colors, rgb))
 
-    # # OG Color Filter
-    # pcd_colors = pcd_colors[1:, :] / 255
-    #
-    # # Filter the point cloud so that only the green points stay
-    # # Get the indices of the points with g parameter greater than x
-    # r_low, g_low, b_low = 0.1, 0.3, 0.1
-    # r_high, g_high, b_high = 0.8, 0.8, 0.6
-    # green_points_indices = np.where((pcd_colors[:, 0] > r_low) & (pcd_colors[:, 0] < r_high) &
-    #                                 (pcd_colors[:, 1] > g_low) & (pcd_colors[:, 1] < g_high) &
-    #                                 (pcd_colors[:, 2] > b_low) & (pcd_colors[:, 2] < b_high))
-    #
-    # if len(green_points_indices[0]) == 1:
-    #     print("No green points found. Try again.")
-    #     return None
-    #
-    # # Save xyzrgb info in green_points (type: numpy array)
-    # green_points_xyz = pcd_points[green_points_indices]
-    # green_points_rgb = pcd_colors[green_points_indices]
-
     # Alternate green color filter
     pcd_colors = pcd_colors[1:, :]
 
@@ -75,7 +56,7 @@ def calculate_weed_centroid(points):
     # Apply radius outlier filter to green_pcd
     _, ind = green_pcd.remove_radius_outlier(nb_points=7, radius=0.007)
 
-    if len(green_points_indices[0]) == 0:
+    if len(ind) == 0:
         # print("Not enough points. Try again.")
         return None, None
 
@@ -261,7 +242,7 @@ def main():
     rospy.init_node('weed_eval')
 
     # Create paths for pcs and manual labels
-    data_directory = "/home/miguel/catkin_ws/src/plant_selector/weed_eval/"
+    data_directory = "/home/christianforeman/catkin_ws/src/plant_selector/weed_eval/"
 
     # Run the evaluation
     evaluator = WeedMetrics(data_directory, calculate_weed_centroid, gripper_size=0.015)
