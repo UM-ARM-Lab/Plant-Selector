@@ -25,7 +25,7 @@ Panels:
         - /Global Options1
         - /Weed Extraction (Debug)1
       Splitter Ratio: 0.5
-    Tree Height: 200
+    Tree Height: 202
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Selection
@@ -253,7 +253,7 @@ Visualization Manager:
           Color: 143; 89; 2
           Color Transformer: FlatColor
           Decay Time: 0
-          Enabled: false
+          Enabled: true
           Invert Rainbow: false
           Max Color: 255; 255; 255
           Min Color: 0; 0; 0
@@ -268,7 +268,7 @@ Visualization Manager:
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
-          Value: false
+          Value: true
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -298,13 +298,13 @@ Visualization Manager:
           Use rainbow: true
           Value: true
         - Class: rviz/Marker
-          Enabled: false
+          Enabled: true
           Marker Topic: /normal
           Name: Normal
           Namespaces:
             {}
           Queue Size: 100
-          Value: false
+          Value: true
         - Alpha: 0.05000000074505806
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -317,7 +317,7 @@ Visualization Manager:
           Color: 173; 127; 168
           Color Transformer: FlatColor
           Decay Time: 0
-          Enabled: false
+          Enabled: true
           Invert Rainbow: false
           Max Color: 255; 255; 255
           Min Color: 0; 0; 0
@@ -332,7 +332,7 @@ Visualization Manager:
           Unreliable: false
           Use Fixed Frame: true
           Use rainbow: true
-          Value: false
+          Value: true
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
@@ -375,6 +375,26 @@ Visualization Manager:
             Expand Link Details: false
             Expand Tree: false
             Link Tree Style: Links in Alphabetic Order
+            end_effector_left:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            left_tool:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            leftgripper2_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            leftgripper_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
           Name: Gripper
           Robot Description: gripper_description
           TF Prefix: ""
@@ -391,13 +411,58 @@ Visualization Manager:
             Expand Link Details: false
             Expand Tree: false
             Link Tree Style: Links in Alphabetic Order
+            base_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            zed2i_baro_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            zed2i_base_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            zed2i_camera_center:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+              Value: true
+            zed2i_left_camera_frame:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            zed2i_left_camera_optical_frame:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            zed2i_mag_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            zed2i_right_camera_frame:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            zed2i_right_camera_optical_frame:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            zed2i_temp_left_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
+            zed2i_temp_right_link:
+              Alpha: 1
+              Show Axes: false
+              Show Trail: false
           Name: ZED
           Robot Description: zed2i_description
           TF Prefix: ""
           Update Interval: 0
           Value: true
           Visual Enabled: true
-      Enabled: false
+      Enabled: true
       Name: URDFs
     - Alpha: 1
       Autocompute Intensity Bounds: true
@@ -501,7 +566,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 0.3576795160770416
+      Distance: 0.6106735467910767
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -509,17 +574,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.6938757300376892
-        Y: -0.12804347276687622
-        Z: -0.19052037596702576
+        X: 0.6964899897575378
+        Y: -0.19461621344089508
+        Z: -0.18373997509479523
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.28448301553726196
+      Pitch: 0.7444826364517212
       Target Frame: zed2i_left_camera_frame
-      Yaw: 2.9619603157043457
+      Yaw: 3.0869617462158203
     Saved: ~
 Window Geometry:
   Displays:
@@ -529,7 +594,7 @@ Window Geometry:
   Hide Right Dock: true
   MainPanel:
     collapsed: false
-  QMainWindow State: 000000ff00000000fd00000004000000000000023300000375fc0200000010fb0000001200530065006c0065006300740069006f006e000000003d000000960000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d0000014b000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000001000530065006c00500061006e0065006c00000002460000006e0000000000000000fb0000000c00430061006d00650072006100000002d0000000c70000000000000000fb0000000a0049006d00610067006500000001a0000001f70000000000000000fb000000100044006900730070006c006100790073010000003d000002580000000000000000fb00000012004d00610069006e00500061006e0065006c010000018e000000f70000007f00fffffffb000000160052006f007300620061006700500061006e0065006c010000028b000000770000007700fffffffb0000001200530065006c0065006300740069006f006e010000030c000000a60000000000000000fb0000001200530065006c0065006300740069006f006e0100000308000000aa0000005c00ffffff00000001000001000000035afc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d0000035a000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000007800000003efc0100000002fb0000000800540069006d0065010000000000000780000002eb00fffffffb0000000800540069006d00650100000000000004500000000000000000000005470000037500000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd00000004000000000000023300000375fc0200000010fb0000001200530065006c0065006300740069006f006e000000003d000000960000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d0000014d000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261fb0000001000530065006c00500061006e0065006c00000002460000006e0000000000000000fb0000000c00430061006d00650072006100000002d0000000c70000000000000000fb0000000a0049006d00610067006500000001a0000001f70000000000000000fb000000100044006900730070006c006100790073010000003d000002580000000000000000fb00000012004d00610069006e00500061006e0065006c0100000190000000f80000007f00fffffffb000000160052006f007300620061006700500061006e0065006c010000028e000000770000007700fffffffb0000001200530065006c0065006300740069006f006e010000030b000000a70000005c00fffffffb0000001200530065006c0065006300740069006f006e0100000308000000aa000000000000000000000001000001000000035afc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d0000035a000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000007800000003efc0100000002fb0000000800540069006d0065010000000000000780000002eb00fffffffb0000000800540069006d00650100000000000004500000000000000000000005470000037500000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   RosbagPanel:
     collapsed: false
   Selection:

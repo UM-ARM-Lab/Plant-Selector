@@ -14,6 +14,8 @@ from sensor_msgs import point_cloud2
 from sensor_msgs.msg import PointField
 from std_msgs.msg import Header, ColorRGBA
 from visualization_msgs.msg import Marker
+import open3d as o3d
+from statistics import mode
 
 
 def publish_pc_no_color(publisher, points, frame_id):
@@ -104,8 +106,8 @@ def cluster_filter(pc):
     # Find the cluster closest to the user
     closest_cluster = 0
     closest_cluster_dist = np.inf
-    # TODO: Figure out how to get the actual center of camera so it isnt hardcoded
-    camera_location = np.array((0, 0, 0))
+    # TODO: Figure out how to get the actual center of camera so it isnt hardcoded camera_location = np.array((0, 0, 0))
+    camera_location = np.array([0, 0, 0])
     for x in range(n_clusters):
         sel_indices = np.argwhere(labels == x).squeeze(1)
         this_cluster = points[sel_indices]
@@ -119,10 +121,9 @@ def cluster_filter(pc):
     best_selection = points[sel_indices]
     return best_selection
 
-# TODO: Eventually make this filter take in the upper/lowerbounds so it isnt just green
 
-
-def green_color_filter(pcd_points, pcd_colors):
+# TODO: Probably throw errors instead of returning None twice
+def green_color_filter(points):
     """
     Filters out points that are not green
     Args:
@@ -131,10 +132,21 @@ def green_color_filter(pcd_points, pcd_colors):
     Returns: an Nx4 numpy array that only has green points
 
     """
+    pcd_points = points[:, :3]
+    float_colors = points[:, 3]
+
+    pcd_colors = np.array((0, 0, 0))
+    for x in float_colors:
+        rgb = float_to_rgb(x)
+        pcd_colors = np.vstack((pcd_colors, rgb))
+
+    pcd_colors = pcd_colors[1:, :]
+
     # Filter the point cloud so that only the green points stay
     # Get the indices of the points with g parameter greater than x
-    green_points_indices = np.where((pcd_colors[:, 1] - pcd_colors[:, 0] > pcd_colors[:, 1] / 12.0) &
-                                    (pcd_colors[:, 1] - pcd_colors[:, 2] > pcd_colors[:, 1] / 12.0))
+    green_points_indices = np.where((pcd_colors[:, 1] - pcd_colors[:, 0] > pcd_colors[:, 1] / 10.0) &
+                                    (pcd_colors[:, 1] - pcd_colors[:, 2] > pcd_colors[:, 1] / 10.0))
+
     green_points_xyz = pcd_points[green_points_indices]
     green_points_rgb = pcd_colors[green_points_indices]
 
@@ -145,13 +157,57 @@ def green_color_filter(pcd_points, pcd_colors):
                                     (green_points_rgb[:, 2] > b_low) & (green_points_rgb[:, 2] < b_high))
 
     if len(green_points_indices[0]) == 1:
-        # rospy.loginfo("No green points found. Try again.")
+        rospy.loginfo("No green points found. Try again.")
         return None, None
 
     # Save xyzrgb info in green_points (type: numpy array)
     green_points_xyz = green_points_xyz[green_points_indices]
     green_points_rgb = green_points_rgb[green_points_indices]
-    return green_points_xyz, green_points_rgb
+
+    # Create Open3D point cloud for green points
+    green_pcd = o3d.geometry.PointCloud()
+    # Save xyzrgb info in green_pcd (type: open3d.PointCloud)
+    green_pcd.points = o3d.utility.Vector3dVector(green_points_xyz)
+    green_pcd.colors = o3d.utility.Vector3dVector(green_points_rgb)
+
+    # Apply radius outlier filter to green_pcd
+    _, ind = green_pcd.remove_radius_outlier(nb_points=7, radius=0.007)
+
+    if len(ind) == 0:
+        rospy.loginfo("Not enough points. Try again.")
+        return None, None
+
+    # Just keep the inlier points in the point cloud
+    green_pcd = green_pcd.select_by_index(ind)
+    green_pcd_points = np.asarray(green_pcd.points)
+
+    # Apply DBSCAN to green points
+    labels = np.array(green_pcd.cluster_dbscan(eps=0.0055, min_points=15))  # This is actually pretty good
+
+    n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+    if n_clusters == 0:
+        rospy.loginfo("Not enough points. Try again.")
+        return None, None
+
+    # Get labels of the biggest cluster
+    biggest_cluster_indices = np.where(labels[:] == mode(labels))
+    # Just keep the points that correspond to the biggest cluster (weed)
+    green_pcd_points = green_pcd_points[biggest_cluster_indices]
+
+    # Get the points that were not green
+    dirt_indices = np.arange(0, len(pcd_points))
+    # These are the indices for dirt
+    dirt_indices = np.setdiff1d(dirt_indices, green_points_indices)
+    # Save xyzrgb info in dirt_points (type: numpy array) from remaining indices of green points filter
+    dirt_points_xyz = pcd_points[dirt_indices]
+    dirt_points_rgb = pcd_colors[dirt_indices]
+    # Create PC for dirt points
+    dirt_pcd = o3d.geometry.PointCloud()
+    # Save points and color to the point cloud
+    dirt_pcd.points = o3d.utility.Vector3dVector(dirt_points_xyz)
+    dirt_pcd.colors = o3d.utility.Vector3dVector(dirt_points_rgb)
+
+    return green_pcd_points, dirt_pcd
 
 
 def rotation_matrix_from_vectors(vec1, vec2):
