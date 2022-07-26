@@ -6,15 +6,15 @@ from statistics import mode
 
 import numpy as np
 import open3d as o3d
-
-import helpers as hp
 import rospy
 from sensor_msgs.msg import PointCloud2
 from visualization_msgs.msg import Marker
 
-import sys
 import argparse
-import pathlib
+import sys
+sys.path.insert(1, '/home/christianforeman/catkin_ws/src/plant_selector/src')
+import helpers as hp
+
 
 def calculate_weed_centroid(points):
     # All the weed extraction algorithm
@@ -149,6 +149,7 @@ class WeedMetrics:
             # if there is a valid prediction, add it, otherwise, ignore
             if stem_pred is not None:
                 pred_stems.append(stem_pred)
+                normals.append(normal)
                 good_pc_filenames.append(file)
             else:
                 # We did not get a prediction, ignore this case

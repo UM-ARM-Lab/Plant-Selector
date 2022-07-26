@@ -1,6 +1,8 @@
 """
 finding-stem.py
+
 This python file is used to test the algorithm to find the actual stem of the weed.
+
 Created by: Miguel Munoz
 Date: July 11th, 2022
 """
@@ -11,6 +13,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import open3d as o3d
 from sklearn.decomposition import PCA
+import sys
+sys.path.insert(1, '/home/christianforeman/catkin_ws/src/plant_selector/src')
 import plant_extraction
 import sys, ast
 
@@ -36,8 +40,8 @@ def plot_plane_points(point_in_plane, normal, size):
 
 
 # Open PCD and get np array of points
-pcd = o3d.io.read_point_cloud('/home/christianforeman/catkin_ws/src/plant_selector/bags/weed-selection.pcd')
-dirt_pcd = o3d.io.read_point_cloud('/home/christianforeman/catkin_ws/src/plant_selector/bags/dirt_points.pcd')
+pcd = o3d.io.read_point_cloud('/home/miguel/catkin_ws/src/plant_selector/bags/pcds/weed-selection.pcd')
+dirt_pcd = o3d.io.read_point_cloud('/home/miguel/catkin_ws/src/plant_selector/bags/pcds/dirt-selection.pcd')
 plane_model, best_inliers = dirt_pcd.segment_plane(distance_threshold=0.0005,
                                                    ransac_n=3,
                                                    num_iterations=1000)
@@ -69,8 +73,6 @@ for point in range(len(points)):
 weed_projected = o3d.geometry.PointCloud()
 # Save points to new PointCloud
 weed_projected.points = o3d.utility.Vector3dVector(points_projected)
-
-o3d.io.write_point_cloud('/home/christianforeman/catkin_ws/src/plant_selector/bags/sup.pcd', weed_projected)
 
 gen_centroid = np.mean(points_projected, axis=0)
 
@@ -141,7 +143,7 @@ ax.scatter(gen_centroid[0], gen_centroid[1], gen_centroid[2],
 #                 [centroids[centroid][1], centroid_of_centroids[1]],
 #                 [centroids[centroid][2], centroid_of_centroids[2]],
 #                 'k--', label='_nolegend_')
-# ax.quiver(X, Y, Z, U, V, W)
+ax.quiver(X, Y, Z, U, V, W)
 plt.title("PCA per Leaf", fontsize=20, fontweight='bold')
 ax.set_xlabel("x-coordinates", fontsize=20)
 ax.set_ylabel("y-coordinates", fontsize=20)
