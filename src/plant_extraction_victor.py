@@ -188,9 +188,6 @@ class PlantExtractor:
         :param selection: selected pointcloud from rviz
         :return: None.
         """
-        if self.mode != "Branch":
-            return
-
         # Perform Depth Filter
         points_xyz = hp.cluster_filter(selection)[:, :3]
 
@@ -265,9 +262,6 @@ class PlantExtractor:
         :param selection: Selected pointcloud in Rviz.
         :return: None.
         """
-        if self.mode != "Weed":
-            return
-
         # Load point cloud and visualize it
         points = np.array(list(pc2.read_points(selection)))
 

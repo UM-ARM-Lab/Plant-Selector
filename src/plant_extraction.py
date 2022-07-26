@@ -37,8 +37,7 @@ class PlantExtractor:
 
         # Set the default mode to branch
         self.mode = "Branch"
-        self.branch_pc_sub = rospy.Subscriber("/rviz_selected_points", PointCloud2, self.select_branch)
-        self.weed_pc_sub = rospy.Subscriber("/rviz_selected_points", PointCloud2, self.select_weed)
+        self.plant_pc_sub = rospy.Subscriber("/rviz_selected_points", PointCloud2, self.plant_extraction)
 
         # Fixing first selection
         # TODO: This isn't ideal, probs a better way to do this
@@ -56,6 +55,12 @@ class PlantExtractor:
         self.mode = new_mode.data
         rospy.loginfo("New mode: " + self.mode)
 
+    def plant_extraction(self, pc):
+        if self.mode == "Branch":
+            self.select_branch(pc)
+        elif self.mode == "Weed":
+            self.select_weed(pc)
+
     def select_branch(self, selection):
         """
         This function selects the branch and gives a pose for the gripper.
@@ -63,9 +68,6 @@ class PlantExtractor:
         :param selection: selected pointcloud from rviz
         :return: None.
         """
-        if self.mode != "Branch":
-            return
-
         points_xyz = hp.cluster_filter(selection)[:, :3]
 
         # Transform open3d PC to numpy array
@@ -106,9 +108,6 @@ class PlantExtractor:
         :param selection: Selected pointcloud in Rviz.
         :return: None.
         """
-        if self.mode != "Weed":
-            return
-
         # Load point cloud and visualize it
         points = np.array(list(pc2.read_points(selection)))
 
