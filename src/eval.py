@@ -12,6 +12,9 @@ import rospy
 from sensor_msgs.msg import PointCloud2
 from visualization_msgs.msg import Marker
 
+import sys
+import argparse
+import pathlib
 
 def calculate_weed_centroid(points):
     # All the weed extraction algorithm
@@ -121,7 +124,6 @@ class WeedMetrics:
         self.data_directory = data_directory
         self.pc_filenames = os.listdir(self.data_directory + 'pcs/')
         self.manual_labels = None
-        # self.get_manual_labels()
 
         self.gripper_size = gripper_size
         self.pred_model = pred_model
@@ -147,7 +149,6 @@ class WeedMetrics:
             # if there is a valid prediction, add it, otherwise, ignore
             if stem_pred is not None:
                 pred_stems.append(stem_pred)
-                normals.append(normal)
                 good_pc_filenames.append(file)
             else:
                 # We did not get a prediction, ignore this case
@@ -238,14 +239,17 @@ class WeedMetrics:
             print(self.skipped_weeds_filenames, "\n\n")
 
 
+# To run this node, make sure to give an argument of the location of the parent directory of data which should have a
+# subfolders of both 'manual_labels' and 'pcs' which should be filled with weed data.
 def main():
     rospy.init_node('weed_eval')
 
-    # Create paths for pcs and manual labels
-    data_directory = "/home/christianforeman/catkin_ws/src/plant_selector/weed_eval/"
+    parser = argparse.ArgumentParser()
+    parser.add_argument('weed_directory', type=str)
+    args = parser.parse_args(rospy.myargv(sys.argv[1:]))
 
     # Run the evaluation
-    evaluator = WeedMetrics(data_directory, calculate_weed_centroid, gripper_size=0.015)
+    evaluator = WeedMetrics(args.weed_directory, calculate_weed_centroid, gripper_size=0.015)
     evaluator.run_eval()
 
 
