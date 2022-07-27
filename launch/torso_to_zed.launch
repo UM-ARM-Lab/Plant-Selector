@@ -1,0 +1,4 @@
+<launch>
+	<node pkg="tf2_ros" type="static_transform_publisher" name="workplz" args="0.03791 0.06135 0.3789 -4.7 0 0 torso zed2i_base_link"/>
+</launch>
+
