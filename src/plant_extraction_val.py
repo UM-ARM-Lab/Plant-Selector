@@ -53,14 +53,20 @@ class PlantExtractor:
         # Victor Code
         self.val = Val(raise_on_failure=True)
         self.val.connect()
-        self.val.plan_to_joint_config('both_arms', 'zero')
+        self.val.plan_to_joint_config('both_arms', 'bent')
         self.goal = None
 
         rospy.sleep(1)
         self.val.open_left_gripper()
+        print("Left gripper ready")
         rospy.sleep(1)
         self.val.open_right_gripper()
+        print("Right gripper ready")
         rospy.sleep(1)
+
+        # self.goal = [0.6, 0, 0, 0, 0, 0]
+        # self.val.plan_to_pose(self.val.left_arm_group, self.val.left_tool_name, self.goal)
+        # print("Planed")
 
         # Set the default mode to branch
         self.mode = "Branch"
@@ -70,7 +76,7 @@ class PlantExtractor:
         # TODO: This isn't ideal, probs a better way to do this
         ident_matrix = np.eye(4)
         for _ in range(10):
-            self.tfw.send_transform_matrix(ident_matrix, parent=self.frame_id, child='end_effector_left')
+            # self.tfw.send_transform_matrix(ident_matrix, parent=self.frame_id, child='end_effector_left')
             rospy.sleep(0.05)
             
     def mode_change(self, new_mode):
@@ -81,7 +87,7 @@ class PlantExtractor:
         """
         self.mode = new_mode.data
         rospy.loginfo("New mode: " + self.mode)
-        self.victor.plan_to_joint_config('both_arms', 'zero')
+        self.val.plan_to_joint_config('both_arms', 'home')
 
     def move_robot(self, is_verified):
         if is_verified.data:
@@ -244,16 +250,16 @@ class PlantExtractor:
         # map2cam = tfw.get_transform(parent="map", child=self.frame_id)
         # Chain effect: get transformation matrix from camera to end effector
         camera2ee = camera2tool @ tool2ee  # Put map2cam first once we add in map part
-        self.tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
+        # self.tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
 
         # Visualize Point Clouds
         self.publish_pc_data(points_xyz, inlier_points, inliers_centroid, normal)
 
         x_rot, y_rot, z_rot = euler_from_matrix(camera2tool_rot)
 
-        val2cam = self.tfw.get_transform(parent='torso', child=self.frame_id)
+        val2cam = self.tfw.get_transform(parent='world', child='zed2i_left_camera_frame')
         result = val2cam @ camera2tool
-        self.goal = [result[0, 3], result[1, 3], result[2, 3], x_rot, y_rot, z_rot]
+        self.goal = [result[0, 3], result[1, 3], result[2, 3], (x_rot - 1.5707), y_rot, z_rot]
 
     def select_weed(self, selection):
         """
@@ -397,10 +403,9 @@ class PlantExtractor:
         # Plan to the pose 
         self.goal = [result[0, 3], result[1, 3], result[2, 3], phi, -theta, 0]
 
-
     def val_plan(self):
         # Find a plan and execute it
-        plan_exec_res = self.val.plan_to_pose(self.val.right_arm_group, self.val.right_tool_name, self.goal)
+        plan_exec_res = self.val.plan_to_pose('left_side', self.val.left_tool_name, self.goal)
         was_success = plan_exec_res.planning_result.success
         # If there is no possible plan, try the left arm
         if was_success:
@@ -409,18 +414,18 @@ class PlantExtractor:
             rospy.sleep(2)
             self.val.open_right_gripper()
         else:
-            rospy.loginfo("Can't find path, will try with left arm.")
+            rospy.loginfo("Can't find path.")
             
-            plan_exec_res = self.val.plan_to_pose(self.val.left_arm_group, self.val.left_tool_name, self.goal)
-            was_success = plan_exec_res.planning_result.success
-            if was_success:
-                # Was a success, grasp it
-                self.val.close_left_gripper()
-                rospy.sleep(2)
-                self.val.open_left_gripper()
-            else:
-                rospy.loginfo("Can't find a path with either arm, return to zero state")
-                self.val.plan_to_joint_config('both_arms', 'zero')
+            # plan_exec_res = self.val.plan_to_pose('left_side', self.val.left_tool_name, self.goal)
+            # was_success = plan_exec_res.planning_result.success
+            # if was_success:
+            #     # Was a success, grasp it
+            #     self.val.close_left_gripper()
+            #     rospy.sleep(2)
+            #     self.val.open_left_gripper()
+            # else:
+            #     rospy.loginfo("Can't find a path with either arm, return to zero state")
+            #     self.val.plan_to_joint_config('both_arms', 'home')
         
         # Return to zero state at the end, no matter what
         rospy.sleep(2)
@@ -450,7 +455,7 @@ class PlantExtractor:
         camera_2_ee = camera_2_tool @ tool2ee
 
         # Display gripper
-        self.tfw.send_transform_matrix(camera_2_ee, parent=self.frame_id, child='end_effector_left')
+        # self.tfw.send_transform_matrix(camera_2_ee, parent=self.frame_id, child='end_effector_left')
 
 
 
