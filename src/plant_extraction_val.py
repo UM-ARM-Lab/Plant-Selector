@@ -20,12 +20,13 @@ from std_msgs.msg import ColorRGBA
 from std_msgs.msg import String
 from std_msgs.msg import Bool
 from visualization_msgs.msg import Marker
-from tf.transformations import euler_from_matrix
+from tf.transformations import euler_from_matrix, rotation_matrix
 import hdbscan
 
 # Val stuff
 from arm_robots.hdt_michigan import Val
 from geometry_msgs.msg import Pose
+
 
 class PlantExtractor:
     def __init__(self):
@@ -50,11 +51,12 @@ class PlantExtractor:
         self.frame_id = str(rospy.get_param("frame_id"))
         self.tfw = TF2Wrapper()
 
-        # Victor Code
+        # Val Code
         self.val = Val(raise_on_failure=True)
         self.val.connect()
         self.val.plan_to_joint_config('both_arms', 'bent')
         self.goal = None
+        self.plan_exec_res = None
 
         rospy.sleep(1)
         self.val.open_left_gripper()
@@ -87,11 +89,11 @@ class PlantExtractor:
         """
         self.mode = new_mode.data
         rospy.loginfo("New mode: " + self.mode)
-        self.val.plan_to_joint_config('both_arms', 'home')
+        self.val.plan_to_joint_config('both_arms', 'bent')
 
     def move_robot(self, is_verified):
         if is_verified.data:
-            self.val_plan()
+            self.val_execute()
 
     def plant_extraction(self, pc):
         if self.mode == "Branch":
@@ -245,21 +247,25 @@ class PlantExtractor:
         camera2tool[:3, :3] = camera2tool_rot
         camera2tool[:3, 3] = inliers_centroid
         camera2tool[3, 3] = 1
-        # Get transformation matrix between tool and end effector
-        tool2ee = self.tfw.get_transform(parent="left_tool", child="end_effector_left")
-        # map2cam = tfw.get_transform(parent="map", child=self.frame_id)
-        # Chain effect: get transformation matrix from camera to end effector
-        camera2ee = camera2tool @ tool2ee  # Put map2cam first once we add in map part
-        # self.tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
 
         # Visualize Point Clouds
         self.publish_pc_data(points_xyz, inlier_points, inliers_centroid, normal)
 
-        x_rot, y_rot, z_rot = euler_from_matrix(camera2tool_rot)
+        self.visualize_gripper_urdf(camera2tool)
 
-        val2cam = self.tfw.get_transform(parent='world', child='zed2i_left_camera_frame')
+        # get transform from world to cam
+        world2cam = self.tfw.get_transform(parent="world", child=self.frame_id)
+        # use that @ camera2tool
+        world2tool = world2cam @ camera2tool
+        # Grab 3x3 rotation part
+        # euler from matrix
+        x_rot, y_rot, z_rot = euler_from_matrix(world2tool[:3, :3])
+
+        val2cam = self.tfw.get_transform(parent='world', child=self.frame_id)
         result = val2cam @ camera2tool
-        self.goal = [result[0, 3], result[1, 3], result[2, 3], (x_rot - 1.5707), y_rot, z_rot]
+        self.goal = [result[0, 3], result[1, 3], result[2, 3], x_rot, y_rot, z_rot]
+
+        self.val_plan()
 
     def select_weed(self, selection):
         """
@@ -292,8 +298,7 @@ class PlantExtractor:
         # Get the indices of the points with g parameter greater than x
         green_points_indices = np.where((pcd_colors[:, 1] - pcd_colors[:, 0] > pcd_colors[:, 1] / 10.0) &
                                         (pcd_colors[:, 1] - pcd_colors[:, 2] > pcd_colors[:, 1] / 10.0))
-        # green_points_indices = np.where((pcd_colors[:, 1] - pcd_colors[:, 0] > 8) &
-        #                                 (pcd_colors[:, 1] - pcd_colors[:, 2] > 8))
+
         green_points_xyz = pcd_points[green_points_indices]
         green_points_rgb = pcd_colors[green_points_indices]
 
@@ -311,6 +316,8 @@ class PlantExtractor:
         green_points_xyz = green_points_xyz[green_points_indices]
         green_points_rgb = green_points_rgb[green_points_indices]
 
+        hp.publish_pc_no_color(self.green_pub, green_points_xyz, self.frame_id)
+
         # Create Open3D point cloud for green points
         green_pcd = o3d.geometry.PointCloud()
         # Save xyzrgb info in green_pcd (type: open3d.PointCloud)
@@ -318,9 +325,9 @@ class PlantExtractor:
         green_pcd.colors = o3d.utility.Vector3dVector(green_points_rgb)
 
         # Apply radius outlier filter to green_pcd
-        _, ind = green_pcd.remove_radius_outlier(nb_points=7, radius=0.007)
+        _, ind = green_pcd.remove_radius_outlier(nb_points=2, radius=0.007)
 
-        if len(ind[0]) == 0:
+        if len(ind) == 0:
             rospy.loginfo("Not enough points. Try again.")
             return
 
@@ -331,12 +338,6 @@ class PlantExtractor:
 
         # Apply DBSCAN to green points
         labels = np.array(green_pcd.cluster_dbscan(eps=0.007, min_points=15))  # This is actually pretty good
-
-        # This is pretty good but struggles in some edge cases
-        # clusterer = hdbscan.HDBSCAN(min_cluster_size=30, gen_min_span_tree=True, min_samples=1, allow_single_cluster=1)
-        # # clusterer = hdbscan.HDBSCAN(min_cluster_size=8, min_samples=1, allow_single_cluster=1)
-        # clusterer.fit(green_pcd_points)
-        # labels = clusterer.labels_
 
         n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
         if n_clusters == 0:
@@ -390,72 +391,67 @@ class PlantExtractor:
 
         # Construct transformation matrix from camera to tool of end effector
         camera2tool = np.eye(4)
+        camera2tool[:3, :3] = (rotation_matrix(phi, np.asarray([1, 0, 0])) @ \
+                               rotation_matrix(theta, np.asarray([0, 1, 0])))[:3, :3]
         camera2tool[:3, 3] = weed_centroid
 
+        self.visualize_gripper_urdf(camera2tool)
+
         # Victor Stuff
-        val2cam = self.tfw.get_transform(parent='torso', child=self.frame_id)
-        result = val2cam @ camera2tool
-        
+        world2cam = self.tfw.get_transform(parent='world', child=self.frame_id)
+        world2tool = world2cam @ camera2tool
+
         # Visualize pcs and gripper
-        self.visualize_gripper(phi, theta, weed_centroid)
         self.publish_pc_data(dirt_points_xyz, green_pcd_points, inlier_dirt_centroid, normal)
 
-        # Plan to the pose 
-        self.goal = [result[0, 3], result[1, 3], result[2, 3], phi, -theta, 0]
+        # Plan to the pose
+        x_rot, y_rot, z_rot = euler_from_matrix(world2tool[:3, :3])
+        self.goal = [world2tool[0, 3], world2tool[1, 3], world2tool[2, 3], x_rot, y_rot, z_rot]
+
+        self.val_plan()
 
     def val_plan(self):
+        self.val.set_execute(False)
         # Find a plan and execute it
-        plan_exec_res = self.val.plan_to_pose('left_side', self.val.left_tool_name, self.goal)
-        was_success = plan_exec_res.planning_result.success
+        self.plan_exec_res = self.val.plan_to_pose('right_side', self.val.right_tool_name, self.goal)
+        was_success = self.plan_exec_res.planning_result.success
         # If there is no possible plan, try the left arm
         if was_success:
-            # Was a success, grasp it
-            self.val.close_right_gripper()
-            rospy.sleep(2)
-            self.val.open_right_gripper()
+            print("Found a path!")
         else:
             rospy.loginfo("Can't find path.")
-            
-            # plan_exec_res = self.val.plan_to_pose('left_side', self.val.left_tool_name, self.goal)
-            # was_success = plan_exec_res.planning_result.success
-            # if was_success:
-            #     # Was a success, grasp it
-            #     self.val.close_left_gripper()
-            #     rospy.sleep(2)
-            #     self.val.open_left_gripper()
-            # else:
-            #     rospy.loginfo("Can't find a path with either arm, return to zero state")
-            #     self.val.plan_to_joint_config('both_arms', 'home')
         
         # Return to zero state at the end, no matter what
         rospy.sleep(2)
 
+    def val_execute(self):
+        self.val.set_execute(True)
+        exec_res = self.val.follow_arms_joint_trajectory(self.plan_exec_res.planning_result.plan.joint_trajectory)
+        print(f"The execution was: {exec_res}")
 
-    def visualize_gripper(self, phi, theta, weed_centroid):
-        # Generate Rotation Matrices
-        rx = np.asarray([[1, 0, 0],
-                            [0, cos(phi), -sin(phi)],
-                            [0, sin(phi), cos(phi)]])
-        ry = np.asarray([[cos(theta), 0, sin(theta)],
-                            [0, 1, 0],
-                            [-sin(theta), 0, cos(theta)]])
+        # Send the gripper away!
+        end_effector_to_void = np.eye(4)
+        end_effector_to_void[:3, 3] = 1000
+        self.tfw.send_transform_matrix(end_effector_to_void, 'hdt_michigan_root', 'red_end_effector_left')
 
-        # Combine
-        frame_2_vector_rot = rx @ ry
+        # Grasping
+        rospy.sleep(2)
+        self.val.close_right_gripper()
 
-        # Create camera to tool matrix
-        camera_2_tool = np.eye(4)
-        camera_2_tool[:3, :3] = frame_2_vector_rot
-        camera_2_tool[:3, 3] = weed_centroid
+        # Go back to base!
+        rospy.sleep(5)
+        self.val.plan_to_joint_config('both_arms', 'bent')
 
-        # Define transformation matrix from tool to end effector
-        tool2ee = self.tfw.get_transform(parent="left_tool", child="end_effector_left")
-        
-        # Get transform from camera to end effector
-        camera_2_ee = camera_2_tool @ tool2ee
+        rospy.sleep(2)
+        self.val.open_right_gripper()
 
-        # Display gripper
-        # self.tfw.send_transform_matrix(camera_2_ee, parent=self.frame_id, child='end_effector_left')
+    def visualize_gripper_urdf(self, camera2tool):
+        # Get transformation matrix between tool and end effector
+        tool2ee = self.tfw.get_transform(parent="red_left_tool", child="red_end_effector_left")
+        # map2cam = tfw.get_transform(parent="map", child=self.frame_id)
+        # Chain effect: get transformation matrix from camera to end effector
+        camera2ee = camera2tool @ tool2ee  # Put map2cam first once we add in map part
+        self.tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='red_end_effector_left')
 
 
 

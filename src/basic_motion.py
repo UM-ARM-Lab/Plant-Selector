@@ -25,6 +25,7 @@ def main():
 
     val = Val(raise_on_failure=True)
     val.connect()
+    val.set_execute(False)
 
     # val.open_left_gripper()
     val.close_left_gripper()
@@ -35,7 +36,10 @@ def main():
 
     # Plan to joint config
     rospy.sleep(1)
-    val.plan_to_joint_config('both_arms', 'bent')
+    res = val.plan_to_joint_config('both_arms', 'home')
+    val.set_execute(True)
+    anything = val.follow_arms_joint_trajectory(res.planning_result.plan.joint_trajectory)
+    print(anything.success)
 
     # Plan to pose
     rospy.sleep(1)
