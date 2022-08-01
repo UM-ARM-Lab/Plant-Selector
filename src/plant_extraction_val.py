@@ -45,7 +45,7 @@ class PlantExtractor:
         # Val Code
         self.val = Val(raise_on_failure=True)
         self.val.connect()
-        self.val.plan_to_joint_config('both_arms', 'bent')
+        # self.val.plan_to_joint_config('both_arms', 'bent')
         self.goal = None
         self.plan_exec_res = None
 
@@ -58,7 +58,6 @@ class PlantExtractor:
         # Set the default mode to branch
         self.mode = "Branch"
         self.plant_pc_sub = rospy.Subscriber("/rviz_selected_points", PointCloud2, self.plant_extraction)
-
     def mode_change(self, new_mode):
         self.mode = new_mode.data
         rospy.loginfo("New mode: " + self.mode)
