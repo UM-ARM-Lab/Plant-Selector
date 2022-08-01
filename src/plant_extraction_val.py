@@ -54,7 +54,7 @@ class PlantExtractor:
         # Val Code
         self.val = Val(raise_on_failure=True)
         self.val.connect()
-        self.val.plan_to_joint_config('both_arms', 'bent')
+        # self.val.plan_to_joint_config('both_arms', 'bent')
         self.goal = None
         self.plan_exec_res = None
 
@@ -65,21 +65,15 @@ class PlantExtractor:
         self.val.open_right_gripper()
         print("Right gripper ready")
         rospy.sleep(1)
-
-        # self.goal = [0.6, 0, 0, 0, 0, 0]
-        # self.val.plan_to_pose(self.val.left_arm_group, self.val.left_tool_name, self.goal)
-        # print("Planed")
+         
+        # Send the gripper away!
+        end_effector_to_void = np.eye(4)
+        end_effector_to_void[:3, 3] = 1000
+        self.tfw.send_transform_matrix(end_effector_to_void, 'hdt_michigan_root', 'red_end_effector_left')
 
         # Set the default mode to branch
         self.mode = "Branch"
         self.plant_pc_sub = rospy.Subscriber("/rviz_selected_points", PointCloud2, self.plant_extraction)
-
-        # Fixing first selection
-        # TODO: This isn't ideal, probs a better way to do this
-        ident_matrix = np.eye(4)
-        for _ in range(10):
-            # self.tfw.send_transform_matrix(ident_matrix, parent=self.frame_id, child='end_effector_left')
-            rospy.sleep(0.05)
             
     def mode_change(self, new_mode):
         """

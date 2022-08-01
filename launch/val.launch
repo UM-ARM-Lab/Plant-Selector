@@ -5,5 +5,14 @@
     <include file="$(find arm_robots)/launch/val_off_husky.launch">
         <arg name="world_name" value="$(find plant_selector)/worlds/val_plant.world"/>
     </include>
+
+    <node name="plant_extraction" pkg="plant_selector" type="plant_extraction_val.py" output="screen"/>
+
+    <!-- Launch Basic Plant Selector Stuff -->
+    <include file="$(find plant_selector)/launch/plant_selector.launch">
+        <arg name="run_default_plant_extraction" value="false"/>
+        <arg name="rviz_file" value="$(find plant_selector)/rviz/val.rviz"/>
+        <arg name="publish_zed_urdf" value="false"/>
+    </include>
 </launch>
 
