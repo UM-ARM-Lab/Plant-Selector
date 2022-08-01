@@ -27,6 +27,8 @@
     <node name="zed2i_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen" required="true">
         <remap from="robot_description" to="zed2i_description" />
     </node>
+
+    <!-- Need to fix this -->
     <rosparam command="load" file="$(find plant_selector)/urdf/gripper.urdf" param="gripper_description"/>
     <node pkg="robot_state_publisher" type="robot_state_publisher" name="gripper_state_publisher">
         <remap from="robot_description" to="gripper_description"/>
