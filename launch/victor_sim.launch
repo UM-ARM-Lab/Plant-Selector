@@ -6,15 +6,15 @@
 
     <!-- Transforms -->
     <node pkg="tf2_ros" type="static_transform_publisher" name="victor_tf" args="-0.1 0 -1.5 0 0 0 zed2i_left_camera_frame victor_root"/>
-    
+    <node pkg="tf2_ros" type="static_transform_publisher" name="victor_to_world" args="0 0 0 0 0 0 victor_root world"/>
+
     <!-- Launch Basic Plant Selector Stuff -->
     <include file="$(find plant_selector)/launch/plant_selector.launch">
         <arg name="online" value="false"/>
-        <arg name="run_default_plant_extraction" default="false"/>
         <arg name="rviz_file" default="$(find plant_selector)/rviz/victor.rviz"/>
     </include>
 
     <!-- Python Scripts -->
-    <node name="plant_extraction" pkg="plant_selector" type="plant_extraction_victor.py" output="screen"/>
+    <node name="plant_extraction" pkg="plant_selector" type="plant_extraction_robot.py" output="screen" args="-r Victor"/>
 </launch>
 

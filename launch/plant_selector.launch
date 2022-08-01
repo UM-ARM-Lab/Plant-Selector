@@ -1,6 +1,5 @@
 <launch>
     <arg name="online" default="true"/>
-    <arg name="run_default_plant_extraction" default="true"/>
     <arg name="rviz_file" default="$(find plant_selector)/rviz/zed_online.rviz"/>
     <arg name="publish_zed_urdf" default="true"/>
 
@@ -27,11 +26,6 @@
         <node name="zed2i_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen" required="true">
             <remap from="robot_description" to="zed2i_description" />
         </node>
-    </group>
-
-    <!-- Python Script -->
-    <group if="$(arg run_default_plant_extraction)">
-        <node name="plant_extraction" pkg="plant_selector" type="plant_extraction.py" output="screen"/>
     </group>
 
     <!-- Red Gripper -->
