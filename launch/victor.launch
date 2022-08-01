@@ -34,6 +34,7 @@
         <remap from="robot_description" to="gripper_description"/>
     </node>
 
+    
     <!-- Python Scripts -->
     <node name="plant_extraction" pkg="plant_selector" type="plant_extraction_victor.py" output="screen"/>
 
