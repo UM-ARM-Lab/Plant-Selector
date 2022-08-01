@@ -1,0 +1,7 @@
+<launch>
+    <!-- Launch Basci -->
+    <include file="$(find plant_selector)/launch/plant_selector.launch">
+        <arg name="online" value="false"/>
+        <arg name="rviz_file" default="$(find plant_selector)/rviz/zed_offline.rviz"/>
+    </include>
+</launch>

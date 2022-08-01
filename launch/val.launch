@@ -1,27 +1,9 @@
-<launch>
-    <param name="frame_id" value="zed2i_left_camera_frame"/>
-    <param name="pc_source" value="/zed2i/zed_node/point_cloud/cloud_registered"/>
-    <param name="odom_source" value="/zed2i/zed_node/odom"/>
-    <param name="camera" value="zed"/>
-
-    <param name="default_bag_path" value='$(find plant_selector)/bags'/>
-
-    <!-- Launch ZED Camera -->
-    <include file="$(find zed_wrapper)/launch/zed2i.launch"/>
+<launch>  
+    <arg name="world_name" default="$(find arm_robots)/world/val_plant.world"/>
 
     <!-- Launch Val -->
-    <include file="$(find arm_robots)/launch/val_off_husky.launch"/>
-
-    <!-- Python Scripts -->
-    <node name="plant_extraction" pkg="plant_selector" type="plant_extraction_val.py" output="screen"/>
-
-    <!-- Cpp Executables-->
-    <node name="real_time_handler" pkg="plant_selector" type="real_time_handler" output="screen"/>
-
-    <!-- Red Gripper-->
-    <rosparam command="load" file="$(find plant_selector)/urdf/gripper.urdf" param="gripper_description"/>
-    <node pkg="robot_state_publisher" type="robot_state_publisher" name="gripper_state_publisher">
-        <remap from="robot_description" to="gripper_description"/>
-    </node>
+    <include file="$(find arm_robots)/launch/val_off_husky.launch">
+        <arg name="world_name" value="$(find plant_selector)/worlds/val_plant.world"/>
+    </include>
 </launch>
 

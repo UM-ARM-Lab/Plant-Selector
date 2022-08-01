@@ -43,7 +43,7 @@ class PlantExtractor:
         # TODO: This isn't ideal, probs a better way to do this
         ident_matrix = np.eye(4)
         for _ in range(10):
-            self.tfw.send_transform_matrix(ident_matrix, parent=self.frame_id, child='end_effector_left')
+            self.tfw.send_transform_matrix(ident_matrix, parent=self.frame_id, child='red_end_effector_left')
             rospy.sleep(0.05)
 
     def mode_change(self, new_mode):
@@ -178,13 +178,13 @@ class PlantExtractor:
         camera2tool[:3, 3] = camera2target
 
         # Define transformation matrix from tool to end effector
-        tool2ee = self.tfw.get_transform(parent="left_tool", child="end_effector_left")
+        tool2ee = self.tfw.get_transform(parent="red_left_tool", child="red_end_effector_left")
 
         # Get transform from camera to end effector
         camera2ee = camera2tool @ tool2ee
 
         # Display gripper
-        self.tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
+        self.tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='red_end_effector_left')
 
     def publish_debug_data(self, source, inliers, origin, normal):
         hp.publish_pc_no_color(self.src_pub, source[:, :3], self.frame_id)

@@ -240,11 +240,11 @@ class PlantExtractor:
         camera2tool[:3, 3] = inliers_centroid
         camera2tool[3, 3] = 1
         # Get transformation matrix between tool and end effector
-        tool2ee = self.tfw.get_transform(parent="left_tool", child="end_effector_left")
+        tool2ee = self.tfw.get_transform(parent="red_left_tool", child="red_end_effector_left")
         # map2cam = tfw.get_transform(parent="map", child=self.frame_id)
         # Chain effect: get transformation matrix from camera to end effector
         camera2ee = camera2tool @ tool2ee  # Put map2cam first once we add in map part
-        self.tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='end_effector_left')
+        self.tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='red_end_effector_left')
 
         # Visualize Point Clouds
         self.publish_pc_data(points_xyz, inlier_points, inliers_centroid, normal)
@@ -350,9 +350,6 @@ class PlantExtractor:
 
         green_pcd.points = o3d.utility.Vector3dVector(green_pcd_points)
 
-        o3d.io.write_point_cloud('/home/christianforeman/catkin_ws/src/plant_selector/bags/weed-selection.pcd', green_pcd)
-        o3d.io.write_point_cloud('/home/christianforeman/catkin_ws/src/plant_selector/bags/dirt_points.pcd', dirt_pcd)
-
         # Apply plane segmentation function from open3d and get the best inliers
         plane_model, best_inliers = dirt_pcd.segment_plane(distance_threshold=0.0005,
                                                            ransac_n=3,
@@ -441,13 +438,13 @@ class PlantExtractor:
         camera_2_tool[:3, 3] = weed_centroid
 
         # Define transformation matrix from tool to end effector
-        tool2ee = self.tfw.get_transform(parent="left_tool", child="end_effector_left")
+        tool2ee = self.tfw.get_transform(parent="red_left_tool", child="red_end_effector_left")
         
         # Get transform from camera to end effector
         camera_2_ee = camera_2_tool @ tool2ee
 
         # Display gripper
-        self.tfw.send_transform_matrix(camera_2_ee, parent=self.frame_id, child='end_effector_left')
+        self.tfw.send_transform_matrix(camera_2_ee, parent=self.frame_id, child='red_end_effector_left')
 
 
 

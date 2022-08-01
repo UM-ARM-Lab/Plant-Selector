@@ -1,0 +1,20 @@
+<launch>
+    <!-- start the ROS controllers, only used in gazebo. This merges gripper and arm joint states -->
+    <include file="$(find arm_robots)/launch/rviz_victor.launch">
+        <arg name="launch_fake_dual_arm_bridge" value="true"/>
+    </include>
+
+    <!-- Transforms -->
+    <node pkg="tf2_ros" type="static_transform_publisher" name="victor_tf" args="-0.1 0 -1.5 0 0 0 zed2i_left_camera_frame victor_root"/>
+    
+    <!-- Launch Basic Plant Selector Stuff -->
+    <include file="$(find plant_selector)/launch/plant_selector.launch">
+        <arg name="online" value="false"/>
+        <arg name="run_default_plant_extraction" default="false"/>
+        <arg name="rviz_file" default="$(find plant_selector)/rviz/victor.rviz"/>
+    </include>
+
+    <!-- Python Scripts -->
+    <node name="plant_extraction" pkg="plant_selector" type="plant_extraction_victor.py" output="screen"/>
+</launch>
+

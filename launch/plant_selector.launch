@@ -1,0 +1,45 @@
+<launch>
+    <arg name="online" default="true"/>
+    <arg name="run_default_plant_extraction" default="true"/>
+    <arg name="rviz_file" default="$(find plant_selector)/rviz/zed.rviz"/>
+    <arg name="publish_zed_urdf" default="true"/>
+
+    <param name="frame_id" value="zed2i_left_camera_frame"/>
+    <param name="pc_source" value="/zed2i/zed_node/point_cloud/cloud_registered"/>
+    <param name="default_bag_path" value='$(find plant_selector)/bags'/>
+
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(arg rviz_file)"/>
+
+    <!-- Launch ZED Camera if in online mode -->
+    <group if="$(arg online)">
+        <include file="$(find zed_wrapper)/launch/zed2i.launch"/>
+
+        <!-- Cpp Executables-->
+        <node name="real_time_handler" pkg="plant_selector" type="real_time_handler" output="screen"/>
+    </group>
+
+    <group if="$(arg publish_zed_urdf)">
+        <!-- load ZED URDF -->
+        <param name="zed2i_description" command="$(find xacro)/xacro '$(find zed_wrapper)/urdf/zed_descr.urdf.xacro'
+                        camera_name:=zed2i
+                        camera_model:=zed2i
+                        base_frame:=base_link" />
+
+        <!-- ZED URDF publisher -->
+        <node name="zed2i_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen" required="true">
+            <remap from="robot_description" to="zed2i_description" />
+        </node>
+    </group>
+
+    <!-- Python Script -->
+    <group if="$(arg run_default_plant_extraction)">
+        <node name="plant_extraction" pkg="plant_selector" type="plant_extraction.py" output="screen"/>
+    </group>
+
+    <!-- Red Gripper -->
+    <rosparam command="load" file="$(find plant_selector)/urdf/gripper.urdf" param="gripper_description"/>
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="gripper_state_publisher">
+        <remap from="robot_description" to="gripper_description"/>
+    </node>
+</launch>
+
