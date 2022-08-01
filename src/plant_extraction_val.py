@@ -30,20 +30,11 @@ from geometry_msgs.msg import Pose
 
 class PlantExtractor:
     def __init__(self):
-        """
-        Initialize publishers for PCs, arrow and planes.
-
-        :param camera_frame: Name of the camera frame to be used.
-        """
         # Initialize publishers for PCs, arrow and planes
-        # SYNTAX: pub = rospy.Publisher('topic_name', geometry_msgs.msg.Point, queue_size=10)
         self.src_pub = rospy.Publisher("source_pc", PointCloud2, queue_size=10)
         self.inliers_pub = rospy.Publisher("inliers_pc", PointCloud2, queue_size=10)
         self.arrow_pub = rospy.Publisher("normal", Marker, queue_size=10)
         self.plane_pub = rospy.Publisher("plane", PointCloud2, queue_size=10)
-
-        self.green_pub = rospy.Publisher("green", PointCloud2, queue_size=10)
-        self.remove_rad_pub = rospy.Publisher("removed_rad", PointCloud2, queue_size=10)
 
         rospy.Subscriber("/plant_selector/mode", String, self.mode_change)
         rospy.Subscriber("/plant_selector/verification", Bool, self.move_robot)
@@ -60,33 +51,15 @@ class PlantExtractor:
 
         rospy.sleep(1)
         self.val.open_left_gripper()
-        print("Left gripper ready")
         rospy.sleep(1)
         self.val.open_right_gripper()
-        print("Right gripper ready")
         rospy.sleep(1)
-
-        # self.goal = [0.6, 0, 0, 0, 0, 0]
-        # self.val.plan_to_pose(self.val.left_arm_group, self.val.left_tool_name, self.goal)
-        # print("Planed")
 
         # Set the default mode to branch
         self.mode = "Branch"
         self.plant_pc_sub = rospy.Subscriber("/rviz_selected_points", PointCloud2, self.plant_extraction)
 
-        # Fixing first selection
-        # TODO: This isn't ideal, probs a better way to do this
-        ident_matrix = np.eye(4)
-        for _ in range(10):
-            # self.tfw.send_transform_matrix(ident_matrix, parent=self.frame_id, child='end_effector_left')
-            rospy.sleep(0.05)
-            
     def mode_change(self, new_mode):
-        """
-        Callback to a new mode type from /plant_selector/mode. Modes can be either Branch or Weed.
-
-        :param new_mode: Ros string message
-        """
         self.mode = new_mode.data
         rospy.loginfo("New mode: " + self.mode)
         self.val.plan_to_joint_config('both_arms', 'bent')
@@ -101,102 +74,9 @@ class PlantExtractor:
         elif self.mode == "Weed":
             self.select_weed(pc)
 
-    @staticmethod
-    def project(u, n):
-        """
-        This functions projects a vector "u" to a plane "n" following a mathematical equation.
-
-        :param u: vector that is going to be projected. (numpy array)
-        :param n: normal vector of the plane (numpy array)
-        :return: vector projected onto the plane (numpy array)
-        """
-        return u - np.dot(u, n) / np.linalg.norm(n) * n
-
-    def rviz_arrow(self, start, direction, name, thickness, length_scale, color):
-        """
-        This function displays an arrow in Rviz.
-
-        :param start: vector with coordinates of the start point (origin)
-        :param direction: vector that defines de direction of the arrow
-        :param name: namespace to display in Rviz
-        :param thickness: thickness of the arrow
-        :param length_scale: length of the arrow
-        :param color: color of the arrow
-        :return: None
-        """
-        color_msg = ColorRGBA(*colors.to_rgba(color))
-
-        # Define ROS message
-        msg = Marker()
-        msg.type = Marker.ARROW
-        msg.action = Marker.ADD
-        msg.ns = name
-        msg.header.frame_id = self.frame_id
-        msg.color = color_msg
-
-        # Define endpoint of the arrow, given by the start point, the direction and a length_scale parameter
-        end = start + direction * length_scale
-        # Construct ROS message for the start and end of the arrow
-        msg.points = [
-            ros_numpy.msgify(Point, start),
-            ros_numpy.msgify(Point, end),
-        ]
-        msg.pose.orientation.w = 1
-        msg.scale.x = thickness
-        msg.scale.y = thickness * 2
-
-        # Publish message
-        self.arrow_pub.publish(msg)
-
-    def plot_plane(self, centroid, normal, size: float = 1, res: float = 0.01):
-        """
-        This function plots a plane in Rviz.
-
-        :param centroid: centroid of the inliers
-        :param normal: normal vector of the plane
-        :param size: size of the plane
-        :param res: resolution of the plane (there will be a point every "res" distance)
-        :return: None
-        """
-        # Get three orthogonal vectors
-        # Create a random vector from the normal vector
-        r = normal + [1, 0, 0]
-        # Normalize normal vector
-        r = r / np.linalg.norm(r)
-        # Normalize normal vector
-        v0 = normal / np.linalg.norm(normal)
-        # The other two orthogonal vectors
-        v1 = np.cross(v0, r)
-        v2 = np.cross(v0, v1)
-
-        # Define the size and resolution of the plane
-        t = np.arange(-size, size, res)
-
-        # Construct 't' by 3 matrix
-        v1s = t[:, None] * v1[None, :]
-        v2s = t[:, None] * v2[None, :]
-
-        # Construct a 't' by 't' by 3 matrix for the plane
-        v1s_repeated = np.tile(v1s, [t.size, 1, 1])
-        # Define the points that will construct the plane
-        points = centroid + v1s_repeated + v2s[:, None]
-        # Flatten the points
-        points_flat = points.reshape([-1, 3])
-
-        # Call the function to plot plane as a PC
-        hp.publish_pc_no_color(self.plane_pub, points_flat[:, :3], self.frame_id)
-
     def select_branch(self, selection):
-        """
-        This function selects the branch and gives a pose for the gripper.
-
-        :param selection: selected pointcloud from rviz
-        :return: None.
-        """
         # Perform Depth Filter
         points_xyz = hp.cluster_filter(selection)[:, :3]
-
-        # Transform open3d PC to numpy array
 
         # Create Open3D point cloud for green points
         pcd = o3d.geometry.PointCloud()
@@ -227,7 +107,7 @@ class PlantExtractor:
         camera_to_centroid = inliers_centroid - camera_position
 
         # Call the project function to get the cut direction vector
-        cut_direction = self.project(camera_to_centroid, normal)
+        cut_direction = hp.project(camera_to_centroid, normal)
         # Normalize the projected vector
         cut_direction_normalized = cut_direction / np.linalg.norm(cut_direction)
         # Cross product between normalized cut director vector and the normal of the plane to obtain the
@@ -247,15 +127,11 @@ class PlantExtractor:
 
         # Visualize Point Clouds
         self.publish_pc_data(points_xyz, inlier_points, inliers_centroid, normal)
-
         self.visualize_gripper_urdf(camera2tool)
 
         # get transform from world to cam
         world2cam = self.tfw.get_transform(parent="world", child=self.frame_id)
-        # use that @ camera2tool
         world2tool = world2cam @ camera2tool
-        # Grab 3x3 rotation part
-        # euler from matrix
         x_rot, y_rot, z_rot = euler_from_matrix(world2tool[:3, :3])
 
         val2cam = self.tfw.get_transform(parent='world', child=self.frame_id)
@@ -265,12 +141,6 @@ class PlantExtractor:
         self.val_plan()
 
     def select_weed(self, selection):
-        """
-        This function extracts the weed points and gives a pose for the gripper.
-
-        :param selection: Selected pointcloud in Rviz.
-        :return: None.
-        """
         # Load point cloud and visualize it
         points = np.array(list(pc2.read_points(selection)))
 
@@ -310,8 +180,6 @@ class PlantExtractor:
         green_points_xyz = green_points_xyz[green_points_indices]
         green_points_rgb = green_points_rgb[green_points_indices]
 
-        hp.publish_pc_no_color(self.green_pub, green_points_xyz, self.frame_id)
-
         # Create Open3D point cloud for green points
         green_pcd = o3d.geometry.PointCloud()
         # Save xyzrgb info in green_pcd (type: open3d.PointCloud)
@@ -328,7 +196,6 @@ class PlantExtractor:
         # Just keep the inlier points in the point cloud
         green_pcd = green_pcd.select_by_index(ind)
         green_pcd_points = np.asarray(green_pcd.points)
-        hp.publish_pc_no_color(self.remove_rad_pub, green_pcd_points, self.frame_id)
 
         # Apply DBSCAN to green points
         labels = np.array(green_pcd.cluster_dbscan(eps=0.007, min_points=15))  # This is actually pretty good
@@ -385,7 +252,7 @@ class PlantExtractor:
 
         # Construct transformation matrix from camera to tool of end effector
         camera2tool = np.eye(4)
-        camera2tool[:3, :3] = (rotation_matrix(phi, np.asarray([1, 0, 0])) @ \
+        camera2tool[:3, :3] = (rotation_matrix(phi, np.asarray([1, 0, 0])) @
                                rotation_matrix(theta, np.asarray([0, 1, 0])))[:3, :3]
         camera2tool[:3, 3] = weed_centroid
 
@@ -442,30 +309,22 @@ class PlantExtractor:
     def visualize_gripper_urdf(self, camera2tool):
         # Get transformation matrix between tool and end effector
         tool2ee = self.tfw.get_transform(parent="red_left_tool", child="red_end_effector_left")
-        # map2cam = tfw.get_transform(parent="map", child=self.frame_id)
         # Chain effect: get transformation matrix from camera to end effector
-        camera2ee = camera2tool @ tool2ee  # Put map2cam first once we add in map part
+        camera2ee = camera2tool @ tool2ee
         self.tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='red_end_effector_left')
 
-
-
     def publish_pc_data(self, dirt_points_xyz, green_pcd_points, inlier_dirt_centroid, normal):
+        # Visualize entire selected area
         hp.publish_pc_no_color(self.src_pub, dirt_points_xyz[:, :3], self.frame_id)
         # Visualize filtered green points as "inliers"
         hp.publish_pc_no_color(self.inliers_pub, green_pcd_points[:, :3], self.frame_id)
         # Call rviz_arrow function to see normal of the plane
-        self.rviz_arrow(inlier_dirt_centroid, normal, name='normal', thickness=0.008, length_scale=0.15,
-                        color='w')
+        hp.rviz_arrow(self.arrow_pub, self.frame_id, inlier_dirt_centroid, normal, name='normal')
         # Call plot_plane function to visualize plane in Rviz
-        self.plot_plane(inlier_dirt_centroid, normal, size=0.1, res=0.001)
+        hp.plot_plane(self.plane_pub, self.frame_id, inlier_dirt_centroid, normal)
 
 
 def main():
-    """
-    This main function constantly waits for any selection of points in Rviz.
-
-    :return: None.
-    """
     rospy.init_node("plant_extraction")
     plant_extractor = PlantExtractor()
     rospy.spin()

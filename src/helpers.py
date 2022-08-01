@@ -225,18 +225,7 @@ def rotation_matrix_from_vectors(vec1, vec2):
     return rotation_matrix
 
 
-def rviz_arrow(frame_id, arrow_pub, start, direction, name, thickness, length_scale, color):
-    """
-    This function displays an arrow in Rviz.
-
-    :param start: vector with coordinates of the start point (origin)
-    :param direction: vector that defines de direction of the arrow
-    :param name: namespace to display in Rviz
-    :param thickness: thickness of the arrow
-    :param length_scale: length of the arrow
-    :param color: color of the arrow
-    :return: None
-    """
+def rviz_arrow(arrow_pub, frame_id, start, direction, name, thickness=0.008, length_scale=0.15, color='w'):
     color_msg = ColorRGBA(*colors.to_rgba(color))
 
     # Define ROS message
@@ -262,15 +251,16 @@ def rviz_arrow(frame_id, arrow_pub, start, direction, name, thickness, length_sc
     arrow_pub.publish(msg)
 
 
-def plot_plane(frame_id, plane_pub, centroid, normal, size: float = 1, res: float = 0.01):
+def plot_plane(plane_pub, frame_id, center, normal, size: float = 0.1, res: float = 0.001):
     """
     This function plots a plane in Rviz.
-
-    :param centroid: centroid of the inliers
-    :param normal: normal vector of the plane
-    :param size: size of the plane
-    :param res: resolution of the plane (there will be a point every "res" distance)
-    :return: None
+    Args:
+        plane_pub: ros publisher
+        frame_id: frame id of plane to publish
+        center: center of plane
+        normal: normal to the plane
+        size: how large the plane is
+        res: how "dense" the plane is
     """
     # Get three orthogonal vectors
     # Create a random vector from the normal vector
@@ -293,7 +283,7 @@ def plot_plane(frame_id, plane_pub, centroid, normal, size: float = 1, res: floa
     # Construct a 't' by 't' by 3 matrix for the plane
     v1s_repeated = np.tile(v1s, [t.size, 1, 1])
     # Define the points that will construct the plane
-    points = centroid + v1s_repeated + v2s[:, None]
+    points = center + v1s_repeated + v2s[:, None]
     # Flatten the points
     points_flat = points.reshape([-1, 3])
 
