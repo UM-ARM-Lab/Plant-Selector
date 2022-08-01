@@ -6,6 +6,7 @@ import open3d as o3d
 from sklearn.decomposition import PCA
 
 import helpers as hp
+import plant_helpers as ph
 import rospy
 from arc_utilities.tf2wrapper import TF2Wrapper
 from sensor_msgs import point_cloud2 as pc2
@@ -115,7 +116,7 @@ class PlantExtractor:
             rospy.loginfo("Select points")
             return
 
-        green_pcd_points, dirt_pcd = hp.green_color_filter(points)
+        green_pcd_points, dirt_pcd = ph.green_color_filter(points)
 
         if green_pcd_points is None:
             return

@@ -1,27 +1,21 @@
 #!/usr/bin/env python
 # Import useful libraries and functions
 from math import atan, sin, cos, pi
-from re import I
-from statistics import mode
 
 import numpy as np
 import open3d as o3d
-from matplotlib import colors
 from sklearn.decomposition import PCA
 
 import helpers as hp
-import ros_numpy
+import plant_helpers as ph
 import rospy
 from arc_utilities.tf2wrapper import TF2Wrapper
-from geometry_msgs.msg import Point
 from sensor_msgs import point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2
-from std_msgs.msg import ColorRGBA
 from std_msgs.msg import String
 from std_msgs.msg import Bool
 from visualization_msgs.msg import Marker
 from tf.transformations import euler_from_matrix, rotation_matrix
-import hdbscan
 
 # Val stuff
 from arm_robots.hdt_michigan import Val
@@ -46,6 +40,7 @@ class PlantExtractor:
         self.val = Val(raise_on_failure=True)
         self.val.connect()
         # self.val.plan_to_joint_config('both_arms', 'bent')
+
         self.goal = None
         self.plan_exec_res = None
 
@@ -58,6 +53,7 @@ class PlantExtractor:
         # Set the default mode to branch
         self.mode = "Branch"
         self.plant_pc_sub = rospy.Subscriber("/rviz_selected_points", PointCloud2, self.plant_extraction)
+
     def mode_change(self, new_mode):
         self.mode = new_mode.data
         rospy.loginfo("New mode: " + self.mode)
@@ -125,8 +121,8 @@ class PlantExtractor:
         camera2tool[3, 3] = 1
 
         # Visualize Point Clouds
-        self.publish_pc_data(points_xyz, inlier_points, inliers_centroid, normal)
-        self.visualize_gripper_urdf(camera2tool)
+        # self.publish_pc_data(points_xyz, inlier_points, inliers_centroid, normal)
+        self.visualize_red_gripper(camera2tool)
 
         # get transform from world to cam
         world2cam = self.tfw.get_transform(parent="world", child=self.frame_id)
@@ -147,98 +143,10 @@ class PlantExtractor:
             rospy.loginfo("Select points")
             return
 
-        pcd_points = points[:, :3]
-        float_colors = points[:, 3]
+        weed_centroid, normal = ph.calculate_weed_centroid(points)
 
-        pcd_colors = np.array((0, 0, 0))
-        for x in float_colors:
-            rgb = hp.float_to_rgb(x)
-            pcd_colors = np.vstack((pcd_colors, rgb))
-
-        pcd_colors = pcd_colors[1:, :]
-
-        # Filter the point cloud so that only the green points stay
-        # Get the indices of the points with g parameter greater than x
-        green_points_indices = np.where((pcd_colors[:, 1] - pcd_colors[:, 0] > pcd_colors[:, 1] / 10.0) &
-                                        (pcd_colors[:, 1] - pcd_colors[:, 2] > pcd_colors[:, 1] / 10.0))
-
-        green_points_xyz = pcd_points[green_points_indices]
-        green_points_rgb = pcd_colors[green_points_indices]
-
-        r_low, g_low, b_low = 10, 20, 10
-        r_high, g_high, b_high = 240, 240, 240
-        green_points_indices = np.where((green_points_rgb[:, 0] > r_low) & (green_points_rgb[:, 0] < r_high) &
-                                        (green_points_rgb[:, 1] > g_low) & (green_points_rgb[:, 1] < g_high) &
-                                        (green_points_rgb[:, 2] > b_low) & (green_points_rgb[:, 2] < b_high))
-
-        if len(green_points_indices[0]) == 1:
-            rospy.loginfo("No green points found. Try again.")
+        if weed_centroid is None:
             return
-
-        # Save xyzrgb info in green_points (type: numpy array)
-        green_points_xyz = green_points_xyz[green_points_indices]
-        green_points_rgb = green_points_rgb[green_points_indices]
-
-        # Create Open3D point cloud for green points
-        green_pcd = o3d.geometry.PointCloud()
-        # Save xyzrgb info in green_pcd (type: open3d.PointCloud)
-        green_pcd.points = o3d.utility.Vector3dVector(green_points_xyz)
-        green_pcd.colors = o3d.utility.Vector3dVector(green_points_rgb)
-
-        # Apply radius outlier filter to green_pcd
-        _, ind = green_pcd.remove_radius_outlier(nb_points=2, radius=0.007)
-
-        if len(ind) == 0:
-            rospy.loginfo("Not enough points. Try again.")
-            return
-
-        # Just keep the inlier points in the point cloud
-        green_pcd = green_pcd.select_by_index(ind)
-        green_pcd_points = np.asarray(green_pcd.points)
-
-        # Apply DBSCAN to green points
-        labels = np.array(green_pcd.cluster_dbscan(eps=0.007, min_points=15))  # This is actually pretty good
-
-        n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
-        if n_clusters == 0:
-            rospy.loginfo("Not enough points. Try again.")
-            return
-
-        # Get labels of the biggest cluster
-        biggest_cluster_indices = np.where(labels[:] == mode(labels))
-        # Just keep the points that correspond to the biggest cluster (weed)
-        green_pcd_points = green_pcd_points[biggest_cluster_indices]
-        # Get coordinates of the weed centroid
-        weed_centroid = np.mean(green_pcd_points, axis=0)
-
-        dirt_indices = np.arange(0, len(pcd_points))
-        # These are the indices for dirt
-        dirt_indices = np.setdiff1d(dirt_indices, green_points_indices)
-        # Save xyzrgb info in dirt_points (type: numpy array) from remaining indices of green points filter
-        dirt_points_xyz = pcd_points[dirt_indices]
-        dirt_points_rgb = pcd_colors[dirt_indices]
-        # Create PC for dirt points
-        dirt_pcd = o3d.geometry.PointCloud()
-        # Save points and color to the point cloud
-        dirt_pcd.points = o3d.utility.Vector3dVector(dirt_points_xyz)
-        dirt_pcd.colors = o3d.utility.Vector3dVector(dirt_points_rgb)
-
-        # Apply plane segmentation function from open3d and get the best inliers
-        plane_model, best_inliers = dirt_pcd.segment_plane(distance_threshold=0.0005,
-                                                           ransac_n=3,
-                                                           num_iterations=1000)
-
-        if len(best_inliers) == 0:
-            rospy.loginfo("Can't find dirt, Select both weed and dirt.")
-            return
-
-        [a, b, c, _] = plane_model
-        # Just save and continue working with the inlier points defined by the plane segmentation function
-        inlier_dirt_points = dirt_points_xyz[best_inliers]
-        # Get centroid of dirt
-        inlier_dirt_centroid = np.mean(inlier_dirt_points, axis=0)
-        # The a, b, c coefficients of the plane equation are the components of the normal vector of that plane
-        normal = np.asarray([a, b, c])
 
         # Currently only for zed
         if normal[2] > 0:
@@ -255,14 +163,9 @@ class PlantExtractor:
                                rotation_matrix(theta, np.asarray([0, 1, 0])))[:3, :3]
         camera2tool[:3, 3] = weed_centroid
 
-        self.visualize_gripper_urdf(camera2tool)
-
-        # Victor Stuff
+        # Val Stuff
         world2cam = self.tfw.get_transform(parent='world', child=self.frame_id)
         world2tool = world2cam @ camera2tool
-
-        # Visualize pcs and gripper
-        self.publish_pc_data(dirt_points_xyz, green_pcd_points, inlier_dirt_centroid, normal)
 
         # Plan to the pose
         x_rot, y_rot, z_rot = euler_from_matrix(world2tool[:3, :3])
@@ -280,37 +183,43 @@ class PlantExtractor:
             print("Found a path!")
         else:
             rospy.loginfo("Can't find path.")
+        # TODO: In here I should send notification about executing the plan to rviz panel
         
-        # Return to zero state at the end, no matter what
-        rospy.sleep(2)
-
     def val_execute(self):
+        # Attempt to go to the goal
         self.val.set_execute(True)
         exec_res = self.val.follow_arms_joint_trajectory(self.plan_exec_res.planning_result.plan.joint_trajectory)
         print(f"The execution was: {exec_res}")
-
-        # Send the gripper away!
-        end_effector_to_void = np.eye(4)
-        end_effector_to_void[:3, 3] = 1000
-        self.tfw.send_transform_matrix(end_effector_to_void, 'hdt_michigan_root', 'red_end_effector_left')
 
         # Grasping
         rospy.sleep(2)
         self.val.close_right_gripper()
 
-        # Go back to base!
         rospy.sleep(5)
+        self.val_to_default_pose()
+
+    def val_to_default_pose(self):
+        # Go back to default!
+        self.val.set_execute(True)
         self.val.plan_to_joint_config('both_arms', 'bent')
 
-        rospy.sleep(2)
+        rospy.sleep(1)
         self.val.open_right_gripper()
+        rospy.sleep(1)
+        self.val.open_left_gripper()
 
-    def visualize_gripper_urdf(self, camera2tool):
+    def visualize_red_gripper(self, camera2tool):
         # Get transformation matrix between tool and end effector
         tool2ee = self.tfw.get_transform(parent="red_left_tool", child="red_end_effector_left")
         # Chain effect: get transformation matrix from camera to end effector
         camera2ee = camera2tool @ tool2ee
         self.tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='red_end_effector_left')
+
+    def hide_red_gripper(self):
+        # Because you can't directly hide a urdf, just send the urdf very far away :D
+        end_effector_to_void = np.eye(4)
+        end_effector_to_void[:3, 3] = 1000
+        self.tfw.send_transform_matrix(end_effector_to_void, 'hdt_michigan_root', 'red_end_effector_left')
 
     def publish_pc_data(self, dirt_points_xyz, green_pcd_points, inlier_dirt_centroid, normal):
         # Visualize entire selected area
