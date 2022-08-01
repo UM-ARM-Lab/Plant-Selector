@@ -51,7 +51,7 @@ add_executable(real_time_handler
   )
 
 add_executable(send_pcd_msg 
-  src/send_pcd_msg.cpp
+  scripts/send_pcd_msg.cpp
   )
 
 target_link_libraries(publishing_selector

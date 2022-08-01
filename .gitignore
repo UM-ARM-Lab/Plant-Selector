@@ -2,11 +2,7 @@ bags/
 .idea/
 pcs/*
 .vscode/
-*/__pycache__/*
+__pycache__/
 zed_pc_test.py
 random_launch/
-*/particle_filter.rviz
-src/victor_basic_motion.py
-*ipynb*
 stem.py
-more_than_one
