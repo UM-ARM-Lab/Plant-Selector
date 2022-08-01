@@ -23,11 +23,9 @@ from visualization_msgs.msg import Marker
 from tf.transformations import euler_from_matrix
 import hdbscan
 
-# Victor stuff
-from arm_robots.victor import Victor
-from victor_hardware_interface_msgs.msg import ControlMode
-from arm_robots.robot_utils import make_follow_joint_trajectory_goal, PlanningResult, PlanningAndExecutionResult, \
-    ExecutionResult, is_empty_trajectory, merge_joint_state_and_scene_msg
+# Val stuff
+from arm_robots.hdt_michigan import Val
+from geometry_msgs.msg import Pose
 
 class PlantExtractor:
     def __init__(self):
@@ -53,16 +51,15 @@ class PlantExtractor:
         self.tfw = TF2Wrapper()
 
         # Victor Code
-        self.victor = Victor()
-        self.victor.set_control_mode(control_mode=ControlMode.JOINT_POSITION, vel=0.1)
-        self.victor.connect()
-        self.victor.plan_to_joint_config('both_arms', 'zero')
+        self.val = Val(raise_on_failure=True)
+        self.val.connect()
+        self.val.plan_to_joint_config('both_arms', 'zero')
         self.goal = None
 
         rospy.sleep(1)
-        self.victor.open_left_gripper()
+        self.val.open_left_gripper()
         rospy.sleep(1)
-        self.victor.open_right_gripper()
+        self.val.open_right_gripper()
         rospy.sleep(1)
 
         # Set the default mode to branch
@@ -88,7 +85,7 @@ class PlantExtractor:
 
     def move_robot(self, is_verified):
         if is_verified.data:
-            self.victor_plan()
+            self.val_plan()
 
     def plant_extraction(self, pc):
         if self.mode == "Branch":
@@ -251,8 +248,8 @@ class PlantExtractor:
 
         x_rot, y_rot, z_rot = euler_from_matrix(camera2tool_rot)
 
-        vicroot2cam = self.tfw.get_transform(parent='victor_root', child=self.frame_id)
-        result = vicroot2cam @ camera2tool
+        val2cam = self.tfw.get_transform(parent='torso', child=self.frame_id)
+        result = val2cam @ camera2tool
         self.goal = [result[0, 3], result[1, 3], result[2, 3], x_rot, y_rot, z_rot]
 
     def select_weed(self, selection):
@@ -277,25 +274,30 @@ class PlantExtractor:
             rgb = hp.float_to_rgb(x)
             pcd_colors = np.vstack((pcd_colors, rgb))
 
-        pcd_colors = pcd_colors[1:, :] / 255
+        pcd_colors = pcd_colors[1:, :]
 
         # Filter the point cloud so that only the green points stay
         # Get the indices of the points with g parameter greater than x
-        r_low, g_low, b_low = 0.1, 0.3, 0.1
-        r_high, g_high, b_high = 0.8, 0.8, 0.6
-        green_points_indices = np.where((pcd_colors[:, 0] > r_low) & (pcd_colors[:, 0] < r_high) &
-                                        (pcd_colors[:, 1] > g_low) & (pcd_colors[:, 1] < g_high) &
-                                        (pcd_colors[:, 2] > b_low) & (pcd_colors[:, 2] < b_high))
+        green_points_indices = np.where((pcd_colors[:, 1] - pcd_colors[:, 0] > pcd_colors[:, 1] / 10.0) &
+                                        (pcd_colors[:, 1] - pcd_colors[:, 2] > pcd_colors[:, 1] / 10.0))
+        # green_points_indices = np.where((pcd_colors[:, 1] - pcd_colors[:, 0] > 8) &
+        #                                 (pcd_colors[:, 1] - pcd_colors[:, 2] > 8))
+        green_points_xyz = pcd_points[green_points_indices]
+        green_points_rgb = pcd_colors[green_points_indices]
+
+        r_low, g_low, b_low = 10, 20, 10
+        r_high, g_high, b_high = 240, 240, 240
+        green_points_indices = np.where((green_points_rgb[:, 0] > r_low) & (green_points_rgb[:, 0] < r_high) &
+                                        (green_points_rgb[:, 1] > g_low) & (green_points_rgb[:, 1] < g_high) &
+                                        (green_points_rgb[:, 2] > b_low) & (green_points_rgb[:, 2] < b_high))
 
         if len(green_points_indices[0]) == 1:
             rospy.loginfo("No green points found. Try again.")
             return
 
         # Save xyzrgb info in green_points (type: numpy array)
-        green_points_xyz = pcd_points[green_points_indices]
-        green_points_rgb = pcd_colors[green_points_indices]
-
-        hp.publish_pc_no_color(self.green_pub, green_points_xyz, self.frame_id)
+        green_points_xyz = green_points_xyz[green_points_indices]
+        green_points_rgb = green_points_rgb[green_points_indices]
 
         # Create Open3D point cloud for green points
         green_pcd = o3d.geometry.PointCloud()
@@ -306,7 +308,7 @@ class PlantExtractor:
         # Apply radius outlier filter to green_pcd
         _, ind = green_pcd.remove_radius_outlier(nb_points=7, radius=0.007)
 
-        if len(green_points_indices[0]) == 0:
+        if len(ind[0]) == 0:
             rospy.loginfo("Not enough points. Try again.")
             return
 
@@ -348,11 +350,6 @@ class PlantExtractor:
         dirt_pcd.points = o3d.utility.Vector3dVector(dirt_points_xyz)
         dirt_pcd.colors = o3d.utility.Vector3dVector(dirt_points_rgb)
 
-        green_pcd.points = o3d.utility.Vector3dVector(green_pcd_points)
-
-        o3d.io.write_point_cloud('/home/christianforeman/catkin_ws/src/plant_selector/bags/weed-selection.pcd', green_pcd)
-        o3d.io.write_point_cloud('/home/christianforeman/catkin_ws/src/plant_selector/bags/dirt_points.pcd', dirt_pcd)
-
         # Apply plane segmentation function from open3d and get the best inliers
         plane_model, best_inliers = dirt_pcd.segment_plane(distance_threshold=0.0005,
                                                            ransac_n=3,
@@ -384,8 +381,8 @@ class PlantExtractor:
         camera2tool[:3, 3] = weed_centroid
 
         # Victor Stuff
-        vicroot2cam = self.tfw.get_transform(parent='victor_root', child=self.frame_id)
-        result = vicroot2cam @ camera2tool
+        val2cam = self.tfw.get_transform(parent='torso', child=self.frame_id)
+        result = val2cam @ camera2tool
         
         # Visualize pcs and gripper
         self.visualize_gripper(phi, theta, weed_centroid)
@@ -395,32 +392,32 @@ class PlantExtractor:
         self.goal = [result[0, 3], result[1, 3], result[2, 3], phi, -theta, 0]
 
 
-    def victor_plan(self):
+    def val_plan(self):
         # Find a plan and execute it
-        plan_exec_res = self.victor.plan_to_pose(self.victor.right_arm_group, self.victor.right_tool_name, self.goal)
+        plan_exec_res = self.val.plan_to_pose(self.val.right_arm_group, self.val.right_tool_name, self.goal)
         was_success = plan_exec_res.planning_result.success
         # If there is no possible plan, try the left arm
         if was_success:
             # Was a success, grasp it
-            self.victor.close_right_gripper()
+            self.val.close_right_gripper()
             rospy.sleep(2)
-            self.victor.open_right_gripper()
+            self.val.open_right_gripper()
         else:
             rospy.loginfo("Can't find path, will try with left arm.")
             
-            plan_exec_res = self.victor.plan_to_pose(self.victor.left_arm_group, self.victor.left_tool_name, self.goal)
+            plan_exec_res = self.val.plan_to_pose(self.val.left_arm_group, self.val.left_tool_name, self.goal)
             was_success = plan_exec_res.planning_result.success
             if was_success:
                 # Was a success, grasp it
-                self.victor.close_left_gripper()
+                self.val.close_left_gripper()
                 rospy.sleep(2)
-                self.victor.open_left_gripper()
+                self.val.open_left_gripper()
             else:
                 rospy.loginfo("Can't find a path with either arm, return to zero state")
+                self.val.plan_to_joint_config('both_arms', 'zero')
         
         # Return to zero state at the end, no matter what
         rospy.sleep(2)
-        self.victor.plan_to_joint_config('both_arms', 'zero')
 
 
     def visualize_gripper(self, phi, theta, weed_centroid):

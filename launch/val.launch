@@ -1,0 +1,21 @@
+<launch>
+    <param name="frame_id" value="zed2i_left_camera_frame"/>
+    <param name="pc_source" value="/zed2i/zed_node/point_cloud/cloud_registered"/>
+    <param name="odom_source" value="/zed2i/zed_node/odom"/>
+    <param name="camera" value="zed"/>
+
+    <param name="default_bag_path" value='$(find plant_selector)/bags'/>
+
+    <!-- Launch ZED Camera -->
+    <include file="$(find zed_wrapper)/launch/zed2i.launch"/>
+
+    <!-- Python Scripts -->
+    <node name="plant_extraction" pkg="plant_selector" type="plant_extraction_val.py" output="screen"/>
+
+    <!-- Cpp Executables-->
+    <node name="real_time_handler" pkg="plant_selector" type="real_time_handler" output="screen"/>
+
+    <!-- Launch Val -->
+    <include file="$(find arm_robots)/launch/val_off_husky.launch"/>
+</launch>
+
