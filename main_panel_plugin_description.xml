@@ -4,7 +4,8 @@
          type="rviz_custom_panel::MainPanel"
          base_class_type="rviz::Panel">
     <description>
-      Panel that allows for selection of point clouds
+      Panel that allows you to select between different states for plant extraction. It also allows you to confirm
+      valid paths for the robot.
     </description>
   </class>
 

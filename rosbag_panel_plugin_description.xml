@@ -4,7 +4,7 @@
          type="rviz_custom_panel::RosbagPanel"
          base_class_type="rviz::Panel">
     <description>
-      Panel that allows for selection of point clouds
+      Panel that lets you play a rosbag from within rviz
     </description>
   </class>
 

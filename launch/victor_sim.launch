@@ -15,6 +15,6 @@
     </include>
 
     <!-- Python Scripts -->
-    <node name="plant_extraction" pkg="plant_selector" type="plant_extraction_robot.py" output="screen" args="-r Victor"/>
+    <node name="plant_extraction" pkg="plant_selector" type="plant_extraction.py" output="screen" args="-r Victor"/>
 </launch>
 

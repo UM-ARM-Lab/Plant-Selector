@@ -1,6 +1,4 @@
-"""
-This script is for evaluation of the weed extraction algorithm.
-"""
+#!/usr/bin/env python
 import os
 from statistics import mode
 
@@ -12,114 +10,17 @@ from visualization_msgs.msg import Marker
 
 import argparse
 import sys
-sys.path.insert(1, '/home/christianforeman/catkin_ws/src/plant_selector/src')
+
+import plant_helpers as ph
 import helpers as hp
-
-
-def calculate_weed_centroid(points):
-    # All the weed extraction algorithm
-    pcd_points = points[:, :3]
-    float_colors = points[:, 3]
-
-    pcd_colors = np.array((0, 0, 0))
-    for x in float_colors:
-        rgb = hp.float_to_rgb(x)
-        pcd_colors = np.vstack((pcd_colors, rgb))
-
-    # Alternate green color filter
-    pcd_colors = pcd_colors[1:, :]
-
-    # Filter the point cloud so that only the green points stay
-    # Get the indices of the points with g parameter greater than x
-    green_points_indices = np.where((pcd_colors[:, 1] - pcd_colors[:, 0] > pcd_colors[:, 1] / 12.0) &
-                                    (pcd_colors[:, 1] - pcd_colors[:, 2] > pcd_colors[:, 1] / 12.0))
-    green_points_xyz = pcd_points[green_points_indices]
-    green_points_rgb = pcd_colors[green_points_indices]
-
-    r_low, g_low, b_low = 10, 20, 10
-    r_high, g_high, b_high = 240, 240, 240
-    green_points_indices = np.where((green_points_rgb[:, 0] > r_low) & (green_points_rgb[:, 0] < r_high) &
-                                    (green_points_rgb[:, 1] > g_low) & (green_points_rgb[:, 1] < g_high) &
-                                    (green_points_rgb[:, 2] > b_low) & (green_points_rgb[:, 2] < b_high))
-
-    if len(green_points_indices[0]) == 1:
-        # rospy.loginfo("No green points found. Try again.")
-        return None, None
-
-    # Save xyzrgb info in green_points (type: numpy array)
-    green_points_xyz = green_points_xyz[green_points_indices]
-    green_points_rgb = green_points_rgb[green_points_indices]
-
-    # Create Open3D point cloud for green points
-    green_pcd = o3d.geometry.PointCloud()
-    # Save xyzrgb info in green_pcd (type: open3d.PointCloud)
-    green_pcd.points = o3d.utility.Vector3dVector(green_points_xyz)
-    green_pcd.colors = o3d.utility.Vector3dVector(green_points_rgb)
-
-    # Apply radius outlier filter to green_pcd
-    _, ind = green_pcd.remove_radius_outlier(nb_points=7, radius=0.007)
-
-    if len(ind) == 0:
-        # print("Not enough points. Try again.")
-        return None, None
-
-    # Just keep the inlier points in the point cloud
-    green_pcd = green_pcd.select_by_index(ind)
-    green_pcd_points = np.asarray(green_pcd.points)
-
-    # Apply DBSCAN to green points
-    labels = np.array(green_pcd.cluster_dbscan(eps=0.0055, min_points=15))  # This is actually pretty good
-
-    n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
-    if n_clusters == 0:
-        # print("Not enough points. Try again.")
-        return None, None
-    # Get labels of the biggest cluster
-    biggest_cluster_indices = np.where(labels[:] == mode(labels))
-    # Just keep the points that correspond to the biggest cluster (weed)
-    green_pcd_points = green_pcd_points[biggest_cluster_indices]
-
-    # Get coordinates of the weed centroid
-    weed_centroid = np.mean(green_pcd_points, axis=0)
-
-    dirt_indices = np.arange(0, len(pcd_points))
-    # These are the indices for dirt
-    dirt_indices = np.setdiff1d(dirt_indices, green_points_indices)
-    # Save xyzrgb info in dirt_points (type: numpy array) from remaining indices of green points filter
-    dirt_points_xyz = pcd_points[dirt_indices]
-    dirt_points_rgb = pcd_colors[dirt_indices]
-    # Create PC for dirt points
-    dirt_pcd = o3d.geometry.PointCloud()
-    # Save points and color to the point cloud
-    dirt_pcd.points = o3d.utility.Vector3dVector(dirt_points_xyz)
-    dirt_pcd.colors = o3d.utility.Vector3dVector(dirt_points_rgb)
-
-    # Apply plane segmentation function from open3d and get the best inliers
-    plane_model, best_inliers = dirt_pcd.segment_plane(distance_threshold=0.0005,
-                                                       ransac_n=3,
-                                                       num_iterations=1000)
-
-    if len(best_inliers) == 0:
-        rospy.loginfo("Can't find dirt, Select both weed and dirt.")
-    [a, b, c, _] = plane_model
-    if a < 0:
-        normal = np.asarray([a, b, c])
-    else:
-        normal = -np.asarray([a, b, c])
-
-    return weed_centroid, normal
 
 
 class WeedMetrics:
     def __init__(self, data_directory, pred_model, gripper_size):
-        """
-            Initialize publishers for PCs, arrow and planes.
-        """
         # Initialize publishers for PCs
         self.pc_pub = rospy.Publisher("point_cloud", PointCloud2, queue_size=10)
         self.centroid_pub = rospy.Publisher("centroid", PointCloud2, queue_size=10)
         self.stem_pub = rospy.Publisher("stem", PointCloud2, queue_size=10)
-        self.arrow_pub = rospy.Publisher("normal_rotations", Marker, queue_size=10)
 
         self.data_directory = data_directory
         self.pc_filenames = os.listdir(self.data_directory + 'pcs/')
@@ -133,6 +34,7 @@ class WeedMetrics:
         self.skipped_weeds = 0
         self.skipped_weeds_filenames = []
 
+        # This is an arbitrary camera frame because we are publishing the point clouds ourselves.
         self.frame_id = "zed2i_left_camera_frame"
 
     def run_eval(self):
@@ -189,10 +91,6 @@ class WeedMetrics:
             hp.publish_pc_with_color(self.pc_pub, pc_norm, self.frame_id)
             hp.publish_pc_no_color(self.centroid_pub, pred_stem_norm, self.frame_id)
             hp.publish_pc_no_color(self.stem_pub, true_stem_norm, self.frame_id)
-            hp.rviz_arrow(self.frame_id, self.arrow_pub, np.asarray([0, 0, 0]), normals[sample], name='normal',
-                          thickness=0.008, length_scale=0.15, color='r')
-            hp.rviz_arrow(self.frame_id, self.arrow_pub, np.asarray([0, 0, 0]), normal_rot, name='normal_rot',
-                          thickness=0.008, length_scale=0.15, color='b')
             input(f"Currently viewing {str(good_pc_filenames[sample])}. Error of {self.error[sample]}.\n"
                   f"Press enter to see next sample.")
 
@@ -241,7 +139,7 @@ class WeedMetrics:
 
 
 # To run this node, make sure to give an argument of the location of the parent directory of data which should have a
-# subfolders of both 'manual_labels' and 'pcs' which should be filled with weed data.
+# sub folders of both 'manual_labels' and 'pcs' which should be filled with weed data.
 def main():
     rospy.init_node('weed_eval')
 
@@ -250,7 +148,7 @@ def main():
     args = parser.parse_args(rospy.myargv(sys.argv[1:]))
 
     # Run the evaluation
-    evaluator = WeedMetrics(args.weed_directory, calculate_weed_centroid, gripper_size=0.015)
+    evaluator = WeedMetrics(args.weed_directory, ph.calculate_weed_centroid, gripper_size=0.015)
     evaluator.run_eval()
 
 

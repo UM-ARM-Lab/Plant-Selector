@@ -1,0 +1,10 @@
+<launch>
+    <arg name="rviz_file" default="$(find plant_selector)/rviz/weed_eval.rviz"/>
+    <arg name="data_directory" default="$(find plant_selector)/weed_eval/"/>
+
+    <!-- Launch Rviz -->
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(arg rviz_file)"/>
+
+    <!-- Run Evaluation Script -->
+    <node name="eval" pkg="plant_selector" type="eval.py" output="screen" args="$(arg data_directory)"/>
+</launch>

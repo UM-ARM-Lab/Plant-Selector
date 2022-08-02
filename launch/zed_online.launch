@@ -1,9 +1,8 @@
 <launch>
     <!-- Launch Basic Plant Selector -->
     <include file="$(find plant_selector)/launch/plant_selector.launch">
-        <arg name="online" value="true"/>
         <arg name="rviz_file" default="$(find plant_selector)/rviz/zed_online.rviz"/>
     </include>
 
-    <node name="plant_extraction" pkg="plant_selector" type="plant_extraction_robot.py" output="screen"/>
+    <node name="plant_extraction" pkg="plant_selector" type="plant_extraction.py" output="screen"/>
 </launch>

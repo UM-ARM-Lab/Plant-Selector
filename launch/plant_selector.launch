@@ -34,6 +34,7 @@
         <remap from="robot_description" to="gripper_description"/>
     </node>
 
+    <!-- Launch Rviz -->
     <node pkg="rviz" type="rviz" name="rviz" args="-d $(arg rviz_file)"/>
 </launch>
 

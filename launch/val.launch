@@ -14,6 +14,6 @@
         <arg name="publish_zed_urdf" value="false"/>
     </include>
 
-    <node name="plant_extraction" pkg="plant_selector" type="plant_extraction_robot.py" output="screen" args="-r Val"/>
+    <node name="plant_extraction" pkg="plant_selector" type="plant_extraction.py" output="screen" args="-r Val"/>
 </launch>
 
