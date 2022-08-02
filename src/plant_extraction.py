@@ -3,18 +3,14 @@
 from math import atan, sin, cos, pi
 
 import numpy as np
-import open3d as o3d
-from sklearn.decomposition import PCA
 
-import helpers as hp
-import plant_helpers as ph
+import plant_modeling as pm
 import rospy
 from arc_utilities.tf2wrapper import TF2Wrapper
-from sensor_msgs import point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import String
 from std_msgs.msg import Bool
-from tf.transformations import euler_from_matrix, rotation_matrix
+from tf.transformations import euler_from_matrix
 import argparse
 import sys
 
@@ -65,86 +61,19 @@ class PlantExtractor:
             self.select_weed(pc)
 
     def select_branch(self, selection):
-        # Perform Depth Filter
-        points_xyz = hp.cluster_filter(selection)[:, :3]
-
-        # Create Open3D point cloud for green points
-        pcd = o3d.geometry.PointCloud()
-        # Save xyzrgb info in green_pcd (type: open3d.PointCloud)
-        pcd.points = o3d.utility.Vector3dVector(points_xyz)
-
-        # Apply plane segmentation function from open 3d and get the best inliers
-        _, best_inliers = pcd.segment_plane(distance_threshold=0.01,
-                                            ransac_n=3,
-                                            num_iterations=1000)
-        # Just save and continue working with the inlier points defined by the plane segmentation function
-        inlier_points = points_xyz[best_inliers]
-        # Get the centroid of the inlier points
-        # In Cartesian coordinates, the centroid is just the mean of the components. That is, axis=0 runs down the rows,
-        # so at the end you get the mean of x, y and z components (centroid)
-        inliers_centroid = np.mean(inlier_points, axis=0)
-
-        # Apply PCA and get just one principal component
-        pca = PCA(n_components=1)
-        # Fit the PCA to the inlier points
-        pca.fit(inlier_points)
-        # The first component (vector) is the normal of the plane we are looking for
-        normal = pca.components_[0]
-
-        # Since camera position is lost, define an approximate position
-        camera_position = np.array([0, 0, 0])
-        # This is the "main vector" going from the camera to the centroid of the PC
-        camera_to_centroid = inliers_centroid - camera_position
-
-        # Call the project function to get the cut direction vector
-        cut_direction = hp.project(camera_to_centroid, normal)
-        # Normalize the projected vector
-        cut_direction_normalized = cut_direction / np.linalg.norm(cut_direction)
-        # Cross product between normalized cut director vector and the normal of the plane to obtain the
-        # 2nd principal component
-        cut_y = np.cross(cut_direction_normalized, normal)
-
-        # Get 3x3 rotation matrix
-        # The first row is the x-axis of the tool frame in the camera frame
-        camera2tool_rot = np.array([normal, cut_y, cut_direction_normalized]).T
-
-        # Construct transformation matrix from camera to tool of end effector
-        camera2tool = np.zeros([4, 4])
-        camera2tool[:3, :3] = camera2tool_rot
-        camera2tool[:3, 3] = inliers_centroid
-        camera2tool[3, 3] = 1
-
+        # Predict branch location returns a camera to tool transform which is the pose of where the gripper shold be in respect to the camera frame
+        camera2tool = pm.predict_branch_pose(selection)
+        if camera2tool is None:
+            rospy.loginfo("Unable to make a branch prediction")
+            return
         self.visualize_red_gripper(camera2tool)
         self.robot_plan(camera2tool)
 
     def select_weed(self, selection):
-        # Load point cloud and visualize it
-        points = np.array(list(pc2.read_points(selection)))
-
-        if points.shape[0] == 0:
-            rospy.loginfo("Select points")
+        camera2tool = pm.predict_weed_pose(selection)
+        if camera2tool is None:
+            rospy.loginfo("Unable to make a weed prediction")
             return
-
-        weed_centroid, normal = ph.calculate_weed_centroid(points)
-
-        if weed_centroid is None:
-            return
-
-        # Currently only for zed
-        if normal[2] > 0:
-            normal = -normal
-
-        phi = atan(normal[1] / normal[2])
-        if phi < pi / 2:
-            phi = phi + pi - 2 * phi
-        theta = atan(normal[0] / -normal[2])
-
-        # Construct transformation matrix from camera to tool of end effector
-        camera2tool = np.eye(4)
-        camera2tool[:3, :3] = (rotation_matrix(phi, np.asarray([1, 0, 0])) @
-                               rotation_matrix(theta, np.asarray([0, 1, 0])))[:3, :3]
-        camera2tool[:3, 3] = weed_centroid
-
         self.visualize_red_gripper(camera2tool)
         self.robot_plan(camera2tool)
 
@@ -162,8 +91,12 @@ class PlantExtractor:
         self.goal = [world2tool[0, 3], world2tool[1, 3], world2tool[2, 3], x_rot, y_rot, z_rot]
         self.robot.set_execute(False)
         # Find a plan and execute it
-        self.plan_exec_res = self.robot.plan_to_pose(self.robot.right_arm_group, self.robot.right_tool_name, self.goal)
-        was_success = self.plan_exec_res.planning_result.success
+        was_success = True
+        try:
+            self.plan_exec_res = self.robot.plan_to_pose(self.robot.right_arm_group, self.robot.right_tool_name, self.goal)
+        except:
+            rospy.loginfo("Can't find a valid plan.")
+            was_success = False
 
         if was_success:
             # Send a message to rviz panel which prompts the user to verify the execution plan
@@ -171,7 +104,9 @@ class PlantExtractor:
             msg.data = True
             self.ask_for_verif_pub.publish(msg)
         else:
-            rospy.loginfo("Can't find path.")
+            msg = Bool()
+            msg.data = False
+            self.ask_for_verif_pub.publish(msg)
 
     def robot_execute(self):
         if self.robot is None:
@@ -183,7 +118,7 @@ class PlantExtractor:
         print(f"The execution was: {exec_res.success}")
 
         # Grasping
-        rospy.sleep(2)
+        rospy.sleep(1)
         self.robot.close_right_gripper()
 
         rospy.sleep(5)
@@ -200,8 +135,6 @@ class PlantExtractor:
 
         rospy.sleep(1)
         self.robot.open_right_gripper()
-        rospy.sleep(1)
-        self.robot.open_left_gripper()
 
     def visualize_red_gripper(self, camera2tool):
         # Get transformation matrix between tool and end effector
@@ -215,16 +148,6 @@ class PlantExtractor:
         end_effector_to_void = np.eye(4)
         end_effector_to_void[:3, 3] = 1000
         self.tfw.send_transform_matrix(end_effector_to_void, 'zed2i_base_link', 'red_end_effector_left')
-
-    # def publish_pc_data(self, dirt_points_xyz, green_pcd_points, inlier_dirt_centroid, normal):
-    #     # Visualize entire selected area
-    #     hp.publish_pc_no_color(self.src_pub, dirt_points_xyz[:, :3], self.frame_id)
-    #     # Visualize filtered green points as "inliers"
-    #     hp.publish_pc_no_color(self.inliers_pub, green_pcd_points[:, :3], self.frame_id)
-    #     # Call rviz_arrow function to see normal of the plane
-    #     hp.rviz_arrow(self.arrow_pub, self.frame_id, inlier_dirt_centroid, normal, name='normal')
-    #     # Call plot_plane function to visualize plane in Rviz
-    #     hp.plot_plane(self.plane_pub, self.frame_id, inlier_dirt_centroid, normal)
 
 
 def main():

@@ -31,7 +31,7 @@ namespace rviz_custom_panel
         mode_pub = n.advertise<std_msgs::String>("/plant_selector/mode", 1);
         publish_time_pub = n.advertise<std_msgs::Bool>("/plant_selector/is_instant", 1);
         verification_pub = n.advertise<std_msgs::Bool>("/plant_selector/verification", 1);
-        verification_sub = n.subscribe("/plant_selector/need_verification", 1000, &MainPanel::verification_callback, this);
+        verification_sub = n.subscribe("/plant_selector/ask_for_verification", 1000, &MainPanel::verification_callback, this);
 
         QLabel* publishing_label = new QLabel("Instantly Publish Selection?", this);
 
@@ -101,9 +101,16 @@ namespace rviz_custom_panel
     }
 
     void MainPanel::verification_callback(const std_msgs::Bool::ConstPtr& msg) {
-        verification_label->setText("Execute this Plan?");
-        yes_button->setEnabled(true);
-        no_button->setEnabled(true);
+        if(msg->data) {
+            verification_label->setText("Execute this Plan?");
+            yes_button->setEnabled(true);
+            no_button->setEnabled(true);
+        }
+        else {
+            verification_label->setText("No Valid Plan");
+            yes_button->setEnabled(false);
+            no_button->setEnabled(false);
+        }
     }
 
     void MainPanel::publish_time_changed(const QString& command_text) {

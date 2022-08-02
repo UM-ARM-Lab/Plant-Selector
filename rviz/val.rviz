@@ -6,6 +6,7 @@ Panels:
       Expanded:
         - /Global Options1
         - /TF1/Frames1
+        - /MotionPlanning1
         - /MotionPlanning1/Scene Geometry1
         - /MotionPlanning1/Scene Robot1
         - /MotionPlanning1/Planning Request1
@@ -407,7 +408,7 @@ Visualization Manager:
         Scene Alpha: 0.10000000149011612
         Scene Color: 50; 230; 50
         Scene Display Time: 0.009999999776482582
-        Show Scene Geometry: true
+        Show Scene Geometry: false
         Voxel Coloring: Z-Axis
         Voxel Rendering: Occupied Voxels
       Scene Robot:
@@ -772,7 +773,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 1.978994369506836
+      Distance: 1.044378399848938
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -780,17 +781,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.13087013363838196
-        Y: 0.600234866142273
-        Z: -0.36786457896232605
+        X: 0.06519770622253418
+        Y: 0.6772356033325195
+        Z: -0.41538649797439575
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.0097965002059937
+      Pitch: 1.4647961854934692
       Target Frame: <Fixed Frame>
-      Yaw: 4.784468173980713
+      Yaw: 1.6062883138656616
     Saved:
       - Class: rviz/Orbit
         Distance: 0.8627310395240784

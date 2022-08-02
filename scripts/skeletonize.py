@@ -1,6 +1,6 @@
 import sys
 sys.path.insert(1, '/home/christianforeman/catkin_ws/src/plant_selector/src')
-import helpers as hp
+import rviz_helpers as hp
 
 import numpy as np
 from descartes import PolygonPatch

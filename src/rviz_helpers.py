@@ -1,21 +1,13 @@
 #!/usr/bin/env python
-import ctypes
-import struct
-
-import hdbscan
 import numpy as np
 from matplotlib import colors
 
 import ros_numpy
-import rospy
-import sensor_msgs
 from geometry_msgs.msg import Point
 from sensor_msgs import point_cloud2
 from sensor_msgs.msg import PointField
 from std_msgs.msg import Header, ColorRGBA
 from visualization_msgs.msg import Marker
-import open3d as o3d
-from statistics import mode
 
 
 def publish_pc_no_color(publisher, points, frame_id):
@@ -32,7 +24,6 @@ def publish_pc_no_color(publisher, points, frame_id):
     fields = [PointField('x', 0, PointField.FLOAT32, 1),
               PointField('y', 4, PointField.FLOAT32, 1),
               PointField('z', 8, PointField.FLOAT32, 1)
-              # PointField('rgb', 12, PointField.FLOAT32, 1)
               ]
     pc2_msg = point_cloud2.create_cloud(header, fields, points)
     publisher.publish(pc2_msg)
@@ -56,70 +47,6 @@ def publish_pc_with_color(publisher, points, frame_id):
               ]
     pc2_msg = point_cloud2.create_cloud(header, fields, points)
     publisher.publish(pc2_msg)
-
-
-def float_to_rgb(float_rgb):
-    """ Converts a packed float RGB format to an RGB list
-
-        Args:
-            float_rgb: RGB value packed as a float
-
-        Returns:
-            color (list): 3-element list of integers [0-255,0-255,0-255]
-    """
-    s = struct.pack('>f', float_rgb)
-    i = struct.unpack('>l', s)[0]
-    pack = ctypes.c_uint32(i).value
-
-    r = (pack & 0x00FF0000) >> 16
-    g = (pack & 0x0000FF00) >> 8
-    b = (pack & 0x000000FF)
-
-    color = [r, g, b]
-
-    return color
-
-
-def cluster_filter(pc):
-    points = np.array(list(sensor_msgs.point_cloud2.read_points(pc)))
-
-    if points.shape[0] == 0:
-        rospy.loginfo("No points selected")
-        return
-
-    # Perform a color filter
-    # points = helpers.green_color_filter(points)
-
-    # TODO: The eps value here might want to somehow change dynamically where points further away can have clusters more spread out?
-    # The eps value really depends on how good the video quality is and how far away points are from each other
-    # clustering = DBSCAN(eps=0.015, min_samples=20).fit(points)
-    clustering = hdbscan.HDBSCAN(min_cluster_size=30, gen_min_span_tree=True, allow_single_cluster=1).fit(points)
-    # labels = clusterer.labels_
-    labels = clustering.labels_
-    n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
-
-    # If there are no clusters, return
-    if n_clusters == 0:
-        rospy.loginfo("Invalid selection for branch selection")
-        return
-
-    # Find the cluster closest to the user
-    closest_cluster = 0
-    closest_cluster_dist = np.inf
-    # TODO: Figure out how to get the actual center of camera so it isnt hardcoded camera_location = np.array((0, 0, 0))
-    camera_location = np.array([0, 0, 0])
-    for x in range(n_clusters):
-        sel_indices = np.argwhere(labels == x).squeeze(1)
-        this_cluster = points[sel_indices]
-        cluster_center = np.sum(this_cluster[:, :3], axis=0) / this_cluster.shape[0]
-        dist = np.linalg.norm(cluster_center - camera_location)
-        if dist < closest_cluster_dist:
-            closest_cluster_dist = dist
-            closest_cluster = x
-
-    sel_indices = np.argwhere(labels == closest_cluster).squeeze(1)
-    best_selection = points[sel_indices]
-    return best_selection
 
 
 def rotation_matrix_from_vectors(vec1, vec2):
@@ -201,14 +128,3 @@ def plot_plane(plane_pub, frame_id, center, normal, size: float = 0.1, res: floa
 
     # Call the function to plot plane as a PC
     publish_pc_no_color(plane_pub, points_flat[:, :3], frame_id)
-
-
-def project(u, n):
-    """
-    This functions projects a vector "u" to a plane "n" following a mathematical equation.
-
-    :param u: vector that is going to be projected. (numpy array)
-    :param n: normal vector of the plane (numpy array)
-    :return: vector projected onto the plane (numpy array)
-    """
-    return u - np.dot(u, n) / np.linalg.norm(n) * n

@@ -1,18 +1,15 @@
 #!/usr/bin/env python
 import os
-from statistics import mode
 
 import numpy as np
-import open3d as o3d
 import rospy
 from sensor_msgs.msg import PointCloud2
-from visualization_msgs.msg import Marker
 
 import argparse
 import sys
 
-import plant_helpers as ph
-import helpers as hp
+import plant_modeling as pm
+import rviz_helpers as rh
 
 
 class WeedMetrics:
@@ -74,7 +71,7 @@ class WeedMetrics:
         self.metric_printer()
 
         for sample in range(len(self.error)):
-            mat = hp.rotation_matrix_from_vectors(normals[sample], np.asarray([0, 0, 1]))
+            mat = rh.rotation_matrix_from_vectors(normals[sample], np.asarray([0, 0, 1]))
             normal_rot = mat.dot(normals[sample])
 
             file = pc_parent_directory + good_pc_filenames[sample]
@@ -88,15 +85,15 @@ class WeedMetrics:
             pred_stem_norm = np.matmul(mat, np.transpose(pred_stems[sample].reshape(1, 3) - mean_pc)).transpose()
             true_stem_norm = np.matmul(mat, np.transpose(self.manual_labels[sample].reshape(1, 3) - mean_pc)).transpose()
 
-            hp.publish_pc_with_color(self.pc_pub, pc_norm, self.frame_id)
-            hp.publish_pc_no_color(self.centroid_pub, pred_stem_norm, self.frame_id)
-            hp.publish_pc_no_color(self.stem_pub, true_stem_norm, self.frame_id)
+            rh.publish_pc_with_color(self.pc_pub, pc_norm, self.frame_id)
+            rh.publish_pc_no_color(self.centroid_pub, pred_stem_norm, self.frame_id)
+            rh.publish_pc_no_color(self.stem_pub, true_stem_norm, self.frame_id)
             input(f"Currently viewing {str(good_pc_filenames[sample])}. Error of {self.error[sample]}.\n"
                   f"Press enter to see next sample.")
 
         # Clear out the prediction/actual to clear up rviz
-        hp.publish_pc_no_color(self.centroid_pub, np.array([]), self.frame_id)
-        hp.publish_pc_no_color(self.stem_pub, np.array([]), self.frame_id)
+        rh.publish_pc_no_color(self.centroid_pub, np.array([]), self.frame_id)
+        rh.publish_pc_no_color(self.stem_pub, np.array([]), self.frame_id)
 
         print("\n\n\n\nNow viewing the cases where a weed stem could not be predicted.")
         for no_pred_weed in self.skipped_weeds_filenames:
@@ -105,7 +102,7 @@ class WeedMetrics:
             mean_pc = np.mean(pc[:, :3], axis=0)
             pc_norm = pc
             pc_norm[:, :3] = pc[:, :3] - mean_pc
-            hp.publish_pc_with_color(self.pc_pub, pc_norm, self.frame_id)
+            rh.publish_pc_with_color(self.pc_pub, pc_norm, self.frame_id)
             input(f"Currently viewing {no_pred_weed}. Could not make a prediction.")
 
     def compute_distances(self, centroids):
@@ -148,7 +145,7 @@ def main():
     args = parser.parse_args(rospy.myargv(sys.argv[1:]))
 
     # Run the evaluation
-    evaluator = WeedMetrics(args.weed_directory, ph.calculate_weed_centroid, gripper_size=0.015)
+    evaluator = WeedMetrics(args.weed_directory, pm.calculate_weed_centroid, gripper_size=0.015)
     evaluator.run_eval()
 
 
