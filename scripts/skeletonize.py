@@ -1,6 +1,3 @@
-import sys
-sys.path.insert(1, '/home/christianforeman/catkin_ws/src/plant_selector/src')
-import rviz_helpers as hp
 
 import numpy as np
 from descartes import PolygonPatch
@@ -13,6 +10,8 @@ from statistics import mode
 import rospy
 import cv2 as cv
 
+from ..src.plant_modeling import float_to_rgb, rotation_matrix_from_vectors
+
 
 def skeletonize(directory, filename):
     points = np.load(directory + 'pcs/' + filename)
@@ -21,7 +20,7 @@ def skeletonize(directory, filename):
 
     pcd_colors = np.array((0, 0, 0))
     for x in float_colors:
-        rgb = hp.float_to_rgb(x)
+        rgb = float_to_rgb(x)
         pcd_colors = np.vstack((pcd_colors, rgb))
 
     # Alternate green color filter
@@ -100,7 +99,7 @@ def skeletonize(directory, filename):
     # ax.scatter(green_pcd_points[:, 0], green_pcd_points[:, 1], green_pcd_points[:, 2])
     # plt.show()
 
-    mat = hp.rotation_matrix_from_vectors(normal, np.asarray([0, 0, 1]))
+    mat = rotation_matrix_from_vectors(normal, np.asarray([0, 0, 1]))
 
     rotated_points = (mat @ green_pcd_points.T).T
     ax = plt.axes()

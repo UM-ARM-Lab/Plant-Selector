@@ -12,7 +12,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: OG Cam PC
   - Class: rviz_custom_panel/MainPanel
     Name: MainPanel
   - Class: rviz_custom_panel/RosbagPanel
@@ -23,8 +23,6 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /Point Clouds1
-        - /Weed Extraction (Debug)1
       Splitter Ratio: 0.5
     Tree Height: 461
   - Class: rviz/Selection
@@ -56,314 +54,6 @@ Visualization Manager:
       Plane Cell Count: 50
       Reference Frame: <Fixed Frame>
       Value: false
-    - Class: rviz/Group
-      Displays:
-        - Alpha: 1
-          Autocompute Intensity Bounds: true
-          Autocompute Value Bounds:
-            Max Value: 10
-            Min Value: -10
-            Value: true
-          Axis: Z
-          Channel Name: intensity
-          Class: rviz/PointCloud2
-          Color: 255; 255; 255
-          Color Transformer: RGB8
-          Decay Time: 0
-          Enabled: true
-          Invert Rainbow: false
-          Max Color: 255; 255; 255
-          Min Color: 0; 0; 0
-          Name: OG Cam PC
-          Position Transformer: XYZ
-          Queue Size: 10
-          Selectable: true
-          Size (Pixels): 2
-          Size (m): 0.009999999776482582
-          Style: Points
-          Topic: /zed2i/zed_node/point_cloud/cloud_registered
-          Unreliable: false
-          Use Fixed Frame: true
-          Use rainbow: true
-          Value: true
-        - Alpha: 1
-          Autocompute Intensity Bounds: true
-          Autocompute Value Bounds:
-            Max Value: 10
-            Min Value: -10
-            Value: true
-          Axis: Z
-          Channel Name: intensity
-          Class: rviz/PointCloud2
-          Color: 255; 255; 255
-          Color Transformer: RGB8
-          Decay Time: 0
-          Enabled: false
-          Invert Rainbow: false
-          Max Color: 255; 255; 255
-          Min Color: 0; 0; 0
-          Name: RealTime Handler
-          Position Transformer: XYZ
-          Queue Size: 10
-          Selectable: true
-          Size (Pixels): 3
-          Size (m): 0.009999999776482582
-          Style: Points
-          Topic: /plant_selector/controlled_point_cloud
-          Unreliable: false
-          Use Fixed Frame: true
-          Use rainbow: true
-          Value: false
-      Enabled: true
-      Name: Point Clouds
-    - Class: rviz/Group
-      Displays:
-        - Class: rviz/TF
-          Enabled: true
-          Frame Timeout: 1000
-          Frames:
-            All Enabled: false
-          Marker Alpha: 1
-          Marker Scale: 0.800000011920929
-          Name: Frames (Camera Frame)
-          Show Arrows: false
-          Show Axes: true
-          Show Names: true
-          Tree:
-            {}
-          Update Interval: 0
-          Value: true
-        - Alpha: 1
-          Class: rviz/Axes
-          Enabled: true
-          Length: 0.20000000298023224
-          Name: Tool
-          Radius: 0.009999999776482582
-          Reference Frame: left_tool
-          Show Trail: false
-          Value: true
-      Enabled: false
-      Name: Frames
-    - Class: rviz/Group
-      Displays:
-        - Alpha: 1
-          Autocompute Intensity Bounds: true
-          Autocompute Value Bounds:
-            Max Value: 10
-            Min Value: -10
-            Value: true
-          Axis: Z
-          Channel Name: intensity
-          Class: rviz/PointCloud2
-          Color: 239; 41; 41
-          Color Transformer: FlatColor
-          Decay Time: 0
-          Enabled: true
-          Invert Rainbow: false
-          Max Color: 255; 255; 255
-          Min Color: 0; 0; 0
-          Name: Inliers (Plane Fitting)
-          Position Transformer: XYZ
-          Queue Size: 10
-          Selectable: true
-          Size (Pixels): 4
-          Size (m): 0.009999999776482582
-          Style: Points
-          Topic: /inliers_pc
-          Unreliable: false
-          Use Fixed Frame: true
-          Use rainbow: true
-          Value: true
-        - Alpha: 1
-          Autocompute Intensity Bounds: true
-          Autocompute Value Bounds:
-            Max Value: 10
-            Min Value: -10
-            Value: true
-          Axis: Z
-          Channel Name: intensity
-          Class: rviz/PointCloud2
-          Color: 138; 226; 52
-          Color Transformer: FlatColor
-          Decay Time: 0
-          Enabled: true
-          Invert Rainbow: false
-          Max Color: 255; 255; 255
-          Min Color: 0; 0; 0
-          Name: Source
-          Position Transformer: XYZ
-          Queue Size: 10
-          Selectable: true
-          Size (Pixels): 4
-          Size (m): 0.009999999776482582
-          Style: Points
-          Topic: /source_pc
-          Unreliable: false
-          Use Fixed Frame: true
-          Use rainbow: true
-          Value: true
-        - Class: rviz/Marker
-          Enabled: true
-          Marker Topic: /normal
-          Name: Normal
-          Namespaces:
-            {}
-          Queue Size: 100
-          Value: true
-        - Alpha: 0.05000000074505806
-          Autocompute Intensity Bounds: true
-          Autocompute Value Bounds:
-            Max Value: 10
-            Min Value: -10
-            Value: true
-          Axis: Z
-          Channel Name: intensity
-          Class: rviz/PointCloud2
-          Color: 173; 127; 168
-          Color Transformer: FlatColor
-          Decay Time: 0
-          Enabled: true
-          Invert Rainbow: false
-          Max Color: 255; 255; 255
-          Min Color: 0; 0; 0
-          Name: Cutting Plane
-          Position Transformer: XYZ
-          Queue Size: 10
-          Selectable: true
-          Size (Pixels): 1
-          Size (m): 0.05000000074505806
-          Style: Points
-          Topic: /plane
-          Unreliable: false
-          Use Fixed Frame: true
-          Use rainbow: true
-          Value: true
-      Enabled: false
-      Name: Branch Cutting (Debug)
-    - Class: rviz/Group
-      Displays:
-        - Alpha: 1
-          Autocompute Intensity Bounds: true
-          Autocompute Value Bounds:
-            Max Value: 10
-            Min Value: -10
-            Value: true
-          Axis: Z
-          Channel Name: intensity
-          Class: rviz/PointCloud2
-          Color: 143; 89; 2
-          Color Transformer: FlatColor
-          Decay Time: 0
-          Enabled: true
-          Invert Rainbow: false
-          Max Color: 255; 255; 255
-          Min Color: 0; 0; 0
-          Name: Dirt
-          Position Transformer: XYZ
-          Queue Size: 10
-          Selectable: true
-          Size (Pixels): 4
-          Size (m): 0.009999999776482582
-          Style: Points
-          Topic: /source_pc
-          Unreliable: false
-          Use Fixed Frame: true
-          Use rainbow: true
-          Value: true
-        - Alpha: 1
-          Autocompute Intensity Bounds: true
-          Autocompute Value Bounds:
-            Max Value: 10
-            Min Value: -10
-            Value: true
-          Axis: Z
-          Channel Name: intensity
-          Class: rviz/PointCloud2
-          Color: 115; 210; 22
-          Color Transformer: FlatColor
-          Decay Time: 0
-          Enabled: true
-          Invert Rainbow: false
-          Max Color: 255; 255; 255
-          Min Color: 0; 0; 0
-          Name: Weed
-          Position Transformer: XYZ
-          Queue Size: 10
-          Selectable: true
-          Size (Pixels): 7
-          Size (m): 0.009999999776482582
-          Style: Points
-          Topic: /inliers_pc
-          Unreliable: false
-          Use Fixed Frame: true
-          Use rainbow: true
-          Value: true
-        - Class: rviz/Marker
-          Enabled: true
-          Marker Topic: /normal
-          Name: Normal
-          Namespaces:
-            {}
-          Queue Size: 100
-          Value: true
-        - Alpha: 0.05000000074505806
-          Autocompute Intensity Bounds: true
-          Autocompute Value Bounds:
-            Max Value: 0.16836558282375336
-            Min Value: 0.12109936773777008
-            Value: true
-          Axis: Z
-          Channel Name: intensity
-          Class: rviz/PointCloud2
-          Color: 173; 127; 168
-          Color Transformer: FlatColor
-          Decay Time: 0
-          Enabled: true
-          Invert Rainbow: false
-          Max Color: 255; 255; 255
-          Min Color: 0; 0; 0
-          Name: Dirt Plane
-          Position Transformer: XYZ
-          Queue Size: 10
-          Selectable: true
-          Size (Pixels): 1
-          Size (m): 0.009999999776482582
-          Style: Points
-          Topic: /plane
-          Unreliable: false
-          Use Fixed Frame: true
-          Use rainbow: true
-          Value: true
-        - Alpha: 1
-          Autocompute Intensity Bounds: true
-          Autocompute Value Bounds:
-            Max Value: 10
-            Min Value: -10
-            Value: true
-          Axis: Z
-          Channel Name: intensity
-          Class: rviz/PointCloud2
-          Color: 204; 0; 0
-          Color Transformer: FlatColor
-          Decay Time: 0
-          Enabled: true
-          Invert Rainbow: false
-          Max Color: 255; 255; 255
-          Min Color: 0; 0; 0
-          Name: PointCloud2
-          Position Transformer: XYZ
-          Queue Size: 10
-          Selectable: true
-          Size (Pixels): 5
-          Size (m): 0.05000000074505806
-          Style: Points
-          Topic: /green
-          Unreliable: false
-          Use Fixed Frame: true
-          Use rainbow: true
-          Value: true
-      Enabled: true
-      Name: Weed Extraction (Debug)
     - Class: rviz/Group
       Displays:
         - Alpha: 0.5
@@ -481,70 +171,14 @@ Visualization Manager:
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
-      Name: PC Sample
+      Name: OG Cam PC
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
-      Size (Pixels): 3
+      Size (Pixels): 2
       Size (m): 0.009999999776482582
       Style: Points
-      Topic: point_cloud
-      Unreliable: false
-      Use Fixed Frame: true
-      Use rainbow: true
-      Value: true
-    - Alpha: 1
-      Autocompute Intensity Bounds: true
-      Autocompute Value Bounds:
-        Max Value: -0.32347020506858826
-        Min Value: -0.32347020506858826
-        Value: true
-      Axis: Z
-      Channel Name: intensity
-      Class: rviz/PointCloud2
-      Color: 255; 255; 255
-      Color Transformer: FlatColor
-      Decay Time: 0
-      Enabled: true
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Min Color: 0; 0; 0
-      Name: Centroid
-      Position Transformer: XYZ
-      Queue Size: 10
-      Selectable: true
-      Size (Pixels): 10
-      Size (m): 0.009999999776482582
-      Style: Points
-      Topic: /centroid
-      Unreliable: false
-      Use Fixed Frame: true
-      Use rainbow: true
-      Value: true
-    - Alpha: 1
-      Autocompute Intensity Bounds: true
-      Autocompute Value Bounds:
-        Max Value: -0.32347020506858826
-        Min Value: -0.32347020506858826
-        Value: true
-      Axis: Z
-      Channel Name: intensity
-      Class: rviz/PointCloud2
-      Color: 204; 0; 0
-      Color Transformer: FlatColor
-      Decay Time: 0
-      Enabled: true
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Min Color: 0; 0; 0
-      Name: Manual_label
-      Position Transformer: XYZ
-      Queue Size: 10
-      Selectable: true
-      Size (Pixels): 10
-      Size (m): 0.009999999776482582
-      Style: Points
-      Topic: /stem
+      Topic: /zed2i/zed_node/point_cloud/cloud_registered
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
@@ -567,7 +201,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 2.124258279800415
+      Distance: 1.4418212175369263
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -575,17 +209,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.6964899897575378
-        Y: -0.19461621344089508
-        Z: -0.18373997509479523
+        X: 0.6700218319892883
+        Y: -0.0008699972531758249
+        Z: -0.26623210310935974
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7444826364517212
+      Pitch: 0.5594829320907593
       Target Frame: zed2i_left_camera_frame
-      Yaw: 3.0869617462158203
+      Yaw: 3.1369638442993164
     Saved: ~
 Window Geometry:
   Displays:

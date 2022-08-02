@@ -24,7 +24,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: OG Cam PC
   - Class: rviz_custom_panel/MainPanel
     Name: MainPanel
   - Class: rviz_custom_panel/RosbagPanel
@@ -628,7 +628,7 @@ Visualization Manager:
   Global Options:
     Background Color: 48; 48; 48
     Default Light: true
-    Fixed Frame: zed2i_left_camera_frame
+    Fixed Frame: world
     Frame Rate: 30
   Name: root
   Tools:
@@ -642,7 +642,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 3.7308125495910645
+      Distance: 2.536940336227417
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -650,17 +650,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.35981160402297974
-        Y: -0.23405732214450836
-        Z: -0.40948203206062317
+        X: 0.5751955509185791
+        Y: 0.14220304787158966
+        Z: -0.20379486680030823
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.8497966527938843
+      Pitch: 0.6547967195510864
       Target Frame: zed2i_left_camera_frame
-      Yaw: 3.1262247562408447
+      Yaw: 3.166227340698242
     Saved: ~
 Window Geometry:
   Displays:

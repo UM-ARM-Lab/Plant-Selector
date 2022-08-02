@@ -71,15 +71,15 @@ class WeedMetrics:
         self.metric_printer()
 
         for sample in range(len(self.error)):
-            mat = rh.rotation_matrix_from_vectors(normals[sample], np.asarray([0, 0, 1]))
-            normal_rot = mat.dot(normals[sample])
-
             file = pc_parent_directory + good_pc_filenames[sample]
             pc = np.load(file)
             mean_pc = np.mean(pc[:, :3], axis=0)
             pc_norm = pc
             pc_norm[:, :3] = pc[:, :3] - mean_pc
             pc_trans = np.transpose(pc_norm[:, :3])
+
+            # This rotation makes the plane of the dirt always be pointing in the z direction which makes things easier to view
+            mat = pm.rotation_matrix_from_vectors(normals[sample], np.asarray([0, 0, 1]))
             for point in range(pc_trans.shape[1]):
                 pc_norm[point, :3] = np.matmul(mat, pc_trans[:, point])
             pred_stem_norm = np.matmul(mat, np.transpose(pred_stems[sample].reshape(1, 3) - mean_pc)).transpose()
