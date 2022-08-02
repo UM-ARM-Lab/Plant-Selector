@@ -1,0 +1,20 @@
+<launch>  
+    <arg name="world_name" default="$(find arm_robots)/world/val_plant.world"/>
+
+    <!-- Launch Val -->
+    <include file="$(find arm_robots)/launch/val_off_husky.launch">
+        <arg name="world_name" value="$(find plant_selector)/worlds/val_plant.world"/>
+    </include>
+
+    <!-- Launch Basic Plant Selector Stuff -->
+    <include file="$(find plant_selector)/launch/plant_selector.launch">
+        <arg name="rviz_file" value="$(find plant_selector)/rviz/val.rviz"/>
+        <arg name="publish_zed_urdf" value="false"/>
+    </include>
+
+    <param name="default_pose" value="bent"/>
+
+    <node name="repetitive_plant_extraction" pkg="plant_selector" type="repetitive_plant_extraction.py"
+          output="screen"/>
+</launch>
+

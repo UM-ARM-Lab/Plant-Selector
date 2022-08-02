@@ -236,7 +236,7 @@
       </link>
       <static>0</static>
       <allow_auto_disable>1</allow_auto_disable>
-      <pose>0.7 0 0.4 0 -0 1.5707</pose>
+      <pose>0.55 0 0.4 0 -0 1.5707</pose>
     </model>
 
     <model name='unit_box'>
