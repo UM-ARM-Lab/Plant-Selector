@@ -14,6 +14,8 @@
         <arg name="publish_zed_urdf" value="false"/>
     </include>
 
+    <param name="default_pose" value="bent"/>
+
     <node name="plant_extraction" pkg="plant_selector" type="plant_extraction.py" output="screen" args="-r Val"/>
 </launch>
 

@@ -4,5 +4,7 @@
         <arg name="rviz_file" default="$(find plant_selector)/rviz/zed_online.rviz"/>
     </include>
 
+    <param name="default_pose" value="none"/>
+
     <node name="plant_extraction" pkg="plant_selector" type="plant_extraction.py" output="screen"/>
 </launch>

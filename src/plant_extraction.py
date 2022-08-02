@@ -35,6 +35,7 @@ class PlantExtractor:
         self.robot = robot
         if self.robot is not None:
             self.robot.connect()
+        self.default_pose = str(rospy.get_param("default_pose"))
         self.robot_to_default_pose()
         self.ask_for_verif_pub = rospy.Publisher("/plant_selector/ask_for_verification", Bool, queue_size=10)
 
@@ -195,7 +196,7 @@ class PlantExtractor:
 
         # Go back to default!
         self.robot.set_execute(True)
-        self.robot.plan_to_joint_config('both_arms', 'home')
+        self.robot.plan_to_joint_config('both_arms', self.default_pose)
 
         rospy.sleep(1)
         self.robot.open_right_gripper()
