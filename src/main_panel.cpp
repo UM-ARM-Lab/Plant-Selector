@@ -101,7 +101,7 @@ namespace rviz_custom_panel
     }
 
     void MainPanel::verification_callback(const std_msgs::Bool::ConstPtr& msg) {
-        verification_label->setText("Grasp this?");
+        verification_label->setText("Execute this Plan?");
         yes_button->setEnabled(true);
         no_button->setEnabled(true);
     }

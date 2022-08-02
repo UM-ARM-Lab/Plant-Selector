@@ -36,6 +36,7 @@ class PlantExtractor:
         if self.robot is not None:
             self.robot.connect()
         self.robot_to_default_pose()
+        self.ask_for_verif_pub = rospy.Publisher("/plant_selector/ask_for_verification", Bool, queue_size=10)
 
         self.goal = None
         self.plan_exec_res = None
@@ -164,10 +165,12 @@ class PlantExtractor:
         was_success = self.plan_exec_res.planning_result.success
 
         if was_success:
-            print("Found a path!")
+            # Send a message to rviz panel which prompts the user to verify the execution plan
+            msg = Bool()
+            msg.data = True
+            self.ask_for_verif_pub.publish(msg)
         else:
             rospy.loginfo("Can't find path.")
-        # TODO: In here I should send notification about executing the plan to rviz panel
 
     def robot_execute(self):
         if self.robot is None:

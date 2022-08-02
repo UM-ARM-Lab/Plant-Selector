@@ -37,7 +37,6 @@ protected:
   ros::NodeHandle n;
   ros::Publisher rviz_selected_pub;
   ros::Publisher is_selecting_pub;
-  ros::Publisher verification_pub;
   ros::Subscriber instant_sub;
 
   std::string tf_frame;
