@@ -17,10 +17,34 @@ ZED_Diagnostic -ais 8
 This command should notify you of other dependencies such as TensorRT and it may even install these for you.
 
 To check if the zed is working, try running:
+```
+roslaunch zed_wrapper zed2i.launch
+rosrun rviz rviz
+# Create a PointCloud2 object whose topic is /zed2i/zed_node/point_cloud/cloud_registered
+```
+
+### ZED2i Parameters
+First, go to common.yaml and set resolution to HD2K and quality to NEURAL:
+```
+roscd zed_wrapper/params
+vi common.yaml
+# Set resolution to 0
+# Set quality to 4
+```
+
+Then, go to zed2i.yaml and change the minimum distance to 0.2. This doesn't change much, but definitely helps.
+```
+roscd zed_wrapper/params
+vi zed2i.yaml
+# Set min_depth to 0.2
+```
+
+Those should be all the parameters you need. Running some of the launch files may result in complaing about frame rates, so you may want to tweak some parameters for smoother performance. However, you almost always want to run neural mode. The other quality settings result in really poor looking point clouds which aren't nearly good enough for detecting weeds.
+
+Note: all this code was made assuming the ZED2i camera is being used, a different ZED would most likely work as long as you modify the roslaunch files. Using a different camera like realsense could work, but more modifications to the code would be necessary.
 
 ### Other Packages
-This project also requires other packages such as arm_robots, hdt_michigan, gazebo_ros, and other
-basic packages for using the robot.
+This project also requires other packages such as arm_robots, hdt_michigan, gazebo_ros, and other basic packages for using the robot.
 
 ## Running
 Once you have pulled this repo into catkin_ws/src/ make sure to catkin build. If you are able to 
@@ -63,6 +87,8 @@ This command should connect you to Val, run:
 ifconfig
 ```
 If you see a can connection, you should almost be good to run Val.
+
+Before Commanding Val, you will want to make sure to have a proper .world file for obstacles. After running the roslaunch command below, make sure to render in the obstacles and make sure they look good for your particular environment. You can change the .world file used by editing val.launch
 
 One final check. Go into the roslaunch file val_off_husky.launch in arm_robots and make sure that the path for gazebo is correct. The value defaults to "/home/armlab" but should be whatever parent directory .gazebo is in for you.
 
@@ -127,9 +153,10 @@ Using the publishing selector is pretty simple, below are important key shortcut
 
 ADD SHORTCUT INFO
 
-ADD IMAGE
+ADD GIF
 
 ### MainPanel
+Main Panel is used when the user wants to change how they select, change plant selection (weed/branch), or execute the current robot plan.
 
 ### RosbagPanel
 
