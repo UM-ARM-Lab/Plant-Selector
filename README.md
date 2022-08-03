@@ -24,20 +24,8 @@ rosrun rviz rviz
 ```
 
 ### ZED2i Parameters
-First, go to common.yaml and set resolution to HD2K and quality to NEURAL:
-```
-roscd zed_wrapper/params
-vi common.yaml
-# Set resolution to 0
-# Set quality to 4
-```
-
-Then, go to zed2i.yaml and change the minimum distance to 0.2. This doesn't change much, but definitely helps.
-```
-roscd zed_wrapper/params
-vi zed2i.yaml
-# Set min_depth to 0.2
-```
+Whenever you run a zed camera with the current roslaunch files, they will be using the current best parameters which are found in
+cam_params. The most import parameters here are setting quality to 4 (neural mode), and resolution to 0 (HD2K).
 
 Those should be all the parameters you need. Running some of the launch files may result in complaing about frame rates, so you may want to tweak some parameters for smoother performance. However, you almost always want to run neural mode. The other quality settings result in really poor looking point clouds which aren't nearly good enough for detecting weeds.
 
@@ -158,6 +146,19 @@ ADD GIF
 ### MainPanel
 Main Panel is used when the user wants to change how they select, change plant selection (weed/branch), or execute the current robot plan.
 
+To add this panel, go to panels -> add new panel -> then MainPanel under plant_selector.
+
+Here is a quick overview of what the buttons do on the panel. You can either choose to instantly publish a selection or not. This means that, when you have the Publishing Selector Tool active, as soon as you let go of the mouse over the selected area, it will instantly take that selection and publish it for plant fitting. If you select no here, your first selection with the Publishing Selector will be highlighted in blue. If you want to add to this selection, hold shift and drag to add more points. Holding control and selecting will remove current selected points. Pressing 'c' will clear your current selection. When you are satisfied with the selection, press 'p' and the selection is published for plant fitting.
+
+To choose between weed/branch fitting, simple toggle between interaction type.
+
+Once you make a selection, and if there is a valid prediction, a red gripper should show up as the desired end effector. If you ever want to hide this gripper, press the "Hide Red Gripper" Button.
+
+Finally, if you are running this code with a robot, ie Val. The bottom Yes/No buttons should light up once an end effector pose has been made to interact with the plant. In Val's case, a purple plan should appear and, if the user wants Val to execute this path, press the "Yes" Button and Val will execute the plan.
+
 ### RosbagPanel
+The rosbag panel is meant to make playing rosbags of pointclouds easier. After selecting a bag, you can change what frame of the video you want to see. This is useful for finding a good frame for weeds and trying to run weed stem prediction models on it. 
+
+Choose 
 
 ## Miscellaneous
