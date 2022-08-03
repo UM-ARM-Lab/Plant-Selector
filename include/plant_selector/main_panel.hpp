@@ -59,11 +59,11 @@ namespace rviz_custom_panel
         private Q_SLOTS:
 
             void verification_callback(const std_msgs::Bool::ConstPtr& msg);
-            void publish_time_changed(const QString& command_text);
-            void command_changed(const QString& command_text);
-            void cancel_button_handler();
+            void publish_time_handler(const QString& command_text);
+            void extract_type_handler(const QString& command_text);
             void yes_button_handler();
             void no_button_handler();
+            void hide_gripper_handler();
 
         /**
          *  Finally, we close up with protected member variables
@@ -73,7 +73,8 @@ namespace rviz_custom_panel
             ros::Publisher mode_pub;
             ros::Publisher publish_time_pub;
             ros::Publisher verification_pub;
-            ros::Subscriber verification_sub;
+            ros::Publisher hide_gripper_pub;
+            ros::Subscriber ask_verification_sub;
 
             rviz::VisualizationManager* manager;
             rviz::RenderPanel* render_panel;
@@ -81,8 +82,6 @@ namespace rviz_custom_panel
             QLabel* verification_label;
             QPushButton* yes_button;
             QPushButton* no_button;
-
-            QPushButton* cancel_button;
     };
 } // namespace rviz_custom_panel
 

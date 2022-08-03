@@ -1,11 +1,11 @@
 <launch>
     <!-- Launch Basic Plant Selector -->
-    <include file="$(find plant_selector)/launch/plant_selector.launch">
+    <include file="$(find plant_selector)/launch/include/plant_selector.launch">
         <arg name="online" value="false"/>
         <arg name="rviz_file" default="$(find plant_selector)/rviz/zed_offline.rviz"/>
     </include>
 
-    <param name="default_pose" value="none"/>
+    <!-- <param name="default_pose" value="none"/> -->
 
     <node name="plant_extraction" pkg="plant_selector" type="plant_extraction.py" output="screen"/>
 </launch>

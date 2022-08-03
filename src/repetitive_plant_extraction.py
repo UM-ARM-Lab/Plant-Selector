@@ -12,22 +12,25 @@ from tf.transformations import euler_from_matrix
 # Robot stuff
 from arm_robots.hdt_michigan import Val
 
-
+# THIS SCRIPT IS MEANT FOR ONLY VAL!!!
 class RepetitivePlantExtractor:
     def __init__(self):
         rospy.Subscriber("/plant_selector/mode", String, self.mode_change)
         rospy.Subscriber("/plant_selector/verification", Bool, self.move_robot)
         rospy.Subscriber("/rviz_selected_points", PointCloud2, self.plant_extraction)
+        rospy.Subscriber("/plant_selector/hide_gripper", Bool, self.hide_gripper_callback)
         self.ask_for_verif_pub = rospy.Publisher("/plant_selector/ask_for_verification", Bool, queue_size=10)
 
         # Set the default mode to branch
         self.mode = "Weed"
 
-        self.frame_id = str(rospy.get_param("frame_id"))
+        self.camera_frame_id = str(rospy.get_param("camera_frame_id"))
         self.tfw = TF2Wrapper()
 
         self.robot = Val(raise_on_failure=True)
         self.robot.connect()
+        self.auto_move = bool(rospy.get_param("return_to_default_automatically"))
+        print(self.auto_move)
         self.default_pose = str(rospy.get_param("default_pose"))
         self.robot_to_default_pose()
 
@@ -73,13 +76,14 @@ class RepetitivePlantExtractor:
             return
 
         # figure out gripper pose in world frame
-        world2cam = self.tfw.get_transform(parent='world', child=self.frame_id)
+        world2cam = self.tfw.get_transform(parent='world', child=self.camera_frame_id)
         world2tool = world2cam @ camera2tool
 
         # Plan to the pose
         x_rot, y_rot, z_rot = euler_from_matrix(world2tool[:3, :3])
 
-        # Plan to a pose that is around 15 centimeters higher than directed
+        # Plan to a pose that is around 20 centimeters higher than directed this acts as a "home" pose between multiple attempts
+        # at grasping
         self.goal = [world2tool[0, 3], world2tool[1, 3], world2tool[2, 3] + 0.2, x_rot, y_rot, z_rot]
         self.robot.set_execute(False)
 
@@ -108,9 +112,9 @@ class RepetitivePlantExtractor:
 
         return_cords = self.goal[:3]
         weed_cords = self.goal[:3]
-        weed_cords[2] -= 0.15
+        weed_cords[2] -= 0.17
         self.robot.store_current_tool_orientations([self.robot.left_tool_name])
-        for _ in range(10):
+        for _ in range(5):
             # Attempt to go for it
             self.robot.follow_jacobian_to_position(self.robot.left_arm_group, [self.robot.left_tool_name], [[weed_cords]], vel_scaling=1.0)
 
@@ -130,7 +134,7 @@ class RepetitivePlantExtractor:
 
     def robot_to_default_pose(self):
         self.hide_red_gripper()
-        if self.robot is None:
+        if self.auto_move == False:
             return
 
         # Go back to default!
@@ -145,7 +149,12 @@ class RepetitivePlantExtractor:
         tool2ee = self.tfw.get_transform(parent="red_left_tool", child="red_end_effector_left")
         # Chain effect: get transformation matrix from camera to end effector
         camera2ee = camera2tool @ tool2ee
-        self.tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='red_end_effector_left')
+        self.tfw.send_transform_matrix(camera2ee, parent=self.camera_frame_id, child='red_end_effector_left')
+
+    def hide_gripper_callback(self, msg):
+        # This function is used as callback of mainpanel when someone presses "Hide Red Gripper"
+        # This is probably not the best way to do this but, I can't think of a better way
+        self.hide_red_gripper()
 
     def hide_red_gripper(self):
         # Because you can't directly hide a urdf, just send the urdf very far away :D

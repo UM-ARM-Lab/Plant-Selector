@@ -24,23 +24,25 @@ class PlantExtractor:
     def __init__(self, robot):
         rospy.Subscriber("/plant_selector/mode", String, self.mode_change)
         rospy.Subscriber("/plant_selector/verification", Bool, self.move_robot)
+        rospy.Subscriber("/rviz_selected_points", PointCloud2, self.plant_extraction)
+        rospy.Subscriber("/plant_selector/hide_gripper", Bool, self.hide_gripper_callback)
+        self.ask_for_verif_pub = rospy.Publisher("/plant_selector/ask_for_verification", Bool, queue_size=10)
 
-        self.frame_id = str(rospy.get_param("frame_id"))
+        self.camera_frame_id = str(rospy.get_param("camera_frame_id"))
         self.tfw = TF2Wrapper()
+
+        # Set the default mode to branch
+        self.mode = "Weed"
 
         self.robot = robot
         if self.robot is not None:
             self.robot.connect()
-        self.default_pose = str(rospy.get_param("default_pose"))
+            self.auto_move = bool(rospy.get_param("return_to_default_automatically"))
+            self.default_pose = str(rospy.get_param("default_pose"))
         self.robot_to_default_pose()
-        self.ask_for_verif_pub = rospy.Publisher("/plant_selector/ask_for_verification", Bool, queue_size=10)
 
         self.goal = None
         self.plan_exec_res = None
-
-        # Set the default mode to branch
-        self.mode = "Weed"
-        rospy.Subscriber("/rviz_selected_points", PointCloud2, self.plant_extraction)
 
         rospy.sleep(1)
         self.hide_red_gripper()
@@ -82,7 +84,7 @@ class PlantExtractor:
             return
 
         # figure out gripper pose in world frame
-        world2cam = self.tfw.get_transform(parent='world', child=self.frame_id)
+        world2cam = self.tfw.get_transform(parent='world', child=self.camera_frame_id)
         world2tool = world2cam @ camera2tool
 
         # Plan to the pose
@@ -126,7 +128,7 @@ class PlantExtractor:
 
     def robot_to_default_pose(self):
         self.hide_red_gripper()
-        if self.robot is None:
+        if self.robot is None or self.auto_move is None or self.auto_move == False:
             return
 
         # Go back to default!
@@ -141,7 +143,12 @@ class PlantExtractor:
         tool2ee = self.tfw.get_transform(parent="red_left_tool", child="red_end_effector_left")
         # Chain effect: get transformation matrix from camera to end effector
         camera2ee = camera2tool @ tool2ee
-        self.tfw.send_transform_matrix(camera2ee, parent=self.frame_id, child='red_end_effector_left')
+        self.tfw.send_transform_matrix(camera2ee, parent=self.camera_frame_id, child='red_end_effector_left')
+
+    def hide_gripper_callback(self, msg):
+        # This function is used as callback of mainpanel when someone presses "Hide Red Gripper"
+        # This is probably not the best way to do this but, I can't think of a better way
+        self.hide_red_gripper()
 
     def hide_red_gripper(self):
         # Because you can't directly hide a urdf, just send the urdf very far away :D

@@ -1,20 +1,25 @@
 <launch>
+    <!-- Setting return to default_automatically will make the robot plan to pose to a default position. When launching, the robot will move (without human verification).
+    Also after the robot grabs/selects it will return to the default pose. Only set to true if you are confident about your world environment and it won't collide. 
+    Since this is for a simulation, we will return to default automatically.-->
+    <param name="return_to_default_automatically" value="true"/>
+    <param name="default_pose" value="zero"/>
+
     <!-- start the ROS controllers, only used in gazebo. This merges gripper and arm joint states -->
     <include file="$(find arm_robots)/launch/rviz_victor.launch">
         <arg name="launch_fake_dual_arm_bridge" value="true"/>
     </include>
 
-    <!-- Transforms -->
+    <!-- Static Transforms -->
     <node pkg="tf2_ros" type="static_transform_publisher" name="victor_tf" args="-0.1 0 -1.5 0 0 0 zed2i_left_camera_frame victor_root"/>
     <node pkg="tf2_ros" type="static_transform_publisher" name="victor_to_world" args="0 0 0 0 0 0 victor_root world"/>
 
     <!-- Launch Basic Plant Selector Stuff -->
-    <include file="$(find plant_selector)/launch/plant_selector.launch">
+    <include file="$(find plant_selector)/launch/include/plant_selector.launch">
         <arg name="online" value="false"/>
         <arg name="rviz_file" default="$(find plant_selector)/rviz/victor.rviz"/>
     </include>
 
-    <param name="default_pose" value="zero"/>
 
     <!-- Python Scripts -->
     <node name="plant_extraction" pkg="plant_selector" type="plant_extraction.py" output="screen" args="-r Victor"/>

@@ -373,11 +373,11 @@ Visualization Manager:
             Alpha: 1
             Show Axes: false
             Show Trail: false
-        Loop Animation: false
+        Loop Animation: true
         Robot Alpha: 0.5
         Robot Color: 150; 50; 150
         Show Robot Collision: false
-        Show Robot Visual: true
+        Show Robot Visual: false
         Show Trail: false
         State Display Time: 3x
         Trail Step Size: 1
@@ -408,7 +408,7 @@ Visualization Manager:
         Scene Alpha: 0.10000000149011612
         Scene Color: 50; 230; 50
         Scene Display Time: 0.009999999776482582
-        Show Scene Geometry: false
+        Show Scene Geometry: true
         Voxel Coloring: Z-Axis
         Voxel Rendering: Occupied Voxels
       Scene Robot:
@@ -773,7 +773,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 1.044378399848938
+      Distance: 3.4406967163085938
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -781,17 +781,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 0.06519770622253418
-        Y: 0.6772356033325195
-        Z: -0.41538649797439575
+        X: 0.1641860157251358
+        Y: 0.2509564757347107
+        Z: 0.5000056028366089
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.4647961854934692
+      Pitch: 0.8947970271110535
       Target Frame: <Fixed Frame>
-      Yaw: 1.6062883138656616
+      Yaw: 1.5362880229949951
     Saved:
       - Class: rviz/Orbit
         Distance: 0.8627310395240784

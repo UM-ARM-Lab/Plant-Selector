@@ -2,14 +2,29 @@
     <arg name="online" default="true"/>
     <arg name="rviz_file" default="$(find plant_selector)/rviz/zed_online.rviz"/>
     <arg name="publish_zed_urdf" default="true"/>
+    <arg name="node_name" default="zed_node"/>
 
-    <param name="frame_id" value="zed2i_left_camera_frame"/>
+    <param name="camera_frame_id" value="zed2i_left_camera_frame"/>
     <param name="pc_source" value="/zed2i/zed_node/point_cloud/cloud_registered"/>
     <param name="default_bag_path" value='$(find plant_selector)/bags'/>
 
     <!-- Launch ZED Camera if in online mode -->
     <group if="$(arg online)">
-        <include file="$(find zed_wrapper)/launch/zed2i.launch"/>
+        <!-- Run Zed Camera, Note: Assumes zed2i -->
+        <group ns="zed2i">
+            <node name="$(arg node_name)" pkg="zed_wrapper" type="zed_wrapper_node" output="screen" required="true">
+                <rosparam file="$(find plant_selector)/cam_params/common.yaml" command="load" />
+                <rosparam file="$(find plant_selector)/cam_params/zed2i.yaml" command="load" />
+                <param name="general/camera_name"               value="zed2i" />
+                <param name="general/base_frame"                value="base_link" />
+                <param name="general/zed_id"                    value="0" />
+                <param name="general/gpu_id"                    value="-1" />
+                <param name="pos_tracking/publish_tf"            value="false" />
+                <param name="pos_tracking/publish_map_tf"        value="false" />
+            </node>
+        </group>
+        <!-- Above does the same thing as this <include file="$(find zed_wrapper)/launch/zed2i.launch"/> Only difference is we have our
+        own copy of the zed2i and common params -->
 
         <!-- Cpp Executables-->
         <node name="real_time_handler" pkg="plant_selector" type="real_time_handler" output="screen"/>

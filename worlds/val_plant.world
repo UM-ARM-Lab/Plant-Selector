@@ -153,7 +153,7 @@
       </link>
       <static>0</static>
       <allow_auto_disable>1</allow_auto_disable>
-      <pose>0 1.7 0.4 0 -0 0</pose>
+      <pose>0 1.15 0.4 0 -0 0</pose>
     </model>
     <model name='fake_wall3'>
       <link name='link'>
@@ -203,7 +203,7 @@
       </link>
       <static>0</static>
       <allow_auto_disable>1</allow_auto_disable>
-      <pose>-1.005 0 0.4 0 -0 1.5707</pose>
+      <pose>-0.7 0 0.4 0 -0 1.5707</pose>
     </model>
     <model name='fake_wall4'>
       <link name='link'>
@@ -236,7 +236,7 @@
       </link>
       <static>0</static>
       <allow_auto_disable>1</allow_auto_disable>
-      <pose>0.55 0 0.4 0 -0 1.5707</pose>
+      <pose>0.6 0 0.4 0 -0 1.5707</pose>
     </model>
 
     <model name='unit_box'>
@@ -267,7 +267,7 @@
       <static>0</static>
       <allow_auto_disable>1</allow_auto_disable>
     </model>
-    <model name='PotHollow'>
+    <!-- <model name='PotHollow'>
       <link name='link_4'>
         <inertial>
           <mass>1</mass>
@@ -363,7 +363,7 @@
       <static>0</static>
       <allow_auto_disable>1</allow_auto_disable>
       <pose>0.015 0.713 -0.36 0 -0 0</pose>
-    </model>
+    </model> -->
 
 
   </world>
