@@ -1,8 +1,3 @@
-bags/
-.idea/
-pcs/*
 .vscode/
 __pycache__/
-zed_pc_test.py
-random_launch/
-stem.py
+bags/

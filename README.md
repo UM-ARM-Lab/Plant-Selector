@@ -235,5 +235,11 @@ rosbag record -O zed_garden.bag /tf /zed2i/zed_node/point_cloud/cloud_registered
 
 Once you have the bag, make sure the "Chosen Topic" matches with the topic of the pointcloud, if it doesn't fill in the topic in the text box and press enter. Then, press "Bag Select" to pick a bag. You can now use the frame slider to pick different frames of the pointcloud that you want to interact with.
 
+## Sensor Info
+Throughout the summer, we looked into many different cameras and got the chance to compare them, here is a quick summary of their advantages and disadvantages.
 
-## Miscellaneous
+* ZED2i: We ended up using the zed as our main camera (make sure to always use neural mode, otherwise zed is worse than realsense). It creates the most detailed point cloud out of all the cameras listed. This makes it useful for weed extraction as it is the most detailed.
+However, the zed is very bad when it comes to depth of thin objects. For example, leaves and branches show up pretty poorly on the zed. Since weeds have little depth info, it doesn't matter much for weed extraction, but the branch cutting stuff barely works with the noisy point cloud. Another con of these cameras is that when on the roof, all points get a hint of
+* Realsense D435/D455: At the beginning of the summer, we used these cameras. They are decent. They are less noisy than the zed, and give slightly better depth info. However, the point clouds aren't nearly as dense which is why we ended up using the zed. When looking at a weed, the D455 only picks up around 10 points where the zed would give 30-50. One final thing about D435/D455 is that on the roof (and outside), point clouds appear purple on the right side. Apparently you can buy a cheap lense to cancel this out.
+* Realsense D405: This camera is meant for close up data. We tested it and it looked extremely promising. However, the D405 only works on ROS2 making it currently unusable for us.
+* Realsense L515: This is a lidar which actual performs the best. The depth info is obviously a lot better and less noisy than the cameras. This lidar also has color data which makes it even more promising. Sadly it only works inside, making it unusable for the garden, but probably the best point cloud sensor.
