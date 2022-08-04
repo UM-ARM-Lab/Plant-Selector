@@ -1,8 +1,9 @@
 # Plant Selector
-
-## Overview
+This package is meant for creating goal gripper poses for Val in the garden.
 
 ## Requirements
+Below are requirements for this code to work. In Short, make sure that your ZED camera works in nueral mode, and you have the basic ARMLAB packages for controlling the robots.
+If you are not using a robot, ZED should be all you need.
 
 ### ZED SDK
 Since this project assumes the use of a zed camera, it is neccesary to install the ZED SDK.
@@ -89,13 +90,31 @@ By default, the robot will probably move to an upright position that isn't looki
 ```
 roscd hdt_michigan_moveit/config
 vi hdt_michigan.srdf
-# Then add a group state like this ADD!!!
+```
+Then, add a group state, for our experiments we had the following:
+```
+<group_state name="bent" group="both_arms">
+    <joint name="joint56" value="0" />
+    <joint name="joint57" value="1.1" />
+    <joint name="joint41" value="0" />
+    <joint name="joint42" value="0" />
+    <joint name="joint43" value="0" />
+    <joint name="joint44" value="0" />
+    <joint name="joint45" value="0" />
+    <joint name="joint46" value="0" />
+    <joint name="joint47" value="0" />
+    <joint name="joint1" value="0" />
+    <joint name="joint2" value="0" />
+    <joint name="joint3" value="0" />
+    <joint name="joint4" value="0" />
+    <joint name="joint5" value="0" />
+    <joint name="joint6" value="0" />
+    <joint name="joint7" value="0" />
+</group_state>
 ```
 After doing this, specify the default name for the group state in the roslaunch and, if confident in your collision world, you can set the arg 'return_to_default_automatically' to true. This means Val will move to the default position without confirmation from the user on the plan. Also, in between grasping attempts, Val will move back to the default position as a way to reset and move the grippers out of view of the ZED camera.
 
 ADD IMAGE
-
-Talk about visual servoing/repeatability
 
 ### val_repetitive.launch
 This launch file is almost identical to the launch file above. The only difference is that after the user selects a weed and verifies the plan, Val will repeatedly attempt to grasp the weed. This is meant to demonstrate the need for visual servoing.

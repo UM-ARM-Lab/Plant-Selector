@@ -50,10 +50,12 @@ class RepetitivePlantExtractor:
             self.robot_execute()
 
     def plant_extraction(self, pc):
-        if self.mode == "Branch":
-            self.select_branch(pc)
-        elif self.mode == "Weed":
+        if self.mode == "Weed":
             self.select_weed(pc)
+        # Only tested on weed mode, use branch with caution!
+        elif self.mode == "Branch":
+            rospy.loginfo("Branch mode is not currentl available for this script")
+            # self.select_branch(pc)
 
     def select_branch(self, selection):
         camera2tool = pm.predict_branch_pose(selection)
