@@ -48,7 +48,7 @@ Visualization Manager:
       Cell Size: 1
       Class: rviz/Grid
       Color: 160; 160; 164
-      Enabled: true
+      Enabled: false
       Line Style:
         Line Width: 0.029999999329447746
         Value: Lines
@@ -61,7 +61,7 @@ Visualization Manager:
       Plane: XY
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
-      Value: true
+      Value: false
     - Alpha: 1
       Class: rviz/RobotModel
       Collision Enabled: true
@@ -408,7 +408,7 @@ Visualization Manager:
         Scene Alpha: 0.10000000149011612
         Scene Color: 50; 230; 50
         Scene Display Time: 0.009999999776482582
-        Show Scene Geometry: true
+        Show Scene Geometry: false
         Voxel Coloring: Z-Axis
         Voxel Rendering: Occupied Voxels
       Scene Robot:
@@ -709,7 +709,7 @@ Visualization Manager:
       Use Fixed Frame: true
       Use rainbow: true
       Value: true
-    - Alpha: 1
+    - Alpha: 0.800000011920929
       Class: rviz/RobotModel
       Collision Enabled: false
       Enabled: true
@@ -774,7 +774,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 1.1290429830551147
+      Distance: 1.2645281553268433
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -782,17 +782,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -0.24432334303855896
-        Y: 0.685836672782898
-        Z: -0.32377588748931885
+        X: -0.24695920944213867
+        Y: 0.6591829061508179
+        Z: -0.30515438318252563
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.7647970914840698
+      Pitch: 0.7397971153259277
       Target Frame: <Fixed Frame>
-      Yaw: 1.3194550275802612
+      Yaw: 1.0144553184509277
     Saved:
       - Class: rviz/Orbit
         Distance: 0.8627310395240784

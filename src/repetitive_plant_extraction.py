@@ -31,7 +31,6 @@ class RepetitivePlantExtractor:
         self.robot = Val(raise_on_failure=True)
         self.robot.connect()
         self.auto_move = bool(rospy.get_param("return_to_default_automatically"))
-        print(self.auto_move)
         self.default_pose = str(rospy.get_param("default_pose"))
         self.robot_to_default_pose()
 
@@ -89,7 +88,7 @@ class RepetitivePlantExtractor:
         # Plan to a pose that is around 20 centimeters higher than directed this acts as a "home" pose between multiple attempts
         # at grasping
         self.goal = [world2tool[0, 3], world2tool[1, 3], world2tool[2, 3] + 0.01, x_rot, y_rot, z_rot]
-        self.above_goal = [world2tool[0, 3], world2tool[1, 3], world2tool[2, 3] + 0.2, x_rot, y_rot, z_rot]
+        self.above_goal = [world2tool[0, 3], world2tool[1, 3], world2tool[2, 3] + 0.25, x_rot, y_rot, z_rot]
 
         self.robot.set_execute(False)
 
@@ -119,19 +118,20 @@ class RepetitivePlantExtractor:
         return_cords = self.above_goal[:3]
         print("Goal Location: " + str(self.goal))
         self.robot.store_current_tool_orientations([self.robot.left_tool_name])
-        for x in range(5):
+        for x in range(7):
             # Attempt to go for it
-            self.robot.follow_jacobian_to_position(self.robot.left_arm_group, [self.robot.left_tool_name], [[self.goal]], vel_scaling=1.0)
+            self.robot.follow_jacobian_to_position(self.robot.left_arm_group, [self.robot.left_tool_name], [[self.goal[:3]]], vel_scaling=1.0)
             rospy.sleep(2)
 
-            print("Attempt #" + str(x + 1) + ":", self.robot.get_link_pose(self.robot.left_tool_name))
+            print("Attempt #" + str(x + 1) + ":")
             # Position has .x .y .z attributes, perhaps calculate the euclidean distance diff
             current_pose = self.robot.get_link_pose(self.robot.left_tool_name).position
             current_position = np.array([current_pose.x, current_pose.y, current_pose.z])
             diff = self.goal[:3] - current_position
             error = np.linalg.norm(diff)
-            print(diff)
-            print(error)
+            print("Current Position: " + str(current_position))
+            print("Difference from goal: " + str(diff))
+            print("Euclidean Distance: " + str(error) + "\n\n\n")
 
             # Grasping
             self.robot.close_left_gripper()
@@ -139,8 +139,8 @@ class RepetitivePlantExtractor:
 
             # To slightly vary the return position in weed extraction, uncomment below
             # Here we vary the return position in x and y by plus or minus 5 centimeters
-            # return_cords[0] = self.goal[0] + random.random() / 10 - 0.05
-            # return_cords[2] = self.goal[2] + random.random() / 10 - 0.05
+            # return_cords[0] = self.goal[0] + random.random() / 5 - 0.1
+            # return_cords[1] = self.goal[1] + random.random() / 5 - 0.1
 
             # Return to "home position"
             self.robot.follow_jacobian_to_position(self.robot.left_arm_group, [self.robot.left_tool_name], [[return_cords]], vel_scaling=1.0)
@@ -171,7 +171,7 @@ class RepetitivePlantExtractor:
         # Chain effect: get transformation matrix from camera to end effector
         world2cam = self.tfw.get_transform(parent='world', child=self.camera_frame_id)
         world2ee = world2cam @ camera2tool @ tool2ee
-        world2ee[2, 3] += 0.015
+        world2ee[2, 3] += 0.01
         self.tfw.send_transform_matrix(world2ee, parent='world', child='red_end_effector_left')
 
     def hide_gripper_callback(self, msg):
