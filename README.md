@@ -170,7 +170,7 @@ After making a selection around a weed, the following steps take place:
 
 Notes:
 * This method of taking the centroid of filtered green points is extremely simple. However, with the amount of variation in pointcloud data and weed shapes, it is hard to create even more accurate weed models.
-* One other model we were looking into was to project the green points onto a plane, fit an alphashape (concave hull) to the 2d points, followed by skeltonizing the alphashape. This method looks promising, but it is hard to determine what point on the skeleton would belong to the stem. Look in the 'unfinished' folder for some of our code on this topic.
+* One other model we were looking into was to project the green points onto a plane, fit an alphashape (concave hull) to the 2d points, followed by skeltonizing the alphashape. This method looks promising, but it is hard to determine what point on the skeleton would belong to the stem. Look in the 'unfinished' folder for some of our code on this topic. Look at the skeltonization.png photo in the images_gifs/ folder. In those examples, the red point in the centroid and the orange point is the labeled stem center.
 * Some other attempts at modelings weeds include 2d/3d edge detection and fitting shapes to each leaf. These attempts weren't great due to the lack of points from the ZED Camera. Most weeds only have about 30-50 points of data so creating robust models is extremely difficult. This code can also be found in the unfinished folder.
 
 ### Branch Extraction
