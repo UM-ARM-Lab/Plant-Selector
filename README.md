@@ -61,7 +61,7 @@ To Run:
 roslaunch plant_selector zed_online.launch
 ```
 
-ADD IMAGE
+![Gif of example](images_gifs/zed_online_example.gif)
 
 ### val.launch
 This launch file is meant to be for live demos with Val. In order for this to work, make sure Val is on, e-stop is not pressed, and everything is connected. This also assumes the urdf file of Val has the zed connected
@@ -86,6 +86,11 @@ Once all of the steps above are done, you should be good to run Val. Check the d
 ```
 roslaunch plant_selector val.launch
 ```
+
+![Gif of example](images_gifs/val_rviz_example.gif)
+
+![Gif of example](images_gifs/val_example.gif)
+
 By default, the robot will probably move to an upright position that isn't looking down. I suggest making a new group state for Val in a bent over position. You can do this by:
 ```
 roscd hdt_michigan_moveit/config
@@ -114,12 +119,10 @@ Then, add a group state, for our experiments we had the following:
 ```
 After doing this, specify the default name for the group state in the roslaunch and, if confident in your collision world, you can set the arg 'return_to_default_automatically' to true. This means Val will move to the default position without confirmation from the user on the plan. Also, in between grasping attempts, Val will move back to the default position as a way to reset and move the grippers out of view of the ZED camera.
 
-ADD IMAGE
-
 ### val_repetitive.launch
 This launch file is almost identical to the launch file above. The only difference is that after the user selects a weed and verifies the plan, Val will repeatedly attempt to grasp the weed. This is meant to demonstrate the need for visual servoing.
 
-Note: This was only used for weed extraction.
+Note: This was only used for weed extraction and making recent demos, make sure to look through the code before running.
 
 To run:
 ```
@@ -181,6 +184,11 @@ After making a selection of a part of a branch, the following steps take place:
 4. Apply PCA to the plane points to get the principal component of the branch
 5. With the normal of the plane and principal component of the branch, determine orientation of gripper
 6. Combine the proper orientation of the gripper and centroid of the branch to create goal location for gripper
+
+Most examples in this doc are showcasing the weed extraction. The ZED camera's depth on thin branch-like objects is pretty bad. Most thin objects look almost projected onto the background
+dirt or they are just extremely noisy. Look at the below gif for an example.
+
+![Gif of example](images_gifs/branch_visual_example.gif)
 
 Notes: 
 * We did not spend too much time with branch cutting in this project. 

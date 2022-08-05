@@ -114,15 +114,22 @@ class RepetitivePlantExtractor:
 
         return_cords = self.goal[:3]
         weed_cords = self.goal[:3]
-        weed_cords[2] -= 0.17
+        weed_cords[2] -= 0.185
+        print("Goal Coords: " + str(weed_cords))
         self.robot.store_current_tool_orientations([self.robot.left_tool_name])
-        for _ in range(5):
+        for x in range(2):
             # Attempt to go for it
             self.robot.follow_jacobian_to_position(self.robot.left_arm_group, [self.robot.left_tool_name], [[weed_cords]], vel_scaling=1.0)
+            print("Attempt #" + str(x) + ":", self.robot.get_link_pose(self.robot.left_tool_name))
+            # Position has .x .y .z attributes, perhaps calculate the euclidean distance diff
+            current_pose = self.robot.get_link_pose(self.robot.left_tool_name).position
+            temp = np.array([current_pose.x, current_pose.y, current_pose.z])
+            print(weed_cords - temp)
 
             # Grasping
             rospy.sleep(1)
             self.robot.close_left_gripper()
+            rospy.sleep(2)
 
             # Return to "home position"
             self.robot.follow_jacobian_to_position(self.robot.left_arm_group, [self.robot.left_tool_name], [[return_cords]], vel_scaling=1.0)
@@ -141,7 +148,8 @@ class RepetitivePlantExtractor:
 
         # Go back to default!
         self.robot.set_execute(True)
-        self.robot.plan_to_joint_config('both_arms', self.default_pose)
+        # self.robot.plan_to_joint_config('both_arms', self.default_pose)
+        self.robot.plan_to_joint_config('left_arm', 'left_arm_home')
 
         rospy.sleep(1)
         self.robot.open_left_gripper()
@@ -150,8 +158,10 @@ class RepetitivePlantExtractor:
         # Get transformation matrix between tool and end effector
         tool2ee = self.tfw.get_transform(parent="red_left_tool", child="red_end_effector_left")
         # Chain effect: get transformation matrix from camera to end effector
-        camera2ee = camera2tool @ tool2ee
-        self.tfw.send_transform_matrix(camera2ee, parent=self.camera_frame_id, child='red_end_effector_left')
+        world2cam = self.tfw.get_transform(parent='world', child=self.camera_frame_id)
+        world2ee = world2cam @ camera2tool @ tool2ee
+        world2ee[2, 3] += 0.015
+        self.tfw.send_transform_matrix(world2ee, parent='world', child='red_end_effector_left')
 
     def hide_gripper_callback(self, msg):
         # This function is used as callback of mainpanel when someone presses "Hide Red Gripper"
