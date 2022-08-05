@@ -207,8 +207,7 @@ def predict_branch_pose(selection):
     # The first component (vector) is the normal of the plane we are looking for
     normal = pca.components_[0]
 
-    # TODO: MAKE SURE TO FIX THIS, I THINK IT TECHNICALLY WORKS AS 0 0 0 BECAUSE PC is in CAM FRAME
-    # Since camera position is lost, define an approximate position
+    # Since point cloud is relative to camera, the cam position is 0 0 0
     camera_position = np.array([0, 0, 0])
     # This is the "main vector" going from the camera to the centroid of the PC
     camera_to_centroid = inliers_centroid - camera_position

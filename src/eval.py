@@ -119,16 +119,16 @@ class WeedMetrics:
         self.manual_labels = np.asarray(self.manual_labels)
 
     def metric_printer(self):
-        print("-------------------------------------")
-        print("METRICS")
-        print("-------------------------------------")
+        print("--------------------------------------------------")
+        print("METRICS (in meters)")
+        print("--------------------------------------------------")
         print(f"Mean: {np.mean(self.error)}")
         print(f"Median: {np.median(self.error)}")
         print(f"Std: {np.std(self.error)}\n")
         print(f"Theoretical Successes: {str(self.successes)}")
         print(f"Theoretical Failures: {str(len(self.error) - self.successes )}")
         print(f"Theoretical Success Rate: {str(self.successes / len(self.error))}")
-        print("-------------------------------------")
+        print("--------------------------------------------------")
 
         print(f"\n\nUnable to make predictions on the following {self.skipped_weeds} files:")
         if self.skipped_weeds != 0:

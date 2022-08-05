@@ -37,7 +37,7 @@ Note: all this code was made assuming the ZED2i camera is being used, a differen
 This project also requires other packages such as arm_robots, hdt_michigan, gazebo_ros, and other basic packages for when you are using a robot like Val or Victor.
 
 ## Running
-Once you have pulled this repo into catkin_ws/src/ make sure to catkin build. If you are able to 
+Once you have pulled this repo into catkin_ws/src/ make sure to catkin build. After building, things should work. Look below at some example launch files.
 
 Looking in the launch folder, you can see many launch scripts. All of these launch files have rviz files associated with them on launch.
 
@@ -50,7 +50,7 @@ To Run:
 roslaunch plant_selector zed_offline.launch
 ```
 
-ADD IMAGE
+![Gif of example](images_gifs/zed_offline_example.gif)
 
 ### zed_online.launch
 This launch file is the next most basic launch. It will open up rviz, start the zed camera, and run all the necessary scripts. Instead of needing to select a rosbag, like in zed_offline.launch, you can just
@@ -133,7 +133,7 @@ Since it is a simulation and you don't need to set up the hardware connections, 
 roslaunch plant_selector victor_sim.launch
 ```
 
-ADD IMAGE
+![Gif of example](images_gifs/victor_sim_example.gif)
 
 ### weed_eval.launch
 This launch file is very different than the previous ones. Running weed_eval.launch will evaluate how good a weed prediction model is. In the current case, it is running our weed centroid model. Once you run this launch file, the weed model will be evaluated on around 85 hand picked samples of weeds from the garden.
@@ -145,13 +145,15 @@ roslaunch plant_selector weed_eval.launch
 
 After running the launch file, the terminal should show useful metrics of the weed model as shown below:
 
-ADD IMAGE
+![Image of Example Weed Metrics](images_gifs/weed_eval_example.png)
 
-In rviz you should be able to see a weed sample with it's labeled stem center and the prediction from the model. Press enter in the terminal to toggle through different weed samples.
+In rviz you should be able to see a weed sample with it's labeled stem center (red) and the prediction from the model (white). Press enter in the terminal to toggle through different weed samples.
 
-ADD IMAGE
+![Gif of example](images_gifs/weed_data.gif)
 
 To configure this code to work on a different weed prediction model, go into the eval.py file and change the function that is passed into the WeedMetrics object. In order for this to work as easily as possible, your prediction model should return an x y z numpy array of where it thinks the weed stem is. Also, make sure to return the normal of the plane of the dirt. While this isn't extremely necessary, it really helps the visualization when toggling through weeds as eval.py will rotate the pointcloud to make sure all weeds are oriented in the same way.
+
+In order to add more weed data, take a look at scripts/weed_data_collector.py. It's a little clunky in how it works, but basically, it assumes you first select a region of the entire point cloud in which you want to model a weed, followed by a selection of a single point. You can keep going back and forth through this process until you have a good amount of data. Make sure to be using the publishing selector.
 
 ## Code Explanation
 Below is a quick description of how the current plant fitting models work, most relevant code is found in plant_modeling.py.
@@ -189,7 +191,9 @@ The current way is very simple and doesn't take into account that you normally w
 In order for the UI aspect of this code to work, there were many necessary custom rviz plugins that needed to be created.
 
 ### Publishing Selector
-The Publishing Selector plugin is an rviz tool. This means to add it, you must press the '+' icon at the top of rviz.
+The Publishing Selector plugin is an rviz tool. This means to add it, you must press the '+' icon at the top of rviz. After this, there should be a folder called plant_selector and then a tool called publishing selector within that.
+
+![Image of Publishing Selection](images_gifs/publishing_selector.png)
 
 Publishing Selector functions almost exactly as the 'Select' Tool. The only difference is that the selected region of the tool is publish to the /rviz_selected_points topic. The original 'Select' tool does not publish to ros, making it pretty useless.
 
@@ -202,14 +206,14 @@ Using the publishing selector is pretty simple, below are important key shortcut
 
 If you ever have the publishing selector tool active, you can hold ```alt``` to move the camera like you normally would in rviz
 
-ADD SHORTCUT INFO
-
-ADD GIF
+![Gif of example](images_gifs/publishing_selector_example.gif)
 
 ### MainPanel
 Main Panel is used when the user wants to change how they select, change plant selection (weed/branch), or execute the current robot plan.
 
 To add this panel, go to panels -> add new panel -> then MainPanel under plant_selector.
+
+![Image of Main Panel](images_gifs/main_panel.png)
 
 Here is a quick overview of what the buttons do on the panel. You can either choose to instantly publish a selection or not. This means that, when you have the Publishing Selector Tool active, as soon as you let go of the mouse over the selected area, it will instantly take that selection and publish it for plant fitting. If you select no here, your first selection with the Publishing Selector will be highlighted in blue. If you want to add to this selection, hold shift and drag to add more points. Holding control and selecting will remove current selected points. Pressing ```c``` will clear your current selection. When you are satisfied with the selection, press ```p``` and the selection is published for plant fitting.
 
@@ -224,16 +228,20 @@ The rosbag panel is meant to make playing rosbags of pointclouds easier. After s
 
 To add this panel, go to panels -> add new panel -> then RosbagPanel under plant_selector.
 
+![Image of Rosbag Panel](images_gifs/rosbag_panel.png)
+
 For this to work, you need a rosbag which has a point cloud recorded.
 To record a rosbag for the zed:
 ```
 rosbag record -O [filename.bag] [topics to record]
 
 # Example
-rosbag record -O zed_garden.bag /tf /zed2i/zed_node/point_cloud/cloud_registered
+rosbag record -O zed_garden.bag /zed2i/zed_node/point_cloud/cloud_registered
 ```
 
 Once you have the bag, make sure the "Chosen Topic" matches with the topic of the pointcloud, if it doesn't fill in the topic in the text box and press enter. Then, press "Bag Select" to pick a bag. You can now use the frame slider to pick different frames of the pointcloud that you want to interact with.
+
+![Gif of example](images_gifs/rosbag_panel_example.gif)
 
 ## Sensor Info
 Throughout the summer, we looked into many different cameras and got the chance to compare them, here is a quick summary of their advantages and disadvantages.
@@ -243,3 +251,6 @@ However, the zed is very bad when it comes to depth of thin objects. For example
 * Realsense D435/D455: At the beginning of the summer, we used these cameras. They are decent. They are less noisy than the zed, and give slightly better depth info. However, the point clouds aren't nearly as dense which is why we ended up using the zed. When looking at a weed, the D455 only picks up around 10 points where the zed would give 30-50. One final thing about D435/D455 is that on the roof (and outside), point clouds appear purple on the right side. Apparently you can buy a cheap lense to cancel this out.
 * Realsense D405: This camera is meant for close up data. We tested it and it looked extremely promising. However, the D405 only works on ROS2 making it currently unusable for us.
 * Realsense L515: This is a lidar which actual performs the best. The depth info is obviously a lot better and less noisy than the cameras. This lidar also has color data which makes it even more promising. Sadly it only works inside, making it unusable for the garden, but probably the best point cloud sensor.
+
+## Debugging Note:
+* Sometimes roslaunching results in a black screen in rviz, I normally just rerun the program and it works fine. Obviously this isn't ideal, but I didn't have time to debug it. It may be a problem with the C++ rivz plugin code.
