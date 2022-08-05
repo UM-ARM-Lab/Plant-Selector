@@ -5,10 +5,10 @@
     <description>
       Drag with the left button to select objects in the 3D scene.
       Hold the Alt key to change viewpoint as in the Move tool.
+      Below applies when you disable instant publishing in 'MainPanel'
       Holding the Shift key will allow adding to the current selection.
       Holding the Ctrl key will allow subtraction from the current selection.
       The following keys are also available:
-      'S' - Toggle with RViz interaction
       'C' - Clear current selection
       'P' - Publish selected points to /rviz_selected_points
     </description>

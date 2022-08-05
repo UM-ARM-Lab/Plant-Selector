@@ -36,9 +36,11 @@ void PublishingSelector::updateTopic() {
     rviz_selected_pub = n.advertise<sensor_msgs::PointCloud2>(rviz_cloud_topic, 1);
     is_selecting_pub = n.advertise<std_msgs::Bool>("/plant_selector/is_selecting", 1);
     instant_sub = n.subscribe("/plant_selector/is_instant", 1000, &PublishingSelector::instant_pub_handler, this);
-    is_instant = true;
 
-    ros::param::get("frame_id", frame_id);
+    // default instant publishing to true
+    is_instant = true; 
+
+    ros::param::get("camera_frame_id", frame_id);
 
     num_selected_points = 0;
 }

@@ -8,6 +8,7 @@ from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import String
 from std_msgs.msg import Bool
 from tf.transformations import euler_from_matrix
+import random
 
 # Robot stuff
 from arm_robots.hdt_michigan import Val
@@ -35,6 +36,7 @@ class RepetitivePlantExtractor:
         self.robot_to_default_pose()
 
         self.goal = None
+        self.above_goal = None
         self.plan_exec_res = None
 
         rospy.sleep(1)
@@ -86,13 +88,15 @@ class RepetitivePlantExtractor:
 
         # Plan to a pose that is around 20 centimeters higher than directed this acts as a "home" pose between multiple attempts
         # at grasping
-        self.goal = [world2tool[0, 3], world2tool[1, 3], world2tool[2, 3] + 0.2, x_rot, y_rot, z_rot]
+        self.goal = [world2tool[0, 3], world2tool[1, 3], world2tool[2, 3] + 0.01, x_rot, y_rot, z_rot]
+        self.above_goal = [world2tool[0, 3], world2tool[1, 3], world2tool[2, 3] + 0.2, x_rot, y_rot, z_rot]
+
         self.robot.set_execute(False)
 
         # Find a plan and execute it
         was_success = True
         try:
-            self.plan_exec_res = self.robot.plan_to_pose(self.robot.left_arm_group, self.robot.left_tool_name, self.goal)
+            self.plan_exec_res = self.robot.plan_to_pose(self.robot.left_arm_group, self.robot.left_tool_name, self.above_goal)
         except:
             rospy.loginfo("Can't find a valid plan.")
             was_success = False
@@ -112,24 +116,31 @@ class RepetitivePlantExtractor:
         self.robot.set_execute(True)
         self.robot.follow_arms_joint_trajectory(self.plan_exec_res.planning_result.plan.joint_trajectory)
 
-        return_cords = self.goal[:3]
-        weed_cords = self.goal[:3]
-        weed_cords[2] -= 0.185
-        print("Goal Coords: " + str(weed_cords))
+        return_cords = self.above_goal[:3]
+        print("Goal Location: " + str(self.goal))
         self.robot.store_current_tool_orientations([self.robot.left_tool_name])
-        for x in range(2):
+        for x in range(5):
             # Attempt to go for it
-            self.robot.follow_jacobian_to_position(self.robot.left_arm_group, [self.robot.left_tool_name], [[weed_cords]], vel_scaling=1.0)
-            print("Attempt #" + str(x) + ":", self.robot.get_link_pose(self.robot.left_tool_name))
+            self.robot.follow_jacobian_to_position(self.robot.left_arm_group, [self.robot.left_tool_name], [[self.goal]], vel_scaling=1.0)
+            rospy.sleep(2)
+
+            print("Attempt #" + str(x + 1) + ":", self.robot.get_link_pose(self.robot.left_tool_name))
             # Position has .x .y .z attributes, perhaps calculate the euclidean distance diff
             current_pose = self.robot.get_link_pose(self.robot.left_tool_name).position
-            temp = np.array([current_pose.x, current_pose.y, current_pose.z])
-            print(weed_cords - temp)
+            current_position = np.array([current_pose.x, current_pose.y, current_pose.z])
+            diff = self.goal[:3] - current_position
+            error = np.linalg.norm(diff)
+            print(diff)
+            print(error)
 
             # Grasping
-            rospy.sleep(1)
             self.robot.close_left_gripper()
             rospy.sleep(2)
+
+            # To slightly vary the return position in weed extraction, uncomment below
+            # Here we vary the return position in x and y by plus or minus 5 centimeters
+            # return_cords[0] = self.goal[0] + random.random() / 10 - 0.05
+            # return_cords[2] = self.goal[2] + random.random() / 10 - 0.05
 
             # Return to "home position"
             self.robot.follow_jacobian_to_position(self.robot.left_arm_group, [self.robot.left_tool_name], [[return_cords]], vel_scaling=1.0)

@@ -220,6 +220,12 @@ If you ever have the publishing selector tool active, you can hold ```alt``` to 
 
 ![Gif of example](images_gifs/publishing_selector_example.gif)
 
+Selection Tips:
+* Rviz is sometimes weird and you need to be somewhat close up to make the selection. If you are super zoomed out in rviz, not all points in the selected region will be published for some reason.
+* When selecting a weed, make sure to get a full view of the weed including the dirt next to it. The algorithms should attempt to go for the larger weed if there are multiple in selection,
+but for best results just select one weed.
+* When selecting a branch, just select the region around the branch. The depth filters should remove background noise and hopefully grab the points of interest.
+
 ### MainPanel
 Main Panel is used when the user wants to change how they select, change plant selection (weed/branch), or execute the current robot plan.
 
