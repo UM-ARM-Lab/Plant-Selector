@@ -35,11 +35,10 @@ class Kalman:
         # If the odometry is no different, don't run the kalman filter. TODO: CHECK IF THIS IS WHAT I WANT TO DO
         if not self.is_diff_odom(new_odom):
             return
-        print("Moving")
         self.filter_tracking()
 
-    # This function actually calculates the new location for the gripper
     def filter_tracking(self):
+        # I'm not too familiar with how kalman filters work
         # Prediction = A(t) @ x(t-1)  +  B(t) @ u(t)
         #              4 x 4 @ 4 x 1  + 4 x 4 @ 4 x 1
         #                    Last Pos        Cur Action

@@ -13,7 +13,7 @@ import random
 # Robot stuff
 from arm_robots.hdt_michigan import Val
 
-# THIS SCRIPT IS MEANT FOR ONLY VAL!!!
+# THIS SCRIPT IS MEANT FOR ONLY VAL!!! It was used to make some demos, so things are a little messy and stuff was rearranged a lot
 class RepetitivePlantExtractor:
     def __init__(self):
         rospy.Subscriber("/plant_selector/mode", String, self.mode_change)
@@ -138,7 +138,7 @@ class RepetitivePlantExtractor:
             rospy.sleep(2)
 
             # To slightly vary the return position in weed extraction, uncomment below
-            # Here we vary the return position in x and y by plus or minus 5 centimeters
+            # Here we vary the return position in x and y. This is to test consistency of val
             # return_cords[0] = self.goal[0] + random.random() / 5 - 0.1
             # return_cords[1] = self.goal[1] + random.random() / 5 - 0.1
 
