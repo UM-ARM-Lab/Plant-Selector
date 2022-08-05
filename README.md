@@ -1,8 +1,10 @@
 # Plant Selector
 This package is meant for creating goal gripper poses for Val in the garden.
 
+This package was made by Miguel Munoz and Christian Foreman. Miguel worked mainly with the weed/branch fitting, and Christian worked with created the rviz plugins and connecting with code with Val. Email cjforema@umich.edu for any questions.
+
 ## Requirements
-Below are requirements for this code to work. In Short, make sure that your ZED camera works in nueral mode, and you have the basic ARMLAB packages for controlling the robots.
+Below are requirements for this code to work. In Short, make sure that your ZED camera works in neural mode, and you have the basic ARMLAB packages for controlling the robots.
 If you are not using a robot, ZED should be all you need.
 
 ### ZED SDK
@@ -89,8 +91,6 @@ roslaunch plant_selector val.launch
 
 ![Gif of example](images_gifs/val_rviz_example.gif)
 
-![Gif of example](images_gifs/val_example.gif)
-
 By default, the robot will probably move to an upright position that isn't looking down. I suggest making a new group state for Val in a bent over position. You can do this by:
 ```
 roscd hdt_michigan_moveit/config
@@ -119,10 +119,14 @@ Then, add a group state, for our experiments we had the following:
 ```
 After doing this, specify the default name for the group state in the roslaunch and, if confident in your collision world, you can set the arg 'return_to_default_automatically' to true. This means Val will move to the default position without confirmation from the user on the plan. Also, in between grasping attempts, Val will move back to the default position as a way to reset and move the grippers out of view of the ZED camera.
 
+![Gif of example](images_gifs/val_example.gif)
+
 ### val_repetitive.launch
 This launch file is almost identical to the launch file above. The only difference is that after the user selects a weed and verifies the plan, Val will repeatedly attempt to grasp the weed. This is meant to demonstrate the need for visual servoing.
 
 Note: This was only used for weed extraction and making recent demos, make sure to look through the code before running.
+
+The purpose of this launch is demonstrate the need for visual servoing. Although Val thinks it is extremely close to the weed, in reality, Val can be up to few centimeters off. This launch file tries to demonstrate this by positioning the gripper above the weed and repetitively trying to grasp the same weed multiple times. You will see that it is consistently pretty off, showing the need for further correction by visual servoing.
 
 To run:
 ```
