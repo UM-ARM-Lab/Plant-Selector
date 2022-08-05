@@ -265,4 +265,4 @@ However, the zed is very bad when it comes to depth of thin objects. For example
 * Realsense L515: This is a lidar which actual performs the best. The depth info is obviously a lot better and less noisy than the cameras. This lidar also has color data which makes it even more promising. Sadly it only works inside, making it unusable for the garden, but probably the best point cloud sensor.
 
 ## Debugging Note:
-* Sometimes roslaunching results in a black screen in rviz, I normally just rerun the program and it works fine. Obviously this isn't ideal, but I didn't have time to debug it. It may be a problem with the C++ rivz plugin code.
+* Sometimes roslaunching results in a black screen in rviz, I normally just rerun the program and it works fine. Obviously this isn't ideal, but I didn't have time to debug it. It may be a problem with the C++ rviz plugin code.
