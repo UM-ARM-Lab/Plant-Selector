@@ -118,7 +118,7 @@ class RepetitivePlantExtractor:
         return_cords = self.above_goal[:3]
         print("Goal Location: " + str(self.goal))
         self.robot.store_current_tool_orientations([self.robot.left_tool_name])
-        for x in range(7):
+        for x in range(5):
             # Attempt to go for it
             self.robot.follow_jacobian_to_position(self.robot.left_arm_group, [self.robot.left_tool_name], [[self.goal[:3]]], vel_scaling=1.0)
             rospy.sleep(2)
@@ -159,8 +159,8 @@ class RepetitivePlantExtractor:
 
         # Go back to default!
         self.robot.set_execute(True)
-        # self.robot.plan_to_joint_config('both_arms', self.default_pose)
-        self.robot.plan_to_joint_config('left_arm', 'left_arm_home')
+        self.robot.plan_to_joint_config('both_arms', self.default_pose)
+        # self.robot.plan_to_joint_config('left_arm', 'left_arm_home')
 
         rospy.sleep(1)
         self.robot.open_left_gripper()

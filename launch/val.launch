@@ -1,6 +1,6 @@
 <launch>  
     <arg name="world_name" default="$(find arm_robots)/world/val_plant.world"/>
-    <arg name="gazebo_home_directory" default="/home/miguel"/>
+    <arg name="gazebo_home_directory" default="/home/armlab"/>
 
     <!-- Setting return to default_automatically will make the robot plan to pose to a default position. When launching, the robot will move (without human verification).
     Also after the robot grabs/selects it will return to the default pose. Only set to true if you are confident about your world environment and it won't collide. 
