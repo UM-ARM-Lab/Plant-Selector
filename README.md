@@ -1,6 +1,8 @@
 # Plant Selector
 This package is meant for creating goal gripper poses for Val in the garden.
 
+Demo Video: https://drive.google.com/file/d/1rhoIgoLtfJwrlv68aB5PwK_YFSWYTWPV/view?usp=sharing
+
 This package was made by Miguel Munoz and Christian Foreman. Miguel worked mainly with the weed/branch fitting, and Christian worked with created the rviz plugins and connecting with code with Val. Email cjforema@umich.edu for any questions. If you have any questions about changing the rviz plugins, I can definitely help. Since Miguel and I were the main users, we got pretty familiar with how it all works, but there are probably some things to change to make it easier to use.
 
 ## Requirements
@@ -125,6 +127,8 @@ After doing this, specify the default name for the group state in the roslaunch 
 This launch file is almost identical to the launch file above. The only difference is that after the user selects a weed and verifies the plan, Val will repeatedly attempt to grasp the weed. This is meant to demonstrate the need for visual servoing.
 
 Note: This was only used for weed extraction and making recent demos, make sure to look through the code before running.
+
+Demo Video: https://drive.google.com/file/d/1rhoIgoLtfJwrlv68aB5PwK_YFSWYTWPV/view?usp=sharing
 
 The purpose of this launch is demonstrate the need for visual servoing. Although Val thinks it is extremely close to the weed, in reality, Val can be up to few centimeters off. This launch file tries to demonstrate this by positioning the gripper above the weed and repetitively trying to grasp the same weed multiple times. You will see that it is consistently pretty off, showing the need for further correction by visual servoing.
 
