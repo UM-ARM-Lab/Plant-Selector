@@ -1,17 +1,72 @@
 #!/usr/bin/env python
+from audioop import avg
 import ctypes
+from os import fdatasync
 import struct
 
 import hdbscan
 from statistics import mode
 from math import atan, pi
 import numpy as np
+import matplotlib.pyplot as plt
 import open3d as o3d
 from sklearn.decomposition import PCA
 import rospy
 from sensor_msgs import point_cloud2 as pc2
 from tf.transformations import rotation_matrix
 
+
+def clustering_test(points):
+    # A test for the method presented in https://towardsdatascience.com/how-to-automate-3d-point-cloud-segmentation-and-clustering-with-python-343c9039e4f5
+    
+    # Create and format point cloud
+    pcd_points = points[:, :3]
+    float_colors = points[:, 3]
+    pcd_colors = np.array((0, 0, 0))
+    for x in float_colors:
+        rgb = float_to_rgb(x)
+        pcd_colors = np.vstack((pcd_colors, rgb))
+
+    pcd = o3d.geometry.PointCloud()
+    # Save xyzrgb info in green_pcd (type: open3d.PointCloud)
+    pcd.points = o3d.utility.Vector3dVector(pcd_points)
+    pcd.colors = o3d.utility.Vector3dVector(pcd_colors)
+   
+    segment_models = {}
+    segments = {}
+
+    # set arbitrary max number of planes, can be found automatically later
+    max_plane_idx = 2
+    d_threshold = 0.005
+    epsilon = 0.004
+
+    # run RANSAC, remove inliers, and repeat using leftover outliers
+    rest = pcd
+    for i in range(max_plane_idx):
+        colors = plt.get_cmap("tab20")(i)
+
+        segment_models[i], inliers = rest.segment_plane(
+            distance_threshold = d_threshold,
+            ransac_n = 3,
+            num_iterations = 1000)
+        segments[i] = rest.select_by_index(inliers)
+
+        labels = np.array(segments[i].cluster_dbscan(eps=epsilon, min_points = 10))
+        candidates = [len(np.where(labels==j)[0]) for j in np.unique(labels)]
+        best_candidate=int(np.unique(labels)[np.where(candidates == np.max(candidates))[0]])
+
+        rest = rest.select_by_index(inliers, invert=True) + segments[i].select_by_index(list(np.where(labels!=best_candidate)[0]))
+        
+        segments[i]=segments[i].select_by_index(list(np.where(labels== best_candidate)[0]))
+
+        segments[i].paint_uniform_color(list(colors[:3]))
+
+        print("pass", i, "/", max_plane_idx, "done")
+    
+    # draw the results
+    o3d.visualization.draw_geometries(
+        [segments[i] for i in range(max_plane_idx)] + [rest])
+    
 
 def calculate_weed_centroid(points):
     # All the weed extraction algorithm
@@ -118,6 +173,7 @@ def predict_weed_pose(selection):
         rospy.loginfo("You selected no points, select a few points")
         return None
 
+    clustering_test(points)
     weed_centroid, normal = calculate_weed_centroid(points)
 
     if weed_centroid is None:

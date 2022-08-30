@@ -2,6 +2,7 @@
 import os
 
 import numpy as np
+import csv
 import rospy
 from sensor_msgs.msg import PointCloud2
 
@@ -27,6 +28,13 @@ class WeedMetrics:
         self.pred_model = pred_model
         self.error = None
         self.successes = None
+
+        self.last_metrics = []
+        self.best_metrics = []
+        self.current_metrics = []
+
+        self.last_file = '/home/amasse/catkin_ws/src/plant_selector/weed_eval/past_metrics/eval_last.csv'
+        self.best_file = '/home/amasse/catkin_ws/src/plant_selector/weed_eval/past_metrics/eval_best.csv'
 
         self.skipped_weeds = 0
         self.skipped_weeds_filenames = []
@@ -105,9 +113,11 @@ class WeedMetrics:
             rh.publish_pc_with_color(self.pc_pub, pc_norm, self.frame_id)
             input(f"Currently viewing {no_pred_weed}. Could not make a prediction.")
 
+
     def compute_distances(self, centroids):
         self.error = np.linalg.norm(self.manual_labels[:, :3] - centroids[:, :3], axis=1)
         self.successes = np.sum(np.where(self.error < self.gripper_size / 2, 1, 0))
+
 
     def get_manual_labels(self):
         parent_directory = self.data_directory + "manual_labels/"
@@ -118,17 +128,79 @@ class WeedMetrics:
             self.manual_labels.append(np.load(parent_directory + label)[:, :3])
         self.manual_labels = np.asarray(self.manual_labels)
 
+
+    def compare_previous(self):
+        # extract last and best metrics from files
+        self.last_metrics = np.genfromtxt(self.last_file, delimiter=',')[1,:]
+        self.best_metrics = np.genfromtxt(self.best_file, delimiter=',')[1,:]
+
+        self.current_metrics = np.array([np.mean(self.error), np.median(self.error), np.std(self.error), self.successes, 
+            (len(self.error) - self.successes), (self.successes / len(self.error))])
+
+        # compare last and best info to current info, first row is improvement from last, second is improvement from best
+        self.improvement = np.zeros((2,6))
+        for i in range(self.improvement.shape[0]):
+            for j in range(self.improvement.shape[1]):
+                if i == 0:
+                    self.improvement[i, j] = 100 * (self.current_metrics[j] - self.last_metrics[j]) / self.last_metrics[j]
+                else:
+                    self.improvement[i, j] = 100 * (self.current_metrics[j] - self.best_metrics[j]) / self.best_metrics[j]
+        return 0
+    
+
+    def update_metrics(self):
+        labels = ["mean", "median", "std", "successes", "failures", "success rate"]
+        
+        # if current mean is better than best, replace best with current
+        if self.best_metrics[0] > self.current_metrics[0]:
+            self.best_metrics = self.current_metrics
+            with open(self.best_file, 'w', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow(labels)
+                writer.writerow(self.current_metrics)
+
+        
+        # replace last metrics with current
+        self.last_metrics = self.current_metrics
+        with open(self.last_file, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(labels)
+            writer.writerow(self.current_metrics)
+
+
     def metric_printer(self):
+        self.compare_previous()
+        
         print("--------------------------------------------------")
         print("METRICS (in meters)")
         print("--------------------------------------------------")
-        print(f"Mean: {np.mean(self.error)}")
-        print(f"Median: {np.median(self.error)}")
-        print(f"Std: {np.std(self.error)}\n")
-        print(f"Theoretical Successes: {str(self.successes)}")
-        print(f"Theoretical Failures: {str(len(self.error) - self.successes )}")
-        print(f"Theoretical Success Rate: {str(self.successes / len(self.error))}")
+        print(f"Mean: {self.current_metrics[0]}")
+        print(f"\t{round(self.improvement[0,0], 4)}% change from last time")
+        print(f"\t{round(self.improvement[1,0], 4)}% change from best trial")
+
+        print(f"Median: {self.current_metrics[1]}")
+        print(f"\t{round(self.improvement[0,1], 4)}% change from last time")
+        print(f"\t{round(self.improvement[1,1], 4)}% change from best trial")
+
+        print(f"Std: {self.current_metrics[2]}")
+        print(f"\t{round(self.improvement[0,2], 4)}% change from last time")
+        print(f"\t{round(self.improvement[1,2], 4)}% change from best trial\n")
+
+
+        print(f"Theoretical Successes: {self.current_metrics[3]}")
+        print(f"\t{round(self.improvement[0,3], 4)}% change from last time")
+        print(f"\t{round(self.improvement[1,3], 4)}% change from best trial")
+
+        print(f"Theoretical Failures: {self.current_metrics[4]}")
+        print(f"\t{round(self.improvement[0,4], 4)}% change from last time")
+        print(f"\t{round(self.improvement[1,4], 4)}% change from best trial")
+
+        print(f"Theoretical Success Rate: {self.current_metrics[5]}")
+        print(f"\t{round(self.improvement[0,5], 4)}% change from last time")
+        print(f"\t{round(self.improvement[1,5], 4)}% change from best trial")
         print("--------------------------------------------------")
+
+        self.update_metrics()
 
         print(f"\n\nUnable to make predictions on the following {self.skipped_weeds} files:")
         if self.skipped_weeds != 0:
