@@ -10,6 +10,7 @@ import argparse
 import sys
 
 import plant_modeling as pm
+import clustering_tests as ct
 import rviz_helpers as rh
 
 
@@ -141,10 +142,17 @@ class WeedMetrics:
         self.improvement = np.zeros((2,6))
         for i in range(self.improvement.shape[0]):
             for j in range(self.improvement.shape[1]):
+                
                 if i == 0:
-                    self.improvement[i, j] = 100 * (self.current_metrics[j] - self.last_metrics[j]) / self.last_metrics[j]
+                    if j == 3 or j == 4:
+                        self.improvement[i, j] = self.current_metrics[j] - self.last_metrics[j]
+                    else:
+                        self.improvement[i, j] = 100 * (self.current_metrics[j] - self.last_metrics[j]) / self.last_metrics[j]
                 else:
-                    self.improvement[i, j] = 100 * (self.current_metrics[j] - self.best_metrics[j]) / self.best_metrics[j]
+                    if j == 3 or j == 4:
+                        self.improvement[i, j] = self.current_metrics[j] - self.best_metrics[j]
+                    else:
+                        self.improvement[i, j] = 100 * (self.current_metrics[j] - self.best_metrics[j]) / self.best_metrics[j]
         return 0
     
 
@@ -188,12 +196,12 @@ class WeedMetrics:
 
 
         print(f"Theoretical Successes: {self.current_metrics[3]}")
-        print(f"\t{round(self.improvement[0,3], 4)}% change from last time")
-        print(f"\t{round(self.improvement[1,3], 4)}% change from best trial")
+        print(f"\tLast trial there were {self.last_metrics[3]} successes")
+        print(f"\tThe best trial had {self.best_metrics[3]} successes")
 
         print(f"Theoretical Failures: {self.current_metrics[4]}")
-        print(f"\t{round(self.improvement[0,4], 4)}% change from last time")
-        print(f"\t{round(self.improvement[1,4], 4)}% change from best trial")
+        print(f"\tLast trial there were {self.last_metrics[4]} failures")
+        print(f"\tThe best trial had {self.best_metrics[4]} failures")
 
         print(f"Theoretical Success Rate: {self.current_metrics[5]}")
         print(f"\t{round(self.improvement[0,5], 4)}% change from last time")
@@ -217,7 +225,8 @@ def main():
     args = parser.parse_args(rospy.myargv(sys.argv[1:]))
 
     # Run the evaluation
-    evaluator = WeedMetrics(args.weed_directory, pm.calculate_weed_centroid, gripper_size=0.015)
+    # evaluator = WeedMetrics(args.weed_directory, pm.calculate_weed_centroid, gripper_size=0.015)
+    evaluator = WeedMetrics(args.weed_directory, ct.kmeans_calculate_centroid, gripper_size=0.015)
     evaluator.run_eval()
 
 

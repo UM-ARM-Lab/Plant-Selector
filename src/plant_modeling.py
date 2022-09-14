@@ -15,121 +15,8 @@ import rospy
 from sensor_msgs import point_cloud2 as pc2
 from tf.transformations import rotation_matrix
 
-# rostopic for pcd is /zed2i/zed_node/point_cloud/cloud_registered
+import clustering_tests as ct
 
-
-def RANSAC_clustering_test(points):
-    # A test for the method presented in https://towardsdatascience.com/how-to-automate-3d-point-cloud-segmentation-and-clustering-with-python-343c9039e4f5
-    
-    # Create and format point cloud
-    pcd_points = points[:, :3]
-    float_colors = points[:, 3]
-    pcd_colors = np.array((0, 0, 0))
-    for x in float_colors:
-        rgb = float_to_rgb(x)
-        pcd_colors = np.vstack((pcd_colors, rgb))
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(pcd_points)
-    pcd.colors = o3d.utility.Vector3dVector(pcd_colors)
-
-    # Remove anomalous data (why doesnt this work????)
-    pcd.remove_statistical_outlier(nb_neighbors=50, std_ratio=2.0)
-   
-    segment_models = {}
-    segments = {}
-
-    # Parameters (need to be tuned)
-    max_plane_idx = 20
-    d_threshold = 0.005
-    epsilon = 0.004
-
-    '''
-    SEGMENTATION LOOP
-    Run RANSAC and store inliers in segments dict
-    Run DBSCAN on the inliers
-    Count how many points are in each cluster and store in candidates
-    Select the cluster with the most points and store in best_candidates
-    Throw the clusters that are not the best candidate back into rest to be considered next iteration
-    '''
-    rest = pcd
-    skip_DBSCAN = False
-    counter = 0
-    for i in range(max_plane_idx):
-        colors = plt.get_cmap("tab20")(i)
-
-        try:
-            segment_models[i], inliers = rest.segment_plane(
-                distance_threshold = d_threshold,
-                ransac_n = 3,
-                num_iterations = 1000)
-            segments[i] = rest.select_by_index(inliers)
-
-            labels = np.array(segments[i].cluster_dbscan(eps=epsilon, min_points = 10))
-    
-            candidates = [len(np.where(labels==j)[0]) for j in np.unique(labels)]
-            best_candidate = int(np.unique(labels)[np.where(candidates == np.max(candidates))[0]])
-
-            rest = rest.select_by_index(inliers, invert=True) + segments[i].select_by_index(list(np.where(labels!=best_candidate)[0]))
-            segments[i] = segments[i].select_by_index(list(np.where(labels== best_candidate)[0]))
-            segments[i].paint_uniform_color(list(colors[:3]))
-
-            print("pass", i+1, "/", max_plane_idx, "done")
-            counter += 1
-
-        except:
-            print("No more segments can be made. Leaving loop...\n")
-            skip_DBSCAN = True
-            break
-
-    if skip_DBSCAN == False:    
-        # Do one more pass of DBSCAN on whatever is left in rest and color the results
-        labels = np.array(rest.cluster_dbscan(eps=0.05, min_points=5))
-        max_label = labels.max()
-        colors = plt.get_cmap("tab10")(labels / (max_label if max_label > 0 else 1))
-        colors[labels < 0] = 0
-        rest.colors = o3d.utility.Vector3dVector(colors[:, :3])
-        # rest.paint_uniform_color([0, 0, 0])
-     
-    # Draw the results
-    o3d.visualization.draw_geometries(
-        [segments[i] for i in range(counter)] + [rest])
-    
-
-def simple_clustering_test(points):
-    # A simplified, non-loop-based version of RANSAC_clustering_test
-
-    # Create and format point cloud
-    pcd_points = points[:, :3]
-    float_colors = points[:, 3]
-    pcd_colors = np.array((0, 0, 0))
-    for x in float_colors:
-        rgb = float_to_rgb(x)
-        pcd_colors = np.vstack((pcd_colors, rgb))
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(pcd_points)
-    pcd.colors = o3d.utility.Vector3dVector(pcd_colors)
-
-    d_threshold = 0.005
-    epsilon = 0.004
-
-    # Run RANSAC once
-    plane_model, inliers = pcd.segment_plane(
-        distance_threshold=d_threshold,
-        ransac_n=3,
-        num_iterations=1000)
-    inlier_cloud = pcd.select_by_index(inliers)
-    outlier_cloud = pcd.select_by_index(inliers, invert=True)
-
-    # Assume outlier cloud contains points associated with plants. Run DBSCAN
-    labels = np.array(outlier_cloud.cluster_dbscan(eps=epsilon, min_points=10))
-
-    # Vizualize the results
-    max_label = labels.max()
-    colors = plt.get_cmap("tab20")(labels / (max_label if max_label > 0 else 1))
-    colors[labels < 0] = 0
-    outlier_cloud.colors = o3d.utility.Vector3dVector(colors[:, :3])
-    o3d.visualization.draw_geometries([outlier_cloud])
-    
 
 def calculate_weed_centroid(points):
     # All the weed extraction algorithm
@@ -195,6 +82,11 @@ def calculate_weed_centroid(points):
     # Just keep the points that correspond to the biggest cluster (weed)
     green_pcd_points = green_pcd_points[biggest_cluster_indices]
 
+    # disp_pcd = o3d.geometry.PointCloud()
+    # disp_pcd.points = o3d.utility.Vector3dVector(green_pcd_points)
+    # disp_pcd.paint_uniform_color([0, 0, 0])
+    # o3d.visualization.draw_geometries([disp_pcd])
+
     # Get coordinates of the weed centroid
     weed_centroid = np.mean(green_pcd_points, axis=0)
 
@@ -218,6 +110,12 @@ def calculate_weed_centroid(points):
     if len(best_inliers) == 0:
         rospy.loginfo("Can't find dirt, Select both weed and dirt.")
         return None, None
+    
+    # inlier_cloud = dirt_pcd.select_by_index(best_inliers)
+    # outlier_cloud = dirt_pcd.select_by_index(best_inliers, invert=True)
+    # inlier_cloud.paint_uniform_color([1, 0, 0])
+    # outlier_cloud.paint_uniform_color([0.6, 0.6, 0.6])
+    # o3d.visualization.draw_geometries([inlier_cloud, outlier_cloud])
 
     [a, b, c, _] = plane_model
     if a < 0:
@@ -228,7 +126,6 @@ def calculate_weed_centroid(points):
     return weed_centroid, normal
 
 
-
 def predict_weed_pose(selection):
     # Load point cloud and visualize it
     points = np.array(list(pc2.read_points(selection)))
@@ -237,9 +134,13 @@ def predict_weed_pose(selection):
         rospy.loginfo("You selected no points, select a few points")
         return None
 
-    RANSAC_clustering_test(points)
-    # simple_clustering_test(points)
-    weed_centroid, normal = calculate_weed_centroid(points)
+    weed_centroid, normal = ct.RANSAC_calculate_pose(points)
+    # weed_centroid, normal = ct.kmeans_calculate_centroid(points)
+    weed_centroid_original, normal_original = calculate_weed_centroid(points)
+    print("\nOG wc: ", weed_centroid_original)
+    print("new wc: ", weed_centroid)
+    print("OG n: ", normal_original)
+    print("new n: ", normal)
 
     if weed_centroid is None:
         return None
@@ -371,7 +272,7 @@ def float_to_rgb(float_rgb):
     g = (pack & 0x0000FF00) >> 8
     b = (pack & 0x000000FF)
 
-    color = [r, g, b]
+    color = np.array([r, g, b]).astype(np.float)
 
     return color
 
