@@ -10,9 +10,78 @@ import numpy as np
 import matplotlib.pyplot as plt
 import open3d as o3d
 from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
 import rospy
 from sensor_msgs import point_cloud2 as pc2
 from tf.transformations import rotation_matrix
+
+
+def kmeans_calculate_pose(points):
+    '''!
+    Uses kmeans and DBSCAN to cluster points and return the pose for the gripper
+    MUCH better than RANSAC_calculate_pose
+
+    @param points   a list of points from the point cloud from the selection
+
+    @return list of weed centroids, normal associated with dirt
+    '''
+    # Create and format point cloud
+    pcd_points = points[:, :3]
+    float_colors = points[:, 3]
+    pcd_colors = np.array((0, 0, 0))
+    for x in float_colors:
+        rgb = float_to_rgb(x)
+        pcd_colors = np.vstack((pcd_colors, rgb))
+    pcd_colors = np.delete(pcd_colors, 0, 0)
+    pcd_points, pcd_colors = remove_height_outliers(pcd_points, pcd_colors)
+    pcd_array = np.hstack((pcd_points, pcd_colors))
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(pcd_points)
+    pcd.colors = o3d.utility.Vector3dVector(pcd_colors)
+
+    # Do kmeans clustering on original point cloud, color results
+    k = 2
+    kmeans = KMeans(n_clusters=k, random_state=0).fit(pcd_array)
+    labels = kmeans.labels_
+    max_label = labels.max()
+    colors = plt.get_cmap("tab10")(labels / (max_label if max_label > 0 else 1))
+    colors[labels < 0] = 0
+    pcd.colors = o3d.utility.Vector3dVector(colors[:, :3])
+
+    # Seperate segments into dict of idividual clusters
+    segments = labels_to_dict(pcd, labels)
+
+    # Compare by sizes to get pcds for weeds and dirt
+    weeds, dirt = separate_by_size(segments)
+
+    # Run dbscan to cluster into individual weeds, color them
+    labels = np.array(weeds.cluster_dbscan(eps=0.004, min_points=10))
+    max_label = labels.max()
+    colors = plt.get_cmap("tab10")(labels / (max_label if max_label > 0 else 1))
+    colors[labels < 0] = 1
+    weeds.colors = o3d.utility.Vector3dVector(colors[:, :3])
+
+    # If we fail to find more than one weed cluster, leave
+    if max_label < 1:
+        return None, None
+    
+    # Seperate the weeds into dict of individual clusters
+    weeds_segments = labels_to_dict(weeds, labels)
+    o3d.visualization.draw_geometries(
+        [weeds_segments[i] for i in range(len(weeds_segments))])
+    
+
+    # Find list of centroids of weeds and dirt normal
+    weeds_centroids = calculate_centroids(weeds_segments)
+    normal = calculate_normal(dirt)
+
+    # For now only return the largest weed
+    weeds_sizes = {}
+    for i in range(len(weeds_centroids)):
+        weeds_sizes[i] = np.shape(np.asarray(weeds_segments[i].points))[0]
+    largest_segment = max(weeds_sizes, key=weeds_sizes.get)
+
+    return weeds_centroids[largest_segment], normal
 
 
 def RANSAC_calculate_pose(points):
@@ -155,9 +224,9 @@ def remove_height_outliers(pcd_points, pcd_colors, max_height = -0.2):
 
 def separate_by_height(segments, height_threshold=0.001):
     '''!
-    Seperates dirt point cloud and weed point clouds
+    Seperates dirt point cloud and weed point clouds by avg height
 
-    @param segments   dict containing all segments of pointcloud
+    @param segments   dict containing all segments of point cloud
     @param height_threshold   float
 
     @return weeds, dirt pointclouds containing weeds and dirt respecively
@@ -183,6 +252,34 @@ def separate_by_height(segments, height_threshold=0.001):
     return weeds, dirt
 
 
+def separate_by_size(segments):
+    '''!
+    Seperates dirt point cloud and weed point clouds by number of pts
+
+    @param segments   dict containing all segments of point cloud
+
+    @return weeds, dirt pointclouds containing weeds and dirt respecively
+    '''
+
+    # Assume the largest segment is dirt
+
+    # Find all sizes of each segment
+    segment_sizes = {}
+    for i in range(len(segments)):
+        segment_sizes[i] = np.shape(np.asarray(segments[i].points))[0]
+    largest_segment = max(segment_sizes, key=segment_sizes.get)
+
+    # Catagorize based on size
+    if largest_segment == 0:
+        weeds = segments[1]
+        dirt = segments[0]
+    else:
+        weeds = segments[0]
+        dirt = segments[1]
+
+    return weeds, dirt
+
+
 def labels_to_dict(pcd, labels):
     '''!
     Seperats pcd into dict of clusters based on labels
@@ -194,7 +291,7 @@ def labels_to_dict(pcd, labels):
     '''
     
     new_dict = {}
-    for i in range(labels.max()):
+    for i in range(labels.max() + 1):
         idx = np.where(labels[:] == i)[0]
         new_dict[i] = pcd.select_by_index(idx)
     return new_dict

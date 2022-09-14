@@ -134,8 +134,8 @@ def predict_weed_pose(selection):
         rospy.loginfo("You selected no points, select a few points")
         return None
 
-    weed_centroid, normal = ct.RANSAC_calculate_pose(points)
-    # weed_centroid, normal = ct.kmeans_calculate_centroid(points)
+    # weed_centroid, normal = ct.RANSAC_calculate_pose(points)
+    weed_centroid, normal = ct.kmeans_calculate_pose(points)
     weed_centroid_original, normal_original = calculate_weed_centroid(points)
     print("\nOG wc: ", weed_centroid_original)
     print("new wc: ", weed_centroid)
