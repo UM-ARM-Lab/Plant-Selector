@@ -135,12 +135,13 @@ def predict_weed_pose(selection):
         return None
 
     # weed_centroid, normal = ct.RANSAC_calculate_pose(points)
-    weed_centroid, normal = ct.kmeans_calculate_pose(points)
-    weed_centroid_original, normal_original = calculate_weed_centroid(points)
-    print("\nOG wc: ", weed_centroid_original)
-    print("new wc: ", weed_centroid)
-    print("OG n: ", normal_original)
-    print("new n: ", normal)
+    # weed_centroid, normal = ct.HDBSCAN_kmeans_calculate_pose(points)
+    weed_centroid, normal = ct.DBSCAN_calculate_pose(points)
+    # weed_centroid_original, normal_original = calculate_weed_centroid(points)
+    # print("\nOG wc: ", weed_centroid_original)
+    # print("new wc: ", weed_centroid)
+    # print("OG n: ", normal_original)
+    # print("new n: ", normal)
 
     if weed_centroid is None:
         return None
