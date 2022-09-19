@@ -3,7 +3,7 @@ import ctypes
 from os import fdatasync
 import struct
 
-import hdbscan
+# import hdbscan
 from statistics import mode
 from math import atan, pi
 import numpy as np
@@ -19,82 +19,82 @@ from sensor_msgs import point_cloud2 as pc2
 from tf.transformations import rotation_matrix
 
 
-def HDBSCAN_kmeans_calculate_pose(points):
-    '''!
-    Uses kmeans and HDBSCAN to cluster points and return the pose for the gripper
+# def HDBSCAN_kmeans_calculate_pose(points):
+#     '''!
+#     Uses kmeans and HDBSCAN to cluster points and return the pose for the gripper
 
-    @param points   a list of points from the point cloud from the selection
+#     @param points   a list of points from the point cloud from the selection
 
-    @return list of weed centroids, normal associated with dirt
-    '''
-    # Create and format point cloud
-    pcd_points = points[:, :3]
-    float_colors = points[:, 3]
-    pcd_colors = np.array((0, 0, 0))
-    for x in float_colors:
-        rgb = float_to_rgb(x)
-        pcd_colors = np.vstack((pcd_colors, rgb))
-    pcd_colors = np.delete(pcd_colors, 0, 0)
-    pcd_points, pcd_colors = remove_height_outliers(pcd_points, pcd_colors)
-    pcd_array = np.hstack((pcd_points, pcd_colors))
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(pcd_points)
-    pcd.colors = o3d.utility.Vector3dVector(pcd_colors)
+#     @return list of weed centroids, normal associated with dirt
+#     '''
+#     # Create and format point cloud
+#     pcd_points = points[:, :3]
+#     float_colors = points[:, 3]
+#     pcd_colors = np.array((0, 0, 0))
+#     for x in float_colors:
+#         rgb = float_to_rgb(x)
+#         pcd_colors = np.vstack((pcd_colors, rgb))
+#     pcd_colors = np.delete(pcd_colors, 0, 0)
+#     pcd_points, pcd_colors = remove_height_outliers(pcd_points, pcd_colors)
+#     pcd_array = np.hstack((pcd_points, pcd_colors))
+#     pcd = o3d.geometry.PointCloud()
+#     pcd.points = o3d.utility.Vector3dVector(pcd_points)
+#     pcd.colors = o3d.utility.Vector3dVector(pcd_colors)
 
-    # Do kmeans clustering on original point cloud, color results
-    k = 2
-    kmeans = KMeans(n_clusters=k, random_state=0).fit(pcd_array)
-    labels = kmeans.labels_
-    max_label = labels.max()
-    colors = plt.get_cmap("tab10")(labels / (max_label if max_label > 0 else 1))
-    colors[labels < 0] = 0
-    pcd.colors = o3d.utility.Vector3dVector(colors[:, :3])
+#     # Do kmeans clustering on original point cloud, color results
+#     k = 2
+#     kmeans = KMeans(n_clusters=k, random_state=0).fit(pcd_array)
+#     labels = kmeans.labels_
+#     max_label = labels.max()
+#     colors = plt.get_cmap("tab10")(labels / (max_label if max_label > 0 else 1))
+#     colors[labels < 0] = 0
+#     pcd.colors = o3d.utility.Vector3dVector(colors[:, :3])
 
-    # Seperate segments into dict of idividual clusters
-    segments = labels_to_dict(pcd, labels)
+#     # Seperate segments into dict of idividual clusters
+#     segments = labels_to_dict(pcd, labels)
 
-    # Compare by sizes to get pcds for weeds and dirt
-    weeds, dirt = separate_by_size(segments)
+#     # Compare by sizes to get pcds for weeds and dirt
+#     weeds, dirt = separate_by_size(segments)
 
-    weeds_array = np.asarray(weeds.points)
-
-
-    # Run hdbscan to cluster into individual weeds, color them
-    clustering = hdbscan.HDBSCAN(
-        min_cluster_size=10,
-        gen_min_span_tree=True,
-        allow_single_cluster=1,
-        algorithm="prims_balltree").fit(weeds_array)
-    labels = clustering.labels_
-    print(labels)
-    max_label = labels.max()
-    colors = plt.get_cmap("tab10")(labels / (max_label if max_label > 0 else 1))
-    colors[labels < 0] = 1
-    weeds.colors = o3d.utility.Vector3dVector(colors[:, :3])
-    # o3d.visualization.draw_geometries([weeds], window_name="prims_balltree")
+#     weeds_array = np.asarray(weeds.points)
 
 
-    # If we fail to find more than one weed cluster, leave
-    if max_label < 1:
-        return None, None
+#     # Run hdbscan to cluster into individual weeds, color them
+#     clustering = hdbscan.HDBSCAN(
+#         min_cluster_size=10,
+#         gen_min_span_tree=True,
+#         allow_single_cluster=1,
+#         algorithm="prims_balltree").fit(weeds_array)
+#     labels = clustering.labels_
+#     print(labels)
+#     max_label = labels.max()
+#     colors = plt.get_cmap("tab10")(labels / (max_label if max_label > 0 else 1))
+#     colors[labels < 0] = 1
+#     weeds.colors = o3d.utility.Vector3dVector(colors[:, :3])
+#     # o3d.visualization.draw_geometries([weeds], window_name="prims_balltree")
+
+
+#     # If we fail to find more than one weed cluster, leave
+#     if max_label < 1:
+#         return None, None
     
-    # Seperate the weeds into dict of individual clusters
-    weeds_segments = labels_to_dict(weeds, labels)
-    o3d.visualization.draw_geometries(
-        [weeds_segments[i] for i in range(len(weeds_segments))], window_name="HDBSCAN")
+#     # Seperate the weeds into dict of individual clusters
+#     weeds_segments = labels_to_dict(weeds, labels)
+#     o3d.visualization.draw_geometries(
+#         [weeds_segments[i] for i in range(len(weeds_segments))], window_name="HDBSCAN")
     
 
-    # Find list of centroids of weeds and dirt normal
-    weeds_centroids = calculate_centroids(weeds_segments)
-    normal = calculate_normal(dirt)
+#     # Find list of centroids of weeds and dirt normal
+#     weeds_centroids = calculate_centroids(weeds_segments)
+#     normal = calculate_normal(dirt)
 
-    # For now only return the largest weed
-    weeds_sizes = {}
-    for i in range(len(weeds_centroids)):
-        weeds_sizes[i] = np.shape(np.asarray(weeds_segments[i].points))[0]
-    largest_segment = max(weeds_sizes, key=weeds_sizes.get)
+#     # For now only return the largest weed
+#     weeds_sizes = {}
+#     for i in range(len(weeds_centroids)):
+#         weeds_sizes[i] = np.shape(np.asarray(weeds_segments[i].points))[0]
+#     largest_segment = max(weeds_sizes, key=weeds_sizes.get)
 
-    return weeds_centroids[largest_segment], normal
+#     return weeds_centroids[largest_segment], normal
 
 
 def DBSCAN_calculate_pose(points, algorithm='kmeans'):
