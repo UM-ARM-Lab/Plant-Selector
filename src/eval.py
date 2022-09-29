@@ -23,6 +23,8 @@ class WeedMetrics:
 
         self.data_directory = data_directory
         self.pc_filenames = os.listdir(self.data_directory + 'pcs/')
+        self.label_names_folder = 'manual_labels/'
+        self.pcs_names_folder = 'pcs/'
         self.manual_labels = None
 
         self.gripper_size = gripper_size
@@ -36,6 +38,8 @@ class WeedMetrics:
 
         self.last_file = '/home/amasse/catkin_ws/src/plant_selector/weed_eval/past_metrics/eval_last.csv'
         self.best_file = '/home/amasse/catkin_ws/src/plant_selector/weed_eval/past_metrics/eval_best.csv'
+        self.current_file = '/home/amasse/catkin_ws/src/plant_selector/weed_eval/past_metrics/color.csv'
+        self.all_data_file = '/home/amasse/catkin_ws/src/plant_selector/weed_eval/optimized_test.csv'
 
         self.skipped_weeds = 0
         self.skipped_weeds_filenames = []
@@ -48,7 +52,7 @@ class WeedMetrics:
         good_pc_filenames = []
         pred_stems = []
         normals = []
-        pc_parent_directory = self.data_directory + "pcs/"
+        pc_parent_directory = self.data_directory + self.pcs_names_folder
         # Fill the array with predicted stem
         for file in self.pc_filenames:
             points = np.load(pc_parent_directory + file)
@@ -70,7 +74,7 @@ class WeedMetrics:
         # Remove the files in the array of file names that were unable to make a prediction
         # Remove the stems of weeds that are associated with a point cloud that couldn't make a stem prediction
         self.manual_labels = []
-        man_labels_parent_directory = self.data_directory + "manual_labels/"
+        man_labels_parent_directory = self.data_directory + self.label_names_folder
         for filename in good_pc_filenames:
             self.manual_labels.append(np.load(man_labels_parent_directory + filename)[:, :3])
         self.manual_labels = np.asarray(self.manual_labels)
@@ -78,6 +82,13 @@ class WeedMetrics:
 
         self.compute_distances(pred_stems)
         self.metric_printer()
+
+        with open(self.all_data_file, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(self.pc_filenames)
+            writer.writerow(self.manual_labels)
+            writer.writerow(pred_stems)
+            writer.writerow(self.error)
 
         for sample in range(len(self.error)):
             file = pc_parent_directory + good_pc_filenames[sample]
@@ -121,7 +132,7 @@ class WeedMetrics:
 
 
     def get_manual_labels(self):
-        parent_directory = self.data_directory + "manual_labels/"
+        parent_directory = self.data_directory + self.label_names_folder
         true_stem_filenames = os.listdir(parent_directory)
 
         self.manual_labels = []
@@ -175,6 +186,12 @@ class WeedMetrics:
             writer.writerow(labels)
             writer.writerow(self.current_metrics)
 
+        # # Save current metrics
+        # with open(self.current_file, 'w', newline='') as f:
+        #     writer = csv.writer(f)
+        #     writer.writerow(labels)
+        #     writer.writerow(self.current_metrics)
+
 
     def metric_printer(self):
         self.compare_previous()
@@ -226,7 +243,7 @@ def main():
 
     # Run the evaluation
     # evaluator = WeedMetrics(args.weed_directory, pm.calculate_weed_centroid, gripper_size=0.015)
-    evaluator = WeedMetrics(args.weed_directory, ct.kmeans_calculate_centroid, gripper_size=0.015)
+    evaluator = WeedMetrics(args.weed_directory, ct.DBSCAN_calculate_pose, gripper_size=0.015)
     evaluator.run_eval()
 
 

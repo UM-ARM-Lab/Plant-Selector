@@ -4,7 +4,7 @@ import ctypes
 from os import fdatasync
 import struct
 
-# import hdbscan
+import hdbscan
 from statistics import mode
 from math import atan, pi
 import numpy as np
@@ -163,7 +163,7 @@ def predict_weed_pose(selection):
 
     return camera2tool
 
-'''
+
 def cluster_filter(points):
     # TODO: The eps value here might want to somehow change dynamically where points further away can have clusters
     #  more spread out?
@@ -196,7 +196,7 @@ def cluster_filter(points):
     sel_indices = np.argwhere(labels == closest_cluster).squeeze(1)
     best_selection = points[sel_indices]
     return best_selection[:, :3]
-'''
+
 
 def predict_branch_pose(selection): 
     points = np.array(list(pc2.read_points(selection)))
