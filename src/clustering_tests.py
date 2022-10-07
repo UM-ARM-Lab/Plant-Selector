@@ -2,6 +2,7 @@ from audioop import avg
 import ctypes
 from os import fdatasync
 import struct
+from turtle import fd
 
 import hdbscan
 from statistics import mode
@@ -19,6 +20,8 @@ import rospy
 from sensor_msgs import point_cloud2 as pc2
 from tf.transformations import rotation_matrix
 
+import nearest_prototype_classifier_test as npc
+
 
 def HDBSCAN_kmeans_calculate_pose(points):
     '''!
@@ -29,18 +32,8 @@ def HDBSCAN_kmeans_calculate_pose(points):
     @return list of weed centroids, normal associated with dirt
     '''
     # Create and format point cloud
-    pcd_points = points[:, :3]
-    float_colors = points[:, 3]
-    pcd_colors = np.array((0, 0, 0))
-    for x in float_colors:
-        rgb = float_to_rgb(x)
-        pcd_colors = np.vstack((pcd_colors, rgb))
-    pcd_colors = np.delete(pcd_colors, 0, 0)
-    # pcd_points, pcd_colors = remove_height_outliers(pcd_points, pcd_colors)
-    pcd_array = np.hstack((pcd_points, pcd_colors))
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(pcd_points)
-    pcd.colors = o3d.utility.Vector3dVector(pcd_colors)
+    pcd, pcd_array, pcd_colors = array_2_pc(points)
+
 
     # Do kmeans clustering on original point cloud, color results
     k = 2
@@ -51,12 +44,13 @@ def HDBSCAN_kmeans_calculate_pose(points):
     colors[labels < 0] = 0
     pcd.colors = o3d.utility.Vector3dVector(colors[:, :3])
 
+
     # Seperate segments into dict of idividual clusters
     segments = labels_to_dict(pcd, labels)
 
+
     # Compare by sizes to get pcds for weeds and dirt
     weeds, dirt = separate_by_size(segments)
-
     weeds_array = np.asarray(weeds.points)
 
 
@@ -67,7 +61,6 @@ def HDBSCAN_kmeans_calculate_pose(points):
         allow_single_cluster=1,
         algorithm="prims_balltree").fit(weeds_array)
     labels = clustering.labels_
-    # print(labels)
     max_label = labels.max()
     colors = plt.get_cmap("tab10")(labels / (max_label if max_label > 0 else 1))
     colors[labels < 0] = 1
@@ -79,6 +72,7 @@ def HDBSCAN_kmeans_calculate_pose(points):
     if max_label < 1:
         return None, None
     
+
     # Seperate the weeds into dict of individual clusters
     weeds_segments = labels_to_dict(weeds, labels)
     # o3d.visualization.draw_geometries(
@@ -89,6 +83,7 @@ def HDBSCAN_kmeans_calculate_pose(points):
     weeds_centroids = calculate_centroids(weeds_segments)
     normal = calculate_normal(dirt)
 
+
     # For now only return the largest weed
     weeds_sizes = {}
     for i in range(len(weeds_centroids)):
@@ -98,36 +93,31 @@ def HDBSCAN_kmeans_calculate_pose(points):
     return weeds_centroids[largest_segment], normal
 
 
-def DBSCAN_calculate_pose(points, algorithm='scratch', weights=[0,0,1000,0,1000,0]):
+def DBSCAN_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], return_multiple_grasps=False):
     '''!
     Uses kmeans and DBSCAN to cluster points and return the pose for the gripper
-    MUCH better than RANSAC_calculate_pose
 
     @param points   a list of points from the point cloud from the selection
-    @param algorithm   string containing algorithm choice. options include 'scratch', 'kmeans', 'bi-kmeans', 'spectral', 'ward'
+    @param algorithm   string containing algorithm choice. options include 'kmeans-optimized', 'kmeans-redmean', 'kmeans-euclidean', 'bi-kmeans', 'spectral', 'ward', 'npc
 
     @return list of weed centroids, normal associated with dirt
     '''
     # Create and format point cloud
-    pcd_points = points[:, :3]
-    float_colors = points[:, 3]
-    pcd_colors = np.array((0, 0, 0))
-    for x in float_colors:
-        rgb = float_to_rgb(x)
-        pcd_colors = np.vstack((pcd_colors, rgb))
-    pcd_colors = np.delete(pcd_colors, 0, 0)
-    # pcd_points, pcd_colors = remove_height_outliers(pcd_points, pcd_colors)
-    pcd_array = np.hstack((pcd_points, pcd_colors))
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(pcd_points)
-    pcd.colors = o3d.utility.Vector3dVector(pcd_colors)
+    pcd, pcd_array, pcd_colors = array_2_pc(points)
     # o3d.visualization.draw_geometries([pcd], window_name="Original")
+    # np.save("/home/amasse/catkin_ws/src/plant_selector/weed_eval/saved.npy", points)
+    # o3d.io.write_point_cloud("/home/amasse/catkin_ws/src/plant_selector/weed_eval/saved.pcd", pcd)
 
-    # Do clustering on original point cloud, color results
+
+
+    # Do clustering on original point cloud, based on desired method
     k = 2
-    if algorithm == 'scratch':
+    using_npc = False
+    if algorithm == 'kmeans-optimized':
         cents, labels = kmeans_from_scratch(pcd_array, k, weights)
-    elif algorithm == 'kmeans':
+    elif algorithm == 'kmeans-redmean':
+        cents, labels = kmeans_from_scratch(pcd_array, k, redmean=True)
+    elif algorithm == 'kmeans-euclidean':
         kmeans = KMeans(n_clusters=k, random_state=0).fit(pcd_colors)
         labels = kmeans.labels_
     elif algorithm == 'bi-kmeans':
@@ -141,56 +131,87 @@ def DBSCAN_calculate_pose(points, algorithm='scratch', weights=[0,0,1000,0,1000,
     elif algorithm == 'ward':
         ward = AgglomerativeClustering(linkage="ward", n_clusters=k).fit(pcd_array)
         labels = ward.labels_
+    elif algorithm == 'npc':
+        labels = npc.npc_segment_weeds(pcd_array)
+        using_npc = True
+
 
     max_label = labels.max()
     if max_label < 1:
         return None, None
     colors = plt.get_cmap("Paired")(labels / (max_label if max_label > 0 else 1))
     colors[labels < 0] = 0
+    # colors[labels == 1] = 0
+    # colors[labels == 2] = 0.5
     pcd.colors = o3d.utility.Vector3dVector(colors[:, :3])
     # o3d.visualization.draw_geometries([pcd], window_name="Initial Segmentation")
+
+    
 
     # Seperate segments into dict of idividual clusters
     segments = labels_to_dict(pcd, labels)
 
-    # Compare by sizes to get pcds for weeds and dirt
-    weeds, dirt = separate_by_size(segments)
+
+
+    # Compare by sizes to get pcds for weeds and dirt, filter out outliers
+    weeds, dirt = separate_by_size(segments, using_npc)
+    _, ind = weeds.remove_radius_outlier(nb_points=7, radius=0.007)
+    if len(ind) != 0:
+        weeds = weeds.select_by_index(ind)
     weeds_array = np.asarray(weeds.points)
+    if weeds_array.shape[0] < 2:
+        return None, None
+    # weeds.paint_uniform_color([0.01, 0.5, 0.01])
     # o3d.visualization.draw_geometries([weeds])
+
+
 
     # Calculate ideal epsilon based on data (lol this makes things worse)
     epsilon = calculate_epsilon(weeds_array)
+
+
 
     # Run dbscan to cluster into individual weeds, color them
     labels = np.array(weeds.cluster_dbscan(eps=epsilon, min_points=10))
     max_label = labels.max()
     colors = plt.get_cmap("tab10")(labels / (max_label if max_label > 0 else 1))
-    colors[labels < 0] = 1
+    colors[labels < 0] = 0
     weeds.colors = o3d.utility.Vector3dVector(colors[:, :3])
-
-    # If all of the points are counted as noise, un noiseify them and say there is just one cluster
-    if max_label < 0:
-        return None, None
+    # o3d.visualization.draw_geometries([weeds])
     
+
+
     # Seperate the weeds into dict of individual clusters
     weeds_segments = labels_to_dict(weeds, labels)
-    # o3d.visualization.draw_geometries(
-    #     [weeds_segments[i] for i in range(len(weeds_segments))], window_name="DBSCAN")
     
+
+
     # Find list of centroids of weeds and dirt normal
     weeds_centroids = calculate_centroids(weeds_segments)
     normal = calculate_normal(dirt)
+
+    if len(weeds_centroids) < 1:
+        return None, None
+
+
+    # If we want multiple grasps, return multiple grasps
+    if return_multiple_grasps == True:
+        return weeds_centroids, normal
+
+
 
     # For now only return the largest weed
     weeds_sizes = {}
     for i in range(len(weeds_centroids)):
         weeds_sizes[i] = np.shape(np.asarray(weeds_segments[i].points))[0]
+    if len(weeds_sizes) < 1:
+        return None, None
     largest_segment = max(weeds_sizes, key=weeds_sizes.get)
 
     return weeds_centroids[largest_segment], normal
 
 
-def kmeans_from_scratch(X, k, weights=[0,0,1000,0,1000,0]):
+def kmeans_from_scratch(X, k, weights=[1, 1, 1, 1, 1, 1], redmean=False):
     '''!
     Implements kmeans from scratch
     Mostly stolen from https://medium.com/nerd-for-tech/k-means-python-implementation-from-scratch-8400f30b8e5c
@@ -213,18 +234,33 @@ def kmeans_from_scratch(X, k, weights=[0,0,1000,0,1000,0]):
         # for each observation
         for i, row in enumerate(X):
             mn_dist = float('inf') # dist of the point from all centroids
-            # print(row)
             
             for idx, centroid in enumerate(centroids):
                 # weighted distance function
-                d = np.sqrt(
-                    (weights[0] * (centroid[0] - row[0])**2) +
-                    (weights[1] * (centroid[1] - row[1])**2) +
-                    (weights[2] * (centroid[2] - row[2])**2) +
-                    (weights[3] * (centroid[3] - row[3])**2) +
-                    (weights[4] * (centroid[4] - row[4])**2) +
-                    (weights[5] * (centroid[5] - row[5])**2))
-                # d = np.sqrt((centroid[0]-row[0])**2 + (centroid[1]-row[1])**2)
+                if redmean == True:
+                    rc255 = int(centroid[3] * 255)
+                    rr255 = int(row[3] * 255)
+
+                    rc = centroid[3]
+                    rr = row[3]
+                    gc = centroid[4]
+                    gr = row[4]
+                    bc = centroid[5]
+                    br = row[5]
+                    
+                    r_bar = 0.5 * (rc255 - rr255)
+                    if r_bar < 128:
+                        d = np.sqrt(2*(rc-rr)**2 + 4*(gc-gr)**2 + 3*(bc-br)**2)
+                    else:
+                        d = np.sqrt(3*(rc-rr)**2 + 4*(gc-gr)**2 + 2*(bc-br)**2)
+                else:
+                    d = np.sqrt(
+                        (weights[0] * (centroid[0] - row[0])**2) +
+                        (weights[1] * (centroid[1] - row[1])**2) +
+                        (weights[2] * (centroid[2] - row[2])**2) +
+                        (weights[3] * (centroid[3] - row[3])**2) +
+                        (weights[4] * (centroid[4] - row[4])**2) +
+                        (weights[5] * (centroid[5] - row[5])**2))
                 
                 if mn_dist > d: # store closest centroid
                     mn_dist = d
@@ -241,123 +277,6 @@ def kmeans_from_scratch(X, k, weights=[0,0,1000,0,1000,0]):
     labels = labels.astype(int)
 
     return centroids, labels
-
-
-def RANSAC_calculate_pose(points):
-    '''!
-    Uses RANSAC and DBSCAN to cluster points and return the pose for the gripper
-    Filters out smaller weeds, segmentation not great.
-
-    @param points   a list of points from the point cloud from the selection
-
-    @return list of weed centroids, normal associated with dirt
-    '''
-    # Create and format point cloud
-    pcd_points = points[:, :3]
-    float_colors = points[:, 3]
-    pcd_colors = np.array((0, 0, 0))
-    for x in float_colors:
-        rgb = float_to_rgb(x)
-        pcd_colors = np.vstack((pcd_colors, rgb))
-    pcd_colors = np.delete(pcd_colors, 0, 0)
-    pcd_points, pcd_colors = remove_height_outliers(pcd_points, pcd_colors)
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(pcd_points)
-    pcd.colors = o3d.utility.Vector3dVector(pcd_colors)
-
-    # Do initial segmentation
-    segments = RANSAC_segment_pcd(pcd, dist_thresh=0.005, epsilon=0.004)
-
-    # Compare by heights to get pcds for weeds and dirt
-    weeds, dirt = separate_by_height(segments, height_threshold=0.01)
-    o3d.visualization.draw_geometries([weeds])
-
-    # Run dbscan again to cluster into individual weeds, color them
-    labels = np.array(weeds.cluster_dbscan(eps=0.004, min_points=5))
-    max_label = labels.max()
-    colors = plt.get_cmap("tab10")(labels / (max_label if max_label > 0 else 1))
-    colors[labels < 0] = 0
-    weeds.colors = o3d.utility.Vector3dVector(colors[:, :3])
-    o3d.visualization.draw_geometries([weeds])
-
-    # If we fail to find more than one weed cluster, leave
-    if max_label < 1:
-        return None, None
-    
-    # Seperate the weeds into dict of individual clusters
-    weeds_segments = labels_to_dict(pcd, labels)
-
-    # Find list of centroids of weeds and dirt normal
-    weeds_centroids = calculate_centroids(weeds_segments)
-    normal = calculate_normal(dirt)
-
-    # For now only return the largest weed
-    weeds_sizes = {}
-    for i in range(len(weeds_centroids)):
-        weeds_sizes[i] = np.shape(np.asarray(weeds_segments[i].points))[0]
-    largest_segment = max(weeds_sizes, key=weeds_sizes.get)
-
-    return weeds_centroids[largest_segment], normal
-
-
-def RANSAC_segment_pcd(pcd, max_planes=100, dist_thresh=0.005, epsilon=0.004):
-    '''!
-    A test for the segmentation method presented in:
-    https://towardsdatascience.com/how-to-automate-3d-point-cloud-segmentation-and-clustering-with-python-343c9039e4f5
-   
-    @param pcd   the open3d point cloud we want to segment
-    @param max_planes   max number of planes for RANSAC loop
-    @param dist_thresh   RANSAC distance threshold parameter
-    @param epsilon   DBSCAN epsilon parameter
-
-    @return dictionary of segments
-    '''
-    
-    segment_models = {}
-    segments = {}
-
-    '''
-    SEGMENTATION LOOP
-    Run RANSAC and store inliers in segments dict
-    Run DBSCAN on the inliers
-    Count how many points are in each cluster and store in candidates
-    Select the cluster with the most points and store in best_candidates
-    Throw the clusters that are not the best candidate back into rest to be considered next iteration
-    '''
-    rest = pcd
-    counter = 0
-    for i in range(max_planes):
-        colors = plt.get_cmap("tab20")(i)
-
-        try:
-            segment_models[i], inliers = rest.segment_plane(
-                distance_threshold = dist_thresh,
-                ransac_n = 3,
-                num_iterations = 1000)
-            segments[i] = rest.select_by_index(inliers)
-
-            labels = np.array(segments[i].cluster_dbscan(eps=epsilon, min_points = 10))
-    
-            candidates = [len(np.where(labels==j)[0]) for j in np.unique(labels)]
-            best_candidate = int(np.unique(labels)[np.where(candidates == np.max(candidates))[0]])
-
-            rest = rest.select_by_index(inliers, invert=True) + segments[i].select_by_index(list(np.where(labels!=best_candidate)[0]))
-            segments[i] = segments[i].select_by_index(list(np.where(labels== best_candidate)[0]))
-            segments[i].paint_uniform_color(list(colors[:3]))
-
-            counter += 1
-
-        except:
-            # print("No more segments can be made. Leaving loop...\n")
-            break
-     
-    # print("RANSAC loop found ", counter, " segments.\n")
-
-    # Draw the results
-    o3d.visualization.draw_geometries(
-        [segments[i] for i in range(counter)] + [rest])
-    
-    return segments
 
 
 def remove_height_outliers(pcd_points, pcd_colors, max_height = -0.2):
@@ -411,7 +330,30 @@ def separate_by_height(segments, height_threshold=0.001):
     return weeds, dirt
 
 
-def separate_by_size(segments):
+def array_2_pc(points):
+    '''!
+    take in array of points and format it to be usable
+
+    @param points   list of points
+
+    @return open3d pc, array of points, array of colors
+    '''
+    pcd_points = points[:, :3]
+    float_colors = points[:, 3]
+    pcd_colors = np.array((0, 0, 0))
+    for x in float_colors:
+        rgb = float_to_rgb(x)
+        pcd_colors = np.vstack((pcd_colors, rgb))
+    pcd_colors = np.delete(pcd_colors, 0, 0)
+    # pcd_points, pcd_colors = remove_height_outliers(pcd_points, pcd_colors)
+    pcd_array = np.hstack((pcd_points, pcd_colors))
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(pcd_points)
+    pcd.colors = o3d.utility.Vector3dVector(pcd_colors)
+    return pcd, pcd_array, pcd_colors
+
+
+def separate_by_size(segments, using_npc=False):
     '''!
     Seperates dirt point cloud and weed point clouds by number of pts
 
@@ -420,21 +362,22 @@ def separate_by_size(segments):
     @return weeds, dirt pointclouds containing weeds and dirt respecively
     '''
 
-    # Assume the largest segment is dirt
-
-    # Find all sizes of each segment
-    segment_sizes = {}
-    for i in range(len(segments)):
-        segment_sizes[i] = np.shape(np.asarray(segments[i].points))[0]
-    largest_segment = max(segment_sizes, key=segment_sizes.get)
-
-    # Catagorize based on size
-    if largest_segment == 0:
-        weeds = segments[1]
-        dirt = segments[0]
-    else:
+    if using_npc == True:
         weeds = segments[0]
-        dirt = segments[1]
+        if len(segments) > 2:
+            if np.shape(np.asarray(segments[1].points))[0] > np.shape(np.asarray(segments[2].points))[0]:
+                dirt = segments[1]
+            else:
+                dirt = segments[2]
+        else:
+            dirt = segments[1]
+    else:
+        if np.shape(np.asarray(segments[0].points))[0] > np.shape(np.asarray(segments[1].points))[0]:
+            weeds = segments[1]
+            dirt = segments[0]
+        else:
+            weeds = segments[0]
+            dirt = segments[1]
 
     return weeds, dirt
 
@@ -479,8 +422,10 @@ def calculate_epsilon(pcd_array):
     epsilon = distances[knee_idx]
     # print("Calculated eps: ", epsilon)
 
-    if epsilon < 0.004:
-        epsilon = 0.004
+    epsilon = 0.004
+
+    # if epsilon < 0.004:
+    #     epsilon = 0.004
         # print("switched to default epsilon")
 
     return epsilon

@@ -7,7 +7,7 @@ import open3d as o3d
 
 
 def get_segmentation(weights, training_directory, pc_filenames):
-    pc_folder = training_directory + 'original_selections/'
+    pc_folder = training_directory + 'training_selections/'
     
     labels_list = []
     pc_list = []
@@ -45,7 +45,7 @@ def get_segmentation(weights, training_directory, pc_filenames):
 def calculate_cost(weights, training_directory, pc_filenames, manual_labels_filenames):
     weeds_list = get_segmentation(weights, training_directory, pc_filenames)
 
-    manual_labels_folder = training_directory + 'manually_segmented/'
+    manual_labels_folder = training_directory + 'training_manually_segmented/'
     manual_labels_list = []
     for file in manual_labels_filenames:
         pcd = o3d.io.read_point_cloud(manual_labels_folder + file)
@@ -67,14 +67,14 @@ def calculate_cost(weights, training_directory, pc_filenames, manual_labels_file
 
 def main():
     starting_weights = [0, 0, 0, 0, 0, 0]
-    bounds = [(0, 10000), (0, 10000), (0, 10000), (0, 10000), (0, 10000), (0, 10000)]
+    bounds = [(0, 100), (0, 100), (0, 100), (0, 100), (0, 100), (0, 100)]
 
     training_directory = "/home/amasse/catkin_ws/src/plant_selector/segmentation_training/"
     # pc_filenames = os.listdir(training_directory + 'original_selections/')
 
     pc_filenames = []
     manual_labels_filenames = []
-    names_list = ['2', '5', '12', '14', '20', '22', '28', '30', '32', '33', '34', '36', '39' ,'40', '41']
+    names_list = ['2', '5', '79', '93', '94', '95', '99', '100', '104']
     for i in range(len(names_list)):
         pc_filenames.append(''.join((names_list[i], ".npy")))
         manual_labels_filenames.append(''.join((names_list[i], ".ply")))

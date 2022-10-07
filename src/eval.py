@@ -15,16 +15,16 @@ import rviz_helpers as rh
 
 
 class WeedMetrics:
-    def __init__(self, data_directory, pred_model, gripper_size):
+    def __init__(self, data_directory, pred_model, gripper_size, return_multiple_grasps):
         # Initialize publishers for PCs
         self.pc_pub = rospy.Publisher("point_cloud", PointCloud2, queue_size=10)
         self.centroid_pub = rospy.Publisher("centroid", PointCloud2, queue_size=10)
         self.stem_pub = rospy.Publisher("stem", PointCloud2, queue_size=10)
 
         self.data_directory = data_directory
-        self.pc_filenames = os.listdir(self.data_directory + 'pcs/')
-        self.label_names_folder = 'manual_labels/'
-        self.pcs_names_folder = 'pcs/'
+        self.pc_filenames = os.listdir(self.data_directory + 'single_pcs/')
+        self.label_names_folder = 'single_manual_labels/'
+        self.pcs_names_folder = 'single_pcs/'
         self.manual_labels = None
 
         self.gripper_size = gripper_size
@@ -39,7 +39,7 @@ class WeedMetrics:
         self.last_file = '/home/amasse/catkin_ws/src/plant_selector/weed_eval/past_metrics/eval_last.csv'
         self.best_file = '/home/amasse/catkin_ws/src/plant_selector/weed_eval/past_metrics/eval_best.csv'
         self.current_file = '/home/amasse/catkin_ws/src/plant_selector/weed_eval/past_metrics/color.csv'
-        self.all_data_file = '/home/amasse/catkin_ws/src/plant_selector/weed_eval/optimized_test.csv'
+        self.all_data_file = '/home/amasse/catkin_ws/src/plant_selector/weed_eval/npc_test.csv'
 
         self.skipped_weeds = 0
         self.skipped_weeds_filenames = []
@@ -83,12 +83,12 @@ class WeedMetrics:
         self.compute_distances(pred_stems)
         self.metric_printer()
 
-        with open(self.all_data_file, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(self.pc_filenames)
-            writer.writerow(self.manual_labels)
-            writer.writerow(pred_stems)
-            writer.writerow(self.error)
+        # with open(self.all_data_file, 'w', newline='') as f:
+        #     writer = csv.writer(f)
+        #     writer.writerow(self.pc_filenames)
+        #     writer.writerow(self.manual_labels)
+        #     writer.writerow(pred_stems)
+        #     writer.writerow(self.error)
 
         for sample in range(len(self.error)):
             file = pc_parent_directory + good_pc_filenames[sample]
@@ -148,6 +148,7 @@ class WeedMetrics:
 
         self.current_metrics = np.array([np.mean(self.error), np.median(self.error), np.std(self.error), self.successes, 
             (len(self.error) - self.successes), (self.successes / len(self.error))])
+     
 
         # compare last and best info to current info, first row is improvement from last, second is improvement from best
         self.improvement = np.zeros((2,6))
@@ -243,7 +244,7 @@ def main():
 
     # Run the evaluation
     # evaluator = WeedMetrics(args.weed_directory, pm.calculate_weed_centroid, gripper_size=0.015)
-    evaluator = WeedMetrics(args.weed_directory, ct.DBSCAN_calculate_pose, gripper_size=0.015)
+    evaluator = WeedMetrics(args.weed_directory, ct.DBSCAN_calculate_pose, gripper_size=0.015, return_multiple_grasps=False)
     evaluator.run_eval()
 
 

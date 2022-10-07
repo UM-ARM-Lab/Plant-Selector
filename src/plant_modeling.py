@@ -18,7 +18,7 @@ from tf.transformations import rotation_matrix
 import clustering_tests as ct
 
 
-def calculate_weed_centroid(points):
+def calculate_weed_centroid(points, return_multiple_grasps=False):
     # All the weed extraction algorithm
     pcd_points = points[:, :3]
     float_colors = points[:, 3]
@@ -33,8 +33,8 @@ def calculate_weed_centroid(points):
 
     # Filter the point cloud so that only the green points stay
     # Get the indices of the points with g parameter greater than x
-    green_points_indices = np.where((pcd_colors[:, 1] - pcd_colors[:, 0] > pcd_colors[:, 1] / 12.0) &
-                                    (pcd_colors[:, 1] - pcd_colors[:, 2] > pcd_colors[:, 1] / 12.0))
+    green_points_indices = np.where((pcd_colors[:, 1] > pcd_colors[:, 0] * (12.0 / 11.0)) &
+                                    (pcd_colors[:, 1] > pcd_colors[:, 2] * (12.0 / 11.0)))
     green_points_xyz = pcd_points[green_points_indices]
     green_points_rgb = pcd_colors[green_points_indices]
 
@@ -57,6 +57,7 @@ def calculate_weed_centroid(points):
     # Save xyzrgb info in green_pcd (type: open3d.PointCloud)
     green_pcd.points = o3d.utility.Vector3dVector(green_points_xyz)
     green_pcd.colors = o3d.utility.Vector3dVector(green_points_rgb)
+    
 
     # Apply radius outlier filter to green_pcd
     _, ind = green_pcd.remove_radius_outlier(nb_points=7, radius=0.007)
@@ -68,27 +69,31 @@ def calculate_weed_centroid(points):
     # Just keep the inlier points in the point cloud
     green_pcd = green_pcd.select_by_index(ind)
     green_pcd_points = np.asarray(green_pcd.points)
+    # green_pcd.paint_uniform_color([0.01, 0.5, 0.01])
+    # o3d.visualization.draw_geometries([green_pcd], window_name="Initial Segmentation")
 
     # Apply DBSCAN to green points
     labels = np.array(green_pcd.cluster_dbscan(eps=0.0055, min_points=15))  # This is actually pretty good
+    max_label = labels.max()
+    colors = plt.get_cmap("tab10")(labels / (max_label if max_label > 0 else 1))
+    colors[labels < 0] = 0
+    green_pcd.colors = o3d.utility.Vector3dVector(colors[:, :3])
+    # o3d.visualization.draw_geometries([green_pcd])
 
     n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
     if n_clusters == 0:
         print("Not enough points. Try again.")
         return None, None
 
-    # Get labels of the biggest cluster
-    biggest_cluster_indices = np.where(labels[:] == mode(labels))
-    # Just keep the points that correspond to the biggest cluster (weed)
-    green_pcd_points = green_pcd_points[biggest_cluster_indices]
+    # If we want multiple centroids, return multiple, if not return only largest
+    if return_multiple_grasps == True:
+        weeds_segments = ct.labels_to_dict(green_pcd, labels)
+        weed_centroid = ct.calculate_centroids(weeds_segments)
+    else:
+        biggest_cluster_indices = np.where(labels[:] == mode(labels))
+        green_pcd_points = green_pcd_points[biggest_cluster_indices]
+        weed_centroid = np.mean(green_pcd_points, axis=0)
 
-    # disp_pcd = o3d.geometry.PointCloud()
-    # disp_pcd.points = o3d.utility.Vector3dVector(green_pcd_points)
-    # disp_pcd.paint_uniform_color([0, 0, 0])
-    # o3d.visualization.draw_geometries([disp_pcd])
-
-    # Get coordinates of the weed centroid
-    weed_centroid = np.mean(green_pcd_points, axis=0)
 
     dirt_indices = np.arange(0, len(pcd_points))
     # These are the indices for dirt
@@ -110,12 +115,6 @@ def calculate_weed_centroid(points):
     if len(best_inliers) == 0:
         rospy.loginfo("Can't find dirt, Select both weed and dirt.")
         return None, None
-    
-    # inlier_cloud = dirt_pcd.select_by_index(best_inliers)
-    # outlier_cloud = dirt_pcd.select_by_index(best_inliers, invert=True)
-    # inlier_cloud.paint_uniform_color([1, 0, 0])
-    # outlier_cloud.paint_uniform_color([0.6, 0.6, 0.6])
-    # o3d.visualization.draw_geometries([inlier_cloud, outlier_cloud])
 
     [a, b, c, _] = plane_model
     if a < 0:
@@ -134,15 +133,8 @@ def predict_weed_pose(selection):
         rospy.loginfo("You selected no points, select a few points")
         return None
 
-    # weed_centroid, normal = ct.RANSAC_calculate_pose(points)
-    # weed_centroid, normal = ct.HDBSCAN_kmeans_calculate_pose(points)
     weed_centroid, normal = ct.DBSCAN_calculate_pose(points)
-    # weed_centroid_original, normal_original = calculate_weed_centroid(points)
-    # print("\nOG wc: ", weed_centroid_original)
-    # print("new wc: ", weed_centroid)
-    # print("OG n: ", normal_original)
-    # print("new n: ", normal)
-
+    # weed_centroid, normal = calculate_weed_centroid(points)
     if weed_centroid is None:
         return None
 
