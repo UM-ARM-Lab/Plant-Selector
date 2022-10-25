@@ -93,6 +93,8 @@ def npc_segment_weeds(unclassified_data, use_hsv=False):
     path_to_training = '/home/amasse/Documents/test_npc_training_data/'
     # possible file numbers ['20', '22', '77', '79', '95', '104]
     file_numbers = ['22']
+
+    plot_training_rgb = False
     
 
     # Define the set of labels Y:
@@ -109,6 +111,17 @@ def npc_segment_weeds(unclassified_data, use_hsv=False):
         dirt_training_set = get_zhsv(dirt_training_set)
         rocks_training_set = get_zhsv(rocks_training_set)
         unclassified_data = get_zhsv(unclassified_data)
+    elif plot_training_rgb == True:
+        fig = plt.figure(figsize=(12, 12))
+        ax = fig.add_subplot(projection='3d')
+        ax.scatter(weeds_training_set[:,3],weeds_training_set[:,4],weeds_training_set[:,5], color='green')
+        ax.scatter(rocks_training_set[:,3],rocks_training_set[:,4],rocks_training_set[:,5], color='orange')
+        ax.scatter(dirt_training_set[:,3],dirt_training_set[:,4],dirt_training_set[:,5], color='black')
+        ax.set_xlabel("Red")
+        ax.set_ylabel("Green")
+        ax.set_zlabel("Blue")
+        plt.show()
+
 
 
     # Comupte the per-class centroids
@@ -138,7 +151,7 @@ def main():
 
     # Load in data we want to classify
     pcd, unclassified_data, _ = ct.array_2_pc(np.load(file_loc))
-    o3d.visualization.draw_geometries([pcd], window_name="Original")
+    # o3d.visualization.draw_geometries([pcd], window_name="Original")
 
     label_nums = npc_segment_weeds(unclassified_data, use_hsv=False)
 
@@ -149,7 +162,7 @@ def main():
     colors[label_nums == 1] = 0
     colors[label_nums == 2] = 0
     pcd.colors = o3d.utility.Vector3dVector(colors[:, :3])
-    o3d.visualization.draw_geometries([pcd], window_name="Initial Segmentation")
+    # o3d.visualization.draw_geometries([pcd], window_name="Initial Segmentation")
 
 
 if __name__ == "__main__":

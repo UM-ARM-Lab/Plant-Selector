@@ -162,6 +162,7 @@ def DBSCAN_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], 
     if weeds_array.shape[0] < 2:
         return None, None
     # weeds.paint_uniform_color([0.01, 0.5, 0.01])
+    o3d.io.write_point_cloud("/home/amasse/catkin_ws/src/plant_selector/weed_eval/segmented_weeds2.pcd", weeds)
     # o3d.visualization.draw_geometries([weeds])
 
 
