@@ -80,6 +80,7 @@ def main():
         manual_labels_filenames.append(''.join((names_list[i], ".ply")))
 
     # d = calculate_cost(starting_weights, training_directory, pc_filenames, manual_labels_filenames)
+    print(manual_labels_filenames)
 
     results = dict()
     results['shgo'] = optimize.shgo(calculate_cost, bounds, args=(training_directory, pc_filenames, manual_labels_filenames), options={'disp': True})

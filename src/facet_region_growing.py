@@ -213,7 +213,7 @@ def are_adjacent(f_i, f_j, adj_thresh):
 
 
 
-def facet_region_growing(facets, grow_thresh=0.05, adj_thresh=0.0015):
+def facet_region_growing(facets, grow_thresh=0.085, adj_thresh=0.0015):
     used = np.zeros((len(facets)))
     leaves = []
 

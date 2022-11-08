@@ -133,7 +133,8 @@ def predict_weed_pose(selection):
         rospy.loginfo("You selected no points, select a few points")
         return None
 
-    weed_centroid, normal = ct.DBSCAN_calculate_pose(points)
+    # weed_centroid, normal = ct.DBSCAN_calculate_pose(points)
+    weed_centroid, normal = ct.FRG_calculate_pose(points)
     # weed_centroid, normal = calculate_weed_centroid(points)
     if weed_centroid is None:
         return None
