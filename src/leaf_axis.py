@@ -95,13 +95,16 @@ def find_end_points(c1, c2, points, end_thresh=0.0015):
 
 
 
-def get_axis_and_ends(points):
+def get_axis_and_ends(points, return_points=False):
     # Get axis that aligns with the main vein of the leaf and find the points associated with the tip and base of leaf
     # End points are returned as a vector of 6 where the first three values are end point 1 and the last three values are end point 2
     l_axis, h_axis, d_axis = pca_pointcloud(points)
     end_points = find_end_points(l_axis, h_axis, points)
 
-    return l_axis, end_points
+    if return_points==True:
+        return l_axis, end_points, points
+    else:
+        return l_axis, end_points
 
 
 def main():

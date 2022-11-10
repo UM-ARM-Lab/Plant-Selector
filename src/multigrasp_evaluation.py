@@ -40,7 +40,7 @@ def evaluate_predictions(all_preds, manual_labels):
                 if (abs(current_error) <= success_threshold):
                     successful_grasps += 1
                     successful_errors.append(current_error)
-    data = [(total_weeds, attempted_grasps, successful_grasps, successful_grasps/attempted_grasps, successful_grasps/total_weeds, np.mean(successful_errors))]
+    data = [(total_weeds, attempted_grasps, successful_grasps, 100*successful_grasps/attempted_grasps, 100*successful_grasps/total_weeds, np.mean(successful_errors))]
     df = pd.DataFrame(data, columns=['TotalWeeds', 'Attempts', 'Successes', 'AttemptsSuccessRate', 'WeedsSuccessRate', 'MeanError'])
     return df
 
@@ -55,8 +55,9 @@ def main():
     pc_filenames = ['1_multi.npy','2_multi.npy','3_multi.npy','4_multi.npy']
     label_filenames = ['1_multi_label.npy','2_multi_label.npy','3_multi_label.npy','4_multi_label.npy']
 
-    algorithms = ['kmeans-optimized', 'kmeans-redmean', 'kmeans-euclidean', 'bi-kmeans', 'spectral', 'ward', 'npc']
+    # algorithms = ['kmeans-optimized', 'kmeans-redmean', 'kmeans-euclidean', 'bi-kmeans', 'spectral', 'ward', 'npc']
     # algorithms = ['color-segmentation']
+    algorithms = ['npc']
 
     all_dfs = []
     for alg in algorithms:
@@ -67,7 +68,8 @@ def main():
             pcd, array, colors = ct.array_2_pc(points)
             pcds.append(pcd)
             # stem_preds, normal = ct.DBSCAN_calculate_pose(points, algorithm=alg, return_multiple_grasps=True)
-            stem_preds, normal = pm.calculate_weed_centroid(points, return_multiple_grasps=True)
+            stem_preds, normal = ct.FRG_calculate_pose(points, algorithm=alg, return_multiple_grasps=True)
+            # stem_preds, normal = pm.calculate_weed_centroid(points, return_multiple_grasps=True)
             stem_preds = np.asarray(stem_preds)
             all_preds.append(stem_preds)
         
@@ -78,6 +80,7 @@ def main():
         
         df = evaluate_predictions(all_preds, manual_labels)
         df["Method"] = alg
+        print(df)
         all_dfs.append(df)
 
     full_frame = pd.concat(all_dfs)

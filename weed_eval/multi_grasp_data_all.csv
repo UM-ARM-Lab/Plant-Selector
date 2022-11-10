@@ -1,0 +1,2 @@
+,TotalWeeds,Attempts,Successes,AttemptsSuccessRate,WeedsSuccessRate,MeanError,Method
+0,18,32,13,0.40625,0.722222222222222,0.003392656182006,DBSCAN

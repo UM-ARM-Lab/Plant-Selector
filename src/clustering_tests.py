@@ -15,6 +15,7 @@ import open3d as o3d
 import scipy as sp
 import random
 import itertools
+import more_itertools
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans, SpectralClustering, AgglomerativeClustering, BisectingKMeans
 from sklearn.neighbors import NearestNeighbors
@@ -47,7 +48,7 @@ def DBSCAN_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], 
     weeds_array = np.asarray(weeds.points)
     if weeds_array.shape[0] < 2:
         return None, None
-    # weeds.paint_uniform_color([0.01, 0.5, 0.01])
+    # weeds.paint_uniform_color([0.01, 0.5, 0.01])set_partitions
     # o3d.io.write_point_cloud("/home/amasse/catkin_ws/src/plant_selector/weed_eval/segmented_weeds2.pcd", weeds)
     # o3d.visualization.draw_geometries([weeds])
 
@@ -79,6 +80,7 @@ def DBSCAN_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], 
 
     if len(weeds_centroids) < 1:
         return None, None
+    
 
 
     # If we want multiple grasps, return multiple grasps
@@ -118,7 +120,7 @@ def FRG_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], pro
         return None, None
 
     weeds.paint_uniform_color([0.01, 0.5, 0.01])
-    o3d.visualization.draw_geometries([weeds])
+    # o3d.visualization.draw_geometries([weeds])
 
     # Use facet region growing to get individual leaves
     leaves = frg.facet_leaf_segmentation(weeds_array)
@@ -136,10 +138,10 @@ def FRG_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], pro
         [leaf_pcs[i] for i in range(len(leaves))])
 
 
-    # Get leaf axes and base points
+    # Get leaf axes and base points and associated leaves
     edges = np.array([0, 0, 0, 0, 0, 0])
     for leaf in leaves:
-        _, current_edges = la.get_axis_and_ends(leaf)
+        _, current_edges= la.get_axis_and_ends(leaf)
         edges = np.vstack((edges, current_edges))
     edges = np.delete(edges, 0, 0)
     
@@ -157,15 +159,20 @@ def FRG_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], pro
 
     # res, weeds_centroids = LstSqrs_find_centroid(correct_S, edges, return_cents=True)
 
-    best_S, lowest_cost, weeds_centroids = brute_force_optimize(edges)
+    # Use brute force to find optimal weed assignment based on cost function from least squares
+    best_S, lowest_cost, _ = brute_force_optimize(edges)
     print("Best S: ", best_S)
     print("Lowest Cost: ", lowest_cost)
 
+    # Convert aptimal weed assignment to dictionary of pointclouds, solve for centroids and normals using usual methods
+    weeds_segments = assemble_weeds_from_label(leaves, best_S)
+    weeds_centroids = calculate_centroids(weeds_segments)
     normal = calculate_normal(dirt)
-
     if len(weeds_centroids) < 1:
         return None, None
-
+    
+    # o3d.visualization.draw_geometries(
+    #     [weeds_segments[i] for i in range(len(weeds_segments))])
 
     # If we want multiple grasps, return multiple grasps
     if return_multiple_grasps == True:
@@ -174,19 +181,12 @@ def FRG_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], pro
         return weeds_centroids[0], normal
 
 
-def is_int(S):
-    # Determine if all values in S are integers
-    for s in S:
-        if math.floor(s) != s:
-            return False
-    
-    return True
-
-
 def brute_force_optimize(E, max_weeds=5):
     # Find all possible S for the number of edges and max number of possible weeds
     num_edges = len(E)
-    combinations = list(itertools.combinations_with_replacement(range(max_weeds), num_edges))
+    combinations = find_combinations(num_edges, max_weeds)
+    # combinations = list(itertools.combinations_with_replacement(range(max_weeds), num_edges))
+    print(combinations)
 
     # Test all S with least squares to find the lowest cost
     lowest_cost = math.inf
@@ -203,6 +203,28 @@ def brute_force_optimize(E, max_weeds=5):
     
     
     return best_S, lowest_cost, best_centroids
+
+
+def find_combinations(num_edges, max_weeds):
+
+    # Create all possible partition combinations and convert them to form of S
+    combinations = []
+    for i in range(1, max_weeds+1):
+        current_possible_parts = list(more_itertools.set_partitions(list(range(num_edges)), i))
+
+        for n in range(len(current_possible_parts)):
+            current_part = current_possible_parts[n]
+            S = [0] * num_edges
+
+            for j in range(len(current_part)):
+                weed_assignment = current_part[j]
+
+                for k in weed_assignment:
+                    S[k] = j
+        
+            combinations.append(S)
+    
+    return combinations
 
 
 def LstSqrs_find_centroid(S, E, return_cents=False):
@@ -241,6 +263,7 @@ def LstSqrs_find_centroid(S, E, return_cents=False):
     # Do least squares for every plant and store the centroids and residuals in lists
     centroids_list = []
     residuals = []
+    count = 0
     for i in range(len(plants)):
         edges = plants[i]
         
@@ -266,29 +289,49 @@ def LstSqrs_find_centroid(S, E, return_cents=False):
 
             # Perform least squares to get centroid guess cent and residuals
             cent, res, _, _ = np.linalg.lstsq(A, b, rcond=None)
-            centroids_list.append(list(cent))
+            centroids_list.append(list(cent.reshape((3,))))
 
             # If no residual is givn (ie the plant assignment only contains one leaf), set residual to 0
             if len(res) > 0:
                 residuals.append(res[0])
+                count += 1
             else:
                 residuals.append(0)
 
     # Remove empty values
     if return_cents == True:
-        return sum(residuals), centroids_list
+        return np.sum(residuals)/count, np.array(centroids_list)
     else:
-        return sum(residuals)
+        return np.sum(residuals)/count
 
 
-def initial_centroid_guess(E):
-    total_points = 2 * len(E)
-    sum_points = np.array([0, 0, 0])
-    for edge in E:
-        sum_points = sum_points + edge[0]
-        sum_points = sum_points + edge[1]
+def assemble_weeds_from_label(leaves, best_S):
+    '''!
+    Assembles dictionary of point clouds representing weeds given labels from bestS for each leaf
 
-    return sum_points / total_points
+    @param leaves   a list of numpy arrays. each numpy array is a leaf (from facet region growing)
+    @param best_S   a list of integers. each element is the weed label for one leaf in leaves
+
+    @return dictionary of point clouds where each point cloud is a weed
+    '''
+
+    new_dict = {}
+    best_S = np.array(best_S)
+    for i in range(np.max(best_S) + 1):
+        idx = np.where(best_S[:] == i)[0]
+        current_weed = []
+
+        for j in idx:
+            current_weed.append(leaves[j])
+
+        current_weed = np.concatenate(current_weed, axis=0)
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(current_weed)
+        color = (random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1))
+        pcd.paint_uniform_color(list(color[:3]))
+        new_dict[i] = pcd
+    
+    return new_dict
 
 
 def initial_segmentation(points, algorithm='npc', weights=[0,100,100,0,100,0]):
@@ -359,6 +402,15 @@ def initial_segmentation(points, algorithm='npc', weights=[0,100,100,0,100,0]):
         weeds = weeds.select_by_index(ind)
     
     return weeds, dirt
+
+
+def is_int(S):
+    # Determine if all values in S are integers
+    for s in S:
+        if math.floor(s) != s:
+            return False
+    
+    return True
 
 
 def calculate_radian(vector1, vector2):
@@ -566,6 +618,8 @@ def calculate_epsilon(pcd_array):
 
     @return ideal epsilon to use for DBSCAN based on data
     '''
+
+    return 0.004
     # Calculate the distance from all points to nearest point
     neigh = NearestNeighbors(n_neighbors=2)
     nbrs = neigh.fit(pcd_array)
