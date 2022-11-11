@@ -122,57 +122,63 @@ def FRG_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], pro
     weeds.paint_uniform_color([0.01, 0.5, 0.01])
     # o3d.visualization.draw_geometries([weeds])
 
-    # Use facet region growing to get individual leaves
-    leaves = frg.facet_leaf_segmentation(weeds_array)
+    # Use facet region growing to get individual leaves (provided there are enough points)
+    if weeds_array.shape[0] >= 30:
+        leaves = frg.facet_leaf_segmentation(weeds_array)
+
+        # Display leaf segments
+        # colors = [(1, 0, 0), (0, 1, 0), (0, 0, 1), (0, 0, 0), (0.5, 0.5, 0.5), (1, 0, 1), (1, 1, 0), (0, 1, 1), (1, 0.5, 0)]
+        leaf_pcs = []
+        for i in range(len(leaves)):
+            color = (random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1))
+            # color = colors[i]
+            leaf = o3d.geometry.PointCloud()
+            leaf.points = o3d.utility.Vector3dVector(leaves[i])
+            leaf.paint_uniform_color(list(color[:3]))
+            leaf_pcs.append(leaf)
+        # o3d.visualization.draw_geometries(
+        #     [leaf_pcs[i] for i in range(len(leaves))], window_name="FRG")
 
 
-    # Display leaf segments
-    leaf_pcs = []
-    for i in range(len(leaves)):
-        color = (random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1))
-        leaf = o3d.geometry.PointCloud()
-        leaf.points = o3d.utility.Vector3dVector(leaves[i])
-        leaf.paint_uniform_color(list(color[:3]))
-        leaf_pcs.append(leaf)
-    o3d.visualization.draw_geometries(
-        [leaf_pcs[i] for i in range(len(leaves))])
+        # Get leaf axes and base points and associated leaves
+        edges = np.array([0, 0, 0, 0, 0, 0])
+        for leaf in leaves:
+            _, current_edges= la.get_axis_and_ends(leaf)
+            edges = np.vstack((edges, current_edges))
+        edges = np.delete(edges, 0, 0)
+
+        # Use brute force to find optimal weed assignment based on cost function from least squares
+        best_S, lowest_cost, _ = brute_force_optimize(edges)
+        print("Best S: ", best_S)
+        print("Lowest Cost: ", lowest_cost)
+
+        # Convert aptimal weed assignment to dictionary of pointclouds
+        weeds_segments = assemble_weeds_from_label(leaves, best_S)
+
+        # S0 = [math.floor(len(leaf_pcs) / 2)] * len(leaf_pcs)
+        # S0 = [0] * len(leaf_pcs)
+        # result = optimize.minimize(LstSqrs_cost, S0, args=(edges), options={'disp': True})
+        # best_S = result.x
+
+        # bounds = [(0.0, len(leaf_pcs))] * len(leaf_pcs)
+        # cons = ({'type': 'eq', 'fun':is_int})
+        # results = dict()
+        # results['shgo'] = optimize.shgo(LstSqrs_cost, bounds, args=([edges]), constraints=cons, options={'disp': True})
+        # best_S = results['shgo'].x
+
+        # res, weeds_centroids = LstSqrs_cost(correct_S, edges, return_cents=True)
+    else:
+        weeds_segments = {0: weeds}
 
 
-    # Get leaf axes and base points and associated leaves
-    edges = np.array([0, 0, 0, 0, 0, 0])
-    for leaf in leaves:
-        _, current_edges= la.get_axis_and_ends(leaf)
-        edges = np.vstack((edges, current_edges))
-    edges = np.delete(edges, 0, 0)
-    
-
-    # S0 = [math.floor(len(leaf_pcs) / 2)] * len(leaf_pcs)
-    # S0 = [0] * len(leaf_pcs)
-    # result = optimize.minimize(LstSqrs_find_centroid, S0, args=(edges), options={'disp': True})
-    # best_S = result.x
-
-    # bounds = [(0.0, len(leaf_pcs))] * len(leaf_pcs)
-    # cons = ({'type': 'eq', 'fun':is_int})
-    # results = dict()
-    # results['shgo'] = optimize.shgo(LstSqrs_find_centroid, bounds, args=([edges]), constraints=cons, options={'disp': True})
-    # best_S = results['shgo'].x
-
-    # res, weeds_centroids = LstSqrs_find_centroid(correct_S, edges, return_cents=True)
-
-    # Use brute force to find optimal weed assignment based on cost function from least squares
-    best_S, lowest_cost, _ = brute_force_optimize(edges)
-    print("Best S: ", best_S)
-    print("Lowest Cost: ", lowest_cost)
-
-    # Convert aptimal weed assignment to dictionary of pointclouds, solve for centroids and normals using usual methods
-    weeds_segments = assemble_weeds_from_label(leaves, best_S)
+    # Solve for centroids and normals using usual methods
     weeds_centroids = calculate_centroids(weeds_segments)
     normal = calculate_normal(dirt)
     if len(weeds_centroids) < 1:
         return None, None
     
     # o3d.visualization.draw_geometries(
-    #     [weeds_segments[i] for i in range(len(weeds_segments))])
+    #     [weeds_segments[i] for i in range(len(weeds_segments))], window_name="Weed Combinations")
 
     # If we want multiple grasps, return multiple grasps
     if return_multiple_grasps == True:
@@ -184,17 +190,26 @@ def FRG_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], pro
 def brute_force_optimize(E, max_weeds=5):
     # Find all possible S for the number of edges and max number of possible weeds
     num_edges = len(E)
-    combinations = find_combinations(num_edges, max_weeds)
-    # combinations = list(itertools.combinations_with_replacement(range(max_weeds), num_edges))
-    print(combinations)
+    combinations = find_combinations(num_edges, max_weeds, allow_singles=False)
+    # print(combinations)
 
     # Test all S with least squares to find the lowest cost
     lowest_cost = math.inf
     best_centroids = 0
+    all_costs = []
     best_S = 0
+    all_S = []
     for i in range(len(combinations)):
         current_S = list(combinations[i])
-        current_cost, current_centroids = LstSqrs_find_centroid(current_S, E, return_cents = True)
+        all_S.append(np.array(current_S).reshape(1, len(current_S))[0])
+        LS_cost, current_centroids = LstSqrs_cost(current_S, E, return_cents = True)
+        D_cost = distance_cost(E, current_S)
+        current_cost = LS_cost + D_cost
+        # current_cost = LS_cost
+        # print("LST Cost: ", current_cost)
+        # print("Dist Cost: ", distance_cost(E, current_S))
+        # print()
+        all_costs.append(current_cost)
         
         if current_cost < lowest_cost:
             lowest_cost = current_cost
@@ -202,10 +217,27 @@ def brute_force_optimize(E, max_weeds=5):
             best_S = current_S
     
     
+    # Sort costs and centroids
+    sort_index = np.argsort(np.array([all_costs]))[0]
+    correct_Ss = [
+        np.array([2, 2, 0, 0, 0, 2, 1, 1, 1]),
+        np.array([2, 2, 1, 1, 1, 2, 0, 0, 0]),
+        np.array([1, 1, 0, 0, 0, 1, 2, 2, 2]),
+        np.array([1, 1, 2, 2, 2, 1, 0, 0, 0]),
+        np.array([0, 0, 1, 1, 1, 0, 2, 2, 2]),
+        np.array([0, 0, 2, 2, 2, 0, 1, 1, 1])]
+    for i in range(len(all_costs)):
+        this_S = np.array(all_S)[sort_index[i], :]
+        this_cost = np.array(all_costs)[sort_index[i]]
+        for ans in correct_Ss:
+            if np.array_equal(ans, this_S):
+                print("The correct S is the ", i, " best cost")
+                # print("Cost of correct S: ", this_cost)
+
     return best_S, lowest_cost, best_centroids
 
 
-def find_combinations(num_edges, max_weeds):
+def find_combinations(num_edges, max_weeds, allow_singles=True):
 
     # Create all possible partition combinations and convert them to form of S
     combinations = []
@@ -214,20 +246,30 @@ def find_combinations(num_edges, max_weeds):
 
         for n in range(len(current_possible_parts)):
             current_part = current_possible_parts[n]
+            keep_S = True
             S = [0] * num_edges
 
             for j in range(len(current_part)):
                 weed_assignment = current_part[j]
 
-                for k in weed_assignment:
-                    S[k] = j
-        
-            combinations.append(S)
+                # Allow or disallow S' that contain singles
+                if allow_singles == True:
+                    for k in weed_assignment:
+                        S[k] = j
+                else:
+                    if len(weed_assignment) > 1:
+                        for k in weed_assignment:
+                            S[k] = j
+                    else:
+                        keep_S = False
+            
+            if keep_S == True:
+                combinations.append(S)
     
     return combinations
 
 
-def LstSqrs_find_centroid(S, E, return_cents=False):
+def LstSqrs_cost(S, E, return_cents=False):
     '''!
     Uses least squares to find the centroids of plants given their leaf assignments
 
@@ -298,11 +340,66 @@ def LstSqrs_find_centroid(S, E, return_cents=False):
             else:
                 residuals.append(0)
 
+    # print(S, " cost: ", np.sum(residuals))
+
     # Remove empty values
     if return_cents == True:
-        return np.sum(residuals)/count, np.array(centroids_list)
+        # return np.sum(residuals)/count, np.array(centroids_list)
+        return np.sum(residuals), np.array(centroids_list)
     else:
-        return np.sum(residuals)/count
+        # return np.sum(residuals)/count
+        return np.sum(residuals)
+
+
+def distance_cost(edges, S):
+    # Calculate distance cost
+
+    S = [round(i) for i in S]
+    S = [int(i) for i in S]
+    S = np.array(S)
+
+    # Create dict of edges according to proposed S
+    plants = {}
+    for i in range(S.max() + 1):
+        plants[i] = []
+        idx = np.where(S[:] == i)[0]
+        for j in idx:
+                plants[i].append(edges[j])
+    
+    
+    all_plant_costs = []
+    for i in range(len(plants)):
+        # Get list of all possible combinations of points
+        possible_combos = list(itertools.combinations(list(range(len(plants[i]))), 2))
+
+        edge_set = plants[i]
+        # print(len(edge_set))
+        # print(S)
+
+        # If the current plant only has one leaf it has no distance cost
+        if len(edge_set) >= 2:
+            # For each possible combo find min dist:
+            all_min_dists = []
+            for j in range(len(possible_combos)):
+                current_combo = possible_combos[j]
+                all_dists = np.array([
+                    np.linalg.norm(edge_set[current_combo[0]][0] - edge_set[current_combo[1]][0]),
+                    np.linalg.norm(edge_set[current_combo[0]][0] - edge_set[current_combo[1]][1]),
+                    np.linalg.norm(edge_set[current_combo[0]][1] - edge_set[current_combo[1]][0]),
+                    np.linalg.norm(edge_set[current_combo[0]][1] - edge_set[current_combo[1]][1])])
+                min_dist = np.amin(all_dists)
+                # print(min_dist)
+                all_min_dists.append(min_dist)
+            
+            # Find the avg min distance for all combinations within a single plant
+            plant_cost = np.mean(all_min_dists)
+            # plant_cost = sum(all_min_dists)
+        
+            all_plant_costs.append(plant_cost)
+
+    # Distance cost is average of all plant costs. The closer together the base points of leaves the smaller the cost
+    d_cost = sum(all_plant_costs) / len(all_plant_costs) * 1000
+    return d_cost
 
 
 def assemble_weeds_from_label(leaves, best_S):
@@ -317,6 +414,7 @@ def assemble_weeds_from_label(leaves, best_S):
 
     new_dict = {}
     best_S = np.array(best_S)
+    # colors = [(1, 0, 0), (0, 1, 0), (0, 0, 1), (0, 0, 0), (0.5, 0.5, 0.5), (1, 0, 1), (1, 1, 0), (0, 1, 1), (1, 0.5, 0)]
     for i in range(np.max(best_S) + 1):
         idx = np.where(best_S[:] == i)[0]
         current_weed = []
@@ -328,6 +426,7 @@ def assemble_weeds_from_label(leaves, best_S):
         pcd = o3d.geometry.PointCloud()
         pcd.points = o3d.utility.Vector3dVector(current_weed)
         color = (random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1))
+        # color= colors[i]
         pcd.paint_uniform_color(list(color[:3]))
         new_dict[i] = pcd
     

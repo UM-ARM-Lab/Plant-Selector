@@ -46,18 +46,20 @@ def evaluate_predictions(all_preds, manual_labels):
 
 
 def main():
-    display = False
+    display = True
     
     data_directory = '/home/amasse/catkin_ws/src/plant_selector/weed_eval/'
     pcs_folder = 'multi_pcs/'
     manual_labels_folder = 'multi_manual_labels/'
 
-    pc_filenames = ['1_multi.npy','2_multi.npy','3_multi.npy','4_multi.npy']
-    label_filenames = ['1_multi_label.npy','2_multi_label.npy','3_multi_label.npy','4_multi_label.npy']
+    # pc_filenames = ['1_multi.npy','2_multi.npy','3_multi.npy','4_multi.npy']
+    # label_filenames = ['1_multi_label.npy','2_multi_label.npy','3_multi_label.npy','4_multi_label.npy']
+    pc_filenames = ['1_multi.npy','2_multi.npy','3_multi.npy']
+    label_filenames = ['1_multi_label.npy','2_multi_label.npy','3_multi_label.npy']
 
     # algorithms = ['kmeans-optimized', 'kmeans-redmean', 'kmeans-euclidean', 'bi-kmeans', 'spectral', 'ward', 'npc']
-    # algorithms = ['color-segmentation']
-    algorithms = ['npc']
+    algorithms = ['color-segmentation']
+    # algorithms = ['npc']
 
     all_dfs = []
     for alg in algorithms:
@@ -68,8 +70,8 @@ def main():
             pcd, array, colors = ct.array_2_pc(points)
             pcds.append(pcd)
             # stem_preds, normal = ct.DBSCAN_calculate_pose(points, algorithm=alg, return_multiple_grasps=True)
-            stem_preds, normal = ct.FRG_calculate_pose(points, algorithm=alg, return_multiple_grasps=True)
-            # stem_preds, normal = pm.calculate_weed_centroid(points, return_multiple_grasps=True)
+            # stem_preds, normal = ct.FRG_calculate_pose(points, algorithm=alg, return_multiple_grasps=True)
+            stem_preds, normal = pm.calculate_weed_centroid(points, return_multiple_grasps=True)
             stem_preds = np.asarray(stem_preds)
             all_preds.append(stem_preds)
         
