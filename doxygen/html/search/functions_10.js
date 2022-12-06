@@ -6,5 +6,5 @@ var searchData=
   ['separate_5fby_5fheight_236',['separate_by_height',['../namespacefind__centroids.html#ae579400d0056b30df71a81c05a2e8306',1,'find_centroids']]],
   ['separate_5fby_5fsize_237',['separate_by_size',['../namespacefind__centroids.html#af6406a6983f064d8b387944eb99de9be',1,'find_centroids']]],
   ['solution_5fto_5fplants_238',['solution_to_plants',['../namespacefind__centroids.html#a7f9d869e1c2a749ec0add68d3e2706e4',1,'find_centroids']]],
-  ['spacial_5fcharacteristics_239',['spacial_characteristics',['../namespacefacet__region__growing.html#a68793a69fe89fb7c6f4ee7af6fb4d304',1,'facet_region_growing']]]
+  ['spatial_5fcharacteristics_239',['spatial_characteristics',['../namespacefacet__region__growing.html#ae95f47192e811c9a1762dda60502f3cc',1,'facet_region_growing']]]
 ];

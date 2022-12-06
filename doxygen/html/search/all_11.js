@@ -8,7 +8,7 @@ var searchData=
   ['skipped_5fweeds_127',['skipped_weeds',['../classeval_1_1WeedMetrics.html#ab13104aff31de8e02640a98d31cc4684',1,'eval::WeedMetrics']]],
   ['skipped_5fweeds_5ffilenames_128',['skipped_weeds_filenames',['../classeval_1_1WeedMetrics.html#ac75955672746a4f0a122f7a51e2f9be1',1,'eval::WeedMetrics']]],
   ['solution_5fto_5fplants_129',['solution_to_plants',['../namespacefind__centroids.html#a7f9d869e1c2a749ec0add68d3e2706e4',1,'find_centroids']]],
-  ['spacial_5fcharacteristics_130',['spacial_characteristics',['../namespacefacet__region__growing.html#a68793a69fe89fb7c6f4ee7af6fb4d304',1,'facet_region_growing']]],
+  ['spatial_5fcharacteristics_130',['spatial_characteristics',['../namespacefacet__region__growing.html#ae95f47192e811c9a1762dda60502f3cc',1,'facet_region_growing']]],
   ['stem_5fpub_131',['stem_pub',['../classeval_1_1WeedMetrics.html#ae3fe64df79d0aa40f9a26e3fb9945c96',1,'eval::WeedMetrics']]],
   ['successes_132',['successes',['../classeval_1_1WeedMetrics.html#a93e17a83a97bf4e5ab4038e44e79a05e',1,'eval::WeedMetrics']]]
 ];

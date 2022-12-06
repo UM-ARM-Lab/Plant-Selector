@@ -94,7 +94,7 @@ def npc_segment_weeds(unclassified_data, use_hsv=False):
     @return list of label numbers for input data
     '''
     
-    path_to_training = '/home/amasse/Documents/test_npc_training_data/'
+    path_to_training = '/home/amasse/catkin_ws/src/plant_selector/segmentation_training/npc_training_data/'
     # possible file numbers ['20', '22', '77', '79', '95', '104]
     file_numbers = ['22']
 
