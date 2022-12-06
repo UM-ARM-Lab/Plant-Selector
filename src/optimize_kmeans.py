@@ -1,14 +1,28 @@
+"""!
+@brief Uses training data to generate weights for kmeans distance function that will create "optimal" solutions
+"""
+
 from turtle import distance
 import numpy as np
 from scipy import optimize
 import os
-import clustering_tests as ct
+import find_centroids as fc
 import open3d as o3d
 
 
 def get_segmentation(weights, training_directory, pc_filenames):
+    '''!
+    Uses given weights and training data to do weighted kmeans.
+
+    @param weights    a list containing 6 weights for weighted kmeans implementation. weights must be >= 0
+    @param training_directory   a string with the directory to the training data
+    @param pc_filenames    a list of strings containing the names of the pointclouds being used for training. eg: "79.ply"
+
+    @return list of weeds where each element contains all weeds from the corresponding file
+    '''
     pc_folder = training_directory + 'training_selections/'
     
+    # For every file, load it and do weighted kmeans. Put the labels and point clouds into a list
     labels_list = []
     pc_list = []
     for file in pc_filenames:
@@ -17,17 +31,17 @@ def get_segmentation(weights, training_directory, pc_filenames):
             float_colors = points[:, 3]
             pcd_colors = np.array((0, 0, 0))
             for x in float_colors:
-                rgb = ct.float_to_rgb(x)
+                rgb = fc.float_to_rgb(x)
                 pcd_colors = np.vstack((pcd_colors, rgb))
             pcd_colors = np.delete(pcd_colors, 0, 0)
             pcd_array = np.hstack((pcd_points, pcd_colors))
 
-            cents, labels = ct.kmeans_from_scratch(pcd_array, 2, weights)
+            cents, labels = fc.kmeans_from_scratch(pcd_array, 2, weights)
             labels_list.append(labels)
             pc_list.append(pcd_points)
 
 
-    # seperate by number of points in segment and only return weeds
+    # Seperate by number of points in segment and only return weeds
     weeds_list = []
     for i in range(len(labels_list)):
         if (np.count_nonzero(labels_list[i] == 1)) < (len(labels_list[i]) - np.count_nonzero(labels_list[i] == 1)):
@@ -43,8 +57,20 @@ def get_segmentation(weights, training_directory, pc_filenames):
 
 
 def calculate_cost(weights, training_directory, pc_filenames, manual_labels_filenames):
+    '''!
+    Evaluate the cost given the weights. Uses the weights to do initial segmentation on the training point clouds and then finds the average distance between the manual labels and the centroids of the segmented clouds.
+
+    @param weights   a list of 6 weights, corresponding to x, y, z, r, g, and b
+    @param training_directory   a string with the directory to the training data
+    @param pc_filenames    a list of strings containing the names of the pointclouds being used for training. eg: "79.ply"
+    @param manual_label_filenames   a list of strings containing the names of the manual labels for each pointcloud in pc_filenames. eg. "79.npy"
+
+    @return the cost
+    '''
+    # Do initial segmentation using weighted kmeans and provided weights
     weeds_list = get_segmentation(weights, training_directory, pc_filenames)
 
+    # Organize manual labels into a list of 3d points
     manual_labels_folder = training_directory + 'training_manually_segmented/'
     manual_labels_list = []
     for file in manual_labels_filenames:
@@ -66,12 +92,19 @@ def calculate_cost(weights, training_directory, pc_filenames, manual_labels_file
 
 
 def main():
+    '''!
+    Finds and prints the optimal weights for the distance function used in kmeans. These can be input into DBSCAN_calculate_pose or FRG_calculate_pose when using algorithm='kmeans-optimized'
+    '''
+    
+    # Starting weights and bounds for the optimization function
     starting_weights = [0, 0, 0, 0, 0, 0]
-    bounds = [(0, 100), (0, 100), (0, 100), (0, 100), (0, 100), (0, 100)]
+    bounds = [(0, 1), (0, 1), (0, 1), (0, 1), (0, 1), (0, 1)]
 
+
+    # Location of the training data
     training_directory = "/home/amasse/catkin_ws/src/plant_selector/segmentation_training/"
-    # pc_filenames = os.listdir(training_directory + 'original_selections/')
 
+    # Make a list of file names for the point clouds and their manual labels
     pc_filenames = []
     manual_labels_filenames = []
     names_list = ['2', '5', '79', '93', '94', '95', '99', '100', '104']
@@ -79,13 +112,14 @@ def main():
         pc_filenames.append(''.join((names_list[i], ".npy")))
         manual_labels_filenames.append(''.join((names_list[i], ".ply")))
 
-    # d = calculate_cost(starting_weights, training_directory, pc_filenames, manual_labels_filenames)
-    print(manual_labels_filenames)
 
+    # Optimize the cost function to find the optimal weights for kmeans distance function
     results = dict()
     results['shgo'] = optimize.shgo(calculate_cost, bounds, args=(training_directory, pc_filenames, manual_labels_filenames), options={'disp': True})
     best_weights = results['shgo'].x
+    print()
     print("The best weights are: ", best_weights)
+    print()
 
     minimized_dist = calculate_cost(best_weights, training_directory, pc_filenames, manual_labels_filenames)
     print("The smallest distance is: ", minimized_dist)

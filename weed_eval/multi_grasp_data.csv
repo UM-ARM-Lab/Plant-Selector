@@ -1,2 +1,2 @@
 ,TotalWeeds,Attempts,Successes,AttemptsSuccessRate,WeedsSuccessRate,MeanError,Method
-0,10,7,4,57.142857142857146,40.0,0.004676454183044441,color-segmentation
+0,10,7,7,100.0,70.0,0.005135988287795414,npc

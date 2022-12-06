@@ -1,8 +1,12 @@
+"""!
+@brief Uses pre-segmented data to create a nearest prototype classifier for initial segmentation step
+"""
+
 import numpy as np
 import open3d as o3d
 import matplotlib.pyplot as plt
 import cv2
-import clustering_tests as ct
+import find_centroids as fc
 
 
 def get_training_points(path_to_training, file_numbers):
@@ -150,7 +154,7 @@ def main():
     file_loc = '/home/amasse/catkin_ws/src/plant_selector/segmentation_training/all_selections/79.npy'
 
     # Load in data we want to classify
-    pcd, unclassified_data, _ = ct.array_2_pc(np.load(file_loc))
+    pcd, unclassified_data, _ = fc.array_2_pc(np.load(file_loc))
     # o3d.visualization.draw_geometries([pcd], window_name="Original")
 
     label_nums = npc_segment_weeds(unclassified_data, use_hsv=False)
@@ -163,6 +167,7 @@ def main():
     colors[label_nums == 2] = 0
     pcd.colors = o3d.utility.Vector3dVector(colors[:, :3])
     # o3d.visualization.draw_geometries([pcd], window_name="Initial Segmentation")
+    return
 
 
 if __name__ == "__main__":

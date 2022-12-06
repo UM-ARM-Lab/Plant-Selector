@@ -1,0 +1,21 @@
+var searchData=
+[
+  ['real_5ftime_5fhandler_2ecpp_104',['real_time_handler.cpp',['../real__time__handler_8cpp.html',1,'']]],
+  ['reduce_5fs_105',['reduce_S',['../namespacefind__centroids.html#afd07f5310508fa5454c803e06fcdc43f',1,'find_centroids']]],
+  ['remove_5ffalse_5fpositives_106',['remove_false_positives',['../namespacefind__centroids.html#a9cc6a0486a2ed528fde06c03b05cacff',1,'find_centroids']]],
+  ['repetitive_5fplant_5fextraction_107',['repetitive_plant_extraction',['../namespacerepetitive__plant__extraction.html',1,'']]],
+  ['repetitive_5fplant_5fextraction_2epy_108',['repetitive_plant_extraction.py',['../repetitive__plant__extraction_8py.html',1,'']]],
+  ['repetitiveplantextractor_109',['RepetitivePlantExtractor',['../classrepetitive__plant__extraction_1_1RepetitivePlantExtractor.html',1,'repetitive_plant_extraction']]],
+  ['robot_110',['robot',['../classplant__extraction_1_1PlantExtractor.html#a80456331a7fbccbb400012b7e89a5238',1,'plant_extraction.PlantExtractor.robot()'],['../classrepetitive__plant__extraction_1_1RepetitivePlantExtractor.html#a80456331a7fbccbb400012b7e89a5238',1,'repetitive_plant_extraction.RepetitivePlantExtractor.robot()']]],
+  ['robot_5fexecute_111',['robot_execute',['../classplant__extraction_1_1PlantExtractor.html#a956d491aa51f6ef0d0ab123843287bf4',1,'plant_extraction.PlantExtractor.robot_execute()'],['../classrepetitive__plant__extraction_1_1RepetitivePlantExtractor.html#a956d491aa51f6ef0d0ab123843287bf4',1,'repetitive_plant_extraction.RepetitivePlantExtractor.robot_execute()']]],
+  ['robot_5fplan_112',['robot_plan',['../classplant__extraction_1_1PlantExtractor.html#a7b005f1e42cd83f3ef587e83795714fc',1,'plant_extraction.PlantExtractor.robot_plan()'],['../classrepetitive__plant__extraction_1_1RepetitivePlantExtractor.html#a7b005f1e42cd83f3ef587e83795714fc',1,'repetitive_plant_extraction.RepetitivePlantExtractor.robot_plan()']]],
+  ['robot_5fto_5fdefault_5fpose_113',['robot_to_default_pose',['../classplant__extraction_1_1PlantExtractor.html#a666c5efe571ac94089ecd3bab0bcff57',1,'plant_extraction.PlantExtractor.robot_to_default_pose()'],['../classrepetitive__plant__extraction_1_1RepetitivePlantExtractor.html#a666c5efe571ac94089ecd3bab0bcff57',1,'repetitive_plant_extraction.RepetitivePlantExtractor.robot_to_default_pose()']]],
+  ['rosbag_5fpanel_2ecpp_114',['rosbag_panel.cpp',['../rosbag__panel_8cpp.html',1,'']]],
+  ['rotation_5fmatrix_5ffrom_5fvectors_115',['rotation_matrix_from_vectors',['../namespaceplant__modeling.html#acfbd099fb0170da954503bc1d8e0ebe8',1,'plant_modeling']]],
+  ['run_5feval_116',['run_eval',['../classeval_1_1WeedMetrics.html#a0fd0cfc1afe975c2d7ef47f169d98e99',1,'eval::WeedMetrics']]],
+  ['rviz_5farrow_117',['rviz_arrow',['../namespacerviz__helpers.html#a956ca81fc01bc583059fd7d42f721dc1',1,'rviz_helpers']]],
+  ['rviz_5fcustom_5fpanel_118',['rviz_custom_panel',['../namespacerviz__custom__panel.html',1,'']]],
+  ['rviz_5fcustom_5ftool_119',['rviz_custom_tool',['../namespacerviz__custom__tool.html',1,'']]],
+  ['rviz_5fhelpers_120',['rviz_helpers',['../namespacerviz__helpers.html',1,'']]],
+  ['rviz_5fhelpers_2epy_121',['rviz_helpers.py',['../rviz__helpers_8py.html',1,'']]]
+];

@@ -1,3 +1,7 @@
+"""!
+@brief Find leaf axes and leaf end points
+"""
+
 from email.mime import base
 import numpy as np
 import open3d as o3d
@@ -7,6 +11,14 @@ from pyquaternion import Quaternion
 
 
 def calculate_radian(vector1, vector2):
+    '''!
+    Calculate the angle in radians between two vectors
+
+    @param vector1   (3,) numpy array for the first vector
+    @param vector2   (3,) numpy array for the second vector
+
+    @return the angle in radians
+    '''
     dot = np.dot(vector1, vector2)
     norm = np.linalg.norm(vector1) * np.linalg.norm(vector2)
     cos = dot / norm
@@ -15,10 +27,15 @@ def calculate_radian(vector1, vector2):
 
 
 def pca_pointcloud(pointcloud):
-    """
-    # 1. Apply PCA (component_1 -> l-axis )
-    # 2. Calculate the angle between the centroid of p_init and determine the l-axis
-    """
+    '''!
+    Apply PCA to find the leaf axes. Component1 points along the long axis of the leaf, component2 is horizontal across the leaf
+    This function is borrowed from: https://github.com/oceam/LeafSurfaceReconstruction
+    Based on section 2.3.1 of this paper: https://spj.sciencemag.org/journals/plantphenomics/2021/3184185/
+
+    @param pointcloud   numpy array containing points from the point cloud
+
+    @return component1, component2, component3   each is a numpy array containing a vector
+    '''
     centroid = np.mean(pointcloud, axis=0)
 
     # Translate the pointcloud to its centroid
@@ -52,6 +69,16 @@ def pca_pointcloud(pointcloud):
 
 
 def find_end_points(c1, c2, points, end_thresh=0.0015):
+    '''!
+    Find the tip and base points for a leaf
+
+    @param c1   component1 from pca_pointcloud
+    @param c2   component2 from pca_pointcloud
+    @param points    numpy array of 3d points representing a leaf
+    @param end_thresh    optional, threhsold controling how close the end point must be to the center axis
+
+    @return a 1 by 6 numpy array where the first 3 components are the first end point and the last 3 components are the other end point
+    '''
     # We want to translate the centroid of the leaf to the origin
     trans_points = points - np.mean(points, axis=0)
 
@@ -95,16 +122,18 @@ def find_end_points(c1, c2, points, end_thresh=0.0015):
 
 
 
-def get_axis_and_ends(points, return_points=False):
-    # Get axis that aligns with the main vein of the leaf and find the points associated with the tip and base of leaf
-    # End points are returned as a vector of 6 where the first three values are end point 1 and the last three values are end point 2
+def get_axis_and_ends(points):
+    '''!
+    Get axis that aligns with the main vein of the leaf and find the points associated with the tip and base of leaf
+
+    @param points    numpy array of 3d points representing a leaf
+
+    @return End points are returned as a vector of 6 where the first three values are end point 1 and the last three values are end point 2
+    '''
     l_axis, h_axis, d_axis = pca_pointcloud(points)
     end_points = find_end_points(l_axis, h_axis, points)
 
-    if return_points==True:
-        return l_axis, end_points, points
-    else:
-        return l_axis, end_points
+    return l_axis, end_points
 
 
 def main():

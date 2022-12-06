@@ -10,7 +10,7 @@ import argparse
 import sys
 
 import plant_modeling as pm
-import clustering_tests as ct
+import find_centroids as fc
 import rviz_helpers as rh
 
 
@@ -243,8 +243,8 @@ def main():
     args = parser.parse_args(rospy.myargv(sys.argv[1:]))
 
     # Run the evaluation
-    # evaluator = WeedMetrics(args.weed_directory, pm.calculate_weed_centroid, gripper_size=0.015)
-    evaluator = WeedMetrics(args.weed_directory, ct.DBSCAN_calculate_pose, gripper_size=0.015, return_multiple_grasps=False)
+    # evaluator = WeedMetrics(args.weed_directory, fc.color_calculate_pose, gripper_size=0.015)
+    evaluator = WeedMetrics(args.weed_directory, fc.DBSCAN_calculate_pose, gripper_size=0.015, return_multiple_grasps=False)
     evaluator.run_eval()
 
 

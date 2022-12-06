@@ -1,3 +1,7 @@
+"""!
+@brief Finds the centroids of weeds from provided point cloud selection
+"""
+
 from audioop import avg
 import ctypes
 from os import fdatasync
@@ -8,6 +12,7 @@ import hdbscan
 from statistics import mode
 from math import atan, pi
 import math
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -26,9 +31,126 @@ import rospy
 from sensor_msgs import point_cloud2 as pc2
 from tf.transformations import rotation_matrix
 
-import nearest_prototype_classifier_test as npc
+import nearest_prototype_classifier as npc
 import facet_region_growing as frg
 import leaf_axis as la
+import gen_alg as ga
+
+
+def color_calculate_pose(points, return_multiple_grasps=False):
+    '''!
+    Uses ratios between colors and DBSCAN to calculate the poses for weeds in the provided selection
+
+    @param points   a list of points from the point cloud from the selection
+    @param return_multiple_grasps   Boolean indicating whether or not to return multiple grasps for selections of multiple weeds
+
+    @return list of weed centroids, normal associated with dirt
+    '''
+
+    # All the weed extraction algorithm
+    pcd_points = points[:, :3]
+    float_colors = points[:, 3]
+
+    pcd_colors = np.array((0, 0, 0))
+    for x in float_colors:
+        rgb = float_to_rgb(x) * 255.0
+        pcd_colors = np.vstack((pcd_colors, rgb))
+
+    # Alternate green color filter
+    pcd_colors = pcd_colors[1:, :]
+
+    # Filter the point cloud so that only the green points stay
+    # Get the indices of the points with g parameter greater than x
+    green_points_indices = np.where((pcd_colors[:, 1] > pcd_colors[:, 0] * (12.0 / 11.0)) &
+                                    (pcd_colors[:, 1] > pcd_colors[:, 2] * (12.0 / 11.0)))
+    green_points_xyz = pcd_points[green_points_indices]
+    green_points_rgb = pcd_colors[green_points_indices]
+
+    r_low, g_low, b_low = 10, 20, 10
+    r_high, g_high, b_high = 240, 240, 240
+    green_points_indices = np.where((green_points_rgb[:, 0] > r_low) & (green_points_rgb[:, 0] < r_high) &
+                                    (green_points_rgb[:, 1] > g_low) & (green_points_rgb[:, 1] < g_high) &
+                                    (green_points_rgb[:, 2] > b_low) & (green_points_rgb[:, 2] < b_high))
+
+    if len(green_points_indices[0]) == 1:
+        rospy.loginfo("No green points found. Try again.")
+        return None, None
+
+    # Save xyzrgb info in green_points (type: numpy array)
+    green_points_xyz = green_points_xyz[green_points_indices]
+    green_points_rgb = green_points_rgb[green_points_indices]
+
+    # Create Open3D point cloud for green points
+    green_pcd = o3d.geometry.PointCloud()
+    # Save xyzrgb info in green_pcd (type: open3d.PointCloud)
+    green_pcd.points = o3d.utility.Vector3dVector(green_points_xyz)
+    green_pcd.colors = o3d.utility.Vector3dVector(green_points_rgb)
+    
+
+    # Apply radius outlier filter to green_pcd
+    _, ind = green_pcd.remove_radius_outlier(nb_points=7, radius=0.007)
+
+    if len(ind) == 0:
+        print("Not enough points. Try again.")
+        return None, None
+
+    # Just keep the inlier points in the point cloud
+    green_pcd = green_pcd.select_by_index(ind)
+    green_pcd_points = np.asarray(green_pcd.points)
+    # green_pcd.paint_uniform_color([0.01, 0.5, 0.01])
+    # o3d.visualization.draw_geometries([green_pcd], window_name="Initial Segmentation")
+
+    # Apply DBSCAN to green points
+    labels = np.array(green_pcd.cluster_dbscan(eps=0.0055, min_points=15))  # This is actually pretty good
+    max_label = labels.max()
+    colors = plt.get_cmap("tab10")(labels / (max_label if max_label > 0 else 1))
+    colors[labels < 0] = 0
+    green_pcd.colors = o3d.utility.Vector3dVector(colors[:, :3])
+    # o3d.visualization.draw_geometries([green_pcd])
+
+    n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+    if n_clusters == 0:
+        print("Not enough points. Try again.")
+        return None, None
+
+    # If we want multiple centroids, return multiple, if not return only largest
+    if return_multiple_grasps == True:
+        weeds_segments = labels_to_dict(green_pcd, labels)
+        weed_centroid = calculate_centroids(weeds_segments)
+    else:
+        biggest_cluster_indices = np.where(labels[:] == mode(labels))
+        green_pcd_points = green_pcd_points[biggest_cluster_indices]
+        weed_centroid = np.mean(green_pcd_points, axis=0)
+
+
+    dirt_indices = np.arange(0, len(pcd_points))
+    # These are the indices for dirt
+    dirt_indices = np.setdiff1d(dirt_indices, green_points_indices)
+    # Save xyzrgb info in dirt_points (type: numpy array) from remaining indices of green points filter
+    dirt_points_xyz = pcd_points[dirt_indices]
+    dirt_points_rgb = pcd_colors[dirt_indices]
+    # Create PC for dirt points
+    dirt_pcd = o3d.geometry.PointCloud()
+    # Save points and color to the point cloud
+    dirt_pcd.points = o3d.utility.Vector3dVector(dirt_points_xyz)
+    dirt_pcd.colors = o3d.utility.Vector3dVector(dirt_points_rgb)
+
+    # Apply plane segmentation function from open3d and get the best inliers
+    plane_model, best_inliers = dirt_pcd.segment_plane(distance_threshold=0.0005,
+                                                       ransac_n=3,
+                                                       num_iterations=1000)
+
+    if len(best_inliers) == 0:
+        rospy.loginfo("Can't find dirt, Select both weed and dirt.")
+        return None, None
+
+    [a, b, c, _] = plane_model
+    if a < 0:
+        normal = np.asarray([a, b, c])
+    else:
+        normal = -np.asarray([a, b, c])
+
+    return weed_centroid, normal
 
 
 def DBSCAN_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], return_multiple_grasps=False):
@@ -36,7 +158,7 @@ def DBSCAN_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], 
     Uses DBSCAN to cluster weeds and calculate pose
 
     @param points   a list of points from the point cloud from the selection
-    @param algorithm   string containing algorithm choice. options include 'kmeans-optimized', 'kmeans-redmean', 'kmeans-euclidean', 'bi-kmeans', 'spectral', 'ward', 'npc
+    @param algorithm   string containing algorithm choice. options include 'kmeans-optimized', 'kmeans-redmean', 'kmeans-euclidean', 'bi-kmeans', 'spectral', 'ward', 'npc'
     @param weights    a list containing 6 weights for weighted kmeans implementation. weights must be >= 0
     @param return_multiple_grasps   Boolean indicating whether or not to return multiple grasps for selections of multiple weeds
 
@@ -53,10 +175,8 @@ def DBSCAN_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], 
     # o3d.visualization.draw_geometries([weeds])
 
 
-
     # Calculate ideal epsilon based on data (lol this makes things worse)
     epsilon = calculate_epsilon(weeds_array)
-
 
 
     # Run dbscan to cluster into individual weeds, color them
@@ -68,11 +188,18 @@ def DBSCAN_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], 
     # o3d.visualization.draw_geometries([weeds])
     
 
-
     # Seperate the weeds into dict of individual clusters
-    weeds_segments = labels_to_dict(weeds, labels)
-    
+    weeds_segments_all = labels_to_dict(weeds, labels)
 
+
+    # Remove weeds with less than 15 points
+    weeds_segments = {}
+    count = 0
+    for i in range(len(weeds_segments_all)):
+        if len(weeds_segments_all[i].points) >= 15:
+            weeds_segments[count] = weeds_segments_all[i]
+            count += 1
+    
 
     # Find list of centroids of weeds and dirt normal
     weeds_centroids = calculate_centroids(weeds_segments)
@@ -82,11 +209,13 @@ def DBSCAN_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], 
         return None, None
     
 
-
     # If we want multiple grasps, return multiple grasps
     if return_multiple_grasps == True:
         return weeds_centroids, normal
 
+
+    # Remove centroid guesses that do not lie within a weed
+    weeds_centroids = remove_false_positives(weeds_centroids, weeds_array)
 
 
     # For now only return the largest weed
@@ -112,32 +241,60 @@ def FRG_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], pro
 
     @return list of weed centroids, normal associated with dirt
     '''
+    print("Using facet region growing with {}...\n".format(algorithm))
 
     # Do initial segmentation and convert to numpy array
-    weeds, dirt = initial_segmentation(points, algorithm, weights)
-    weeds_array = np.asarray(weeds.points)
-    if weeds_array.shape[0] < 2:
+    all_weeds, dirt = initial_segmentation(points, algorithm, weights)
+    all_weeds_array = np.asarray(all_weeds.points)
+    if all_weeds_array.shape[0] < 2:
         return None, None
 
-    weeds.paint_uniform_color([0.01, 0.5, 0.01])
-    # o3d.visualization.draw_geometries([weeds])
-
     # Use facet region growing to get individual leaves (provided there are enough points)
-    if weeds_array.shape[0] >= 30:
+    if all_weeds_array.shape[0] >= 30:
+        # Run dbscan to cluster into individual weeds, color them
+        labels = np.array(all_weeds.cluster_dbscan(eps=0.0065, min_points=5))
+        max_label = labels.max()
+        colors = plt.get_cmap("tab10")(labels / (max_label if max_label > 0 else 1))
+        colors[labels < 0] = 0
+        all_weeds.colors = o3d.utility.Vector3dVector(colors[:, :3])
+        # o3d.visualization.draw_geometries([all_weeds], window_name="Clustering")
+
+        # Seperate the weeds into dict of individual clusters
+        all_weeds_segments = labels_to_dict(all_weeds, labels)
+
+        # Remove clusters under 20 points and put them in a list, combine large ones
+        small_weeds = []
+        small_centroids = np.array([0, 0, 0])
+        weeds = o3d.geometry.PointCloud()
+        for i in range(len(all_weeds_segments)):
+            if len(all_weeds_segments[i].points) < 30:
+                current_weed = np.asarray(all_weeds_segments[i].points)
+                small_weeds.append(current_weed)
+                small_centroids = np.vstack((small_centroids, np.mean(current_weed, axis=0)))
+            else:
+                weeds += all_weeds_segments[i]
+
+        if not np.array_equal(np.array([0, 0, 0]), small_centroids):
+            small_centroids = np.delete(small_centroids, 0, 0)
+
+        # Format and display only large weeds (that will go into facet region growing)
+        weeds_array = np.asarray(weeds.points)
+        weeds.paint_uniform_color([0.01, 0.5, 0.01])
+        # o3d.visualization.draw_geometries([weeds], window_name="Only Large")
+
+        # Do facet region growing to find leaves
         leaves = frg.facet_leaf_segmentation(weeds_array)
 
-        # Display leaf segments
-        # colors = [(1, 0, 0), (0, 1, 0), (0, 0, 1), (0, 0, 0), (0.5, 0.5, 0.5), (1, 0, 1), (1, 1, 0), (0, 1, 1), (1, 0.5, 0)]
+        # Format+display FRG
         leaf_pcs = []
         for i in range(len(leaves)):
             color = (random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1))
-            # color = colors[i]
             leaf = o3d.geometry.PointCloud()
             leaf.points = o3d.utility.Vector3dVector(leaves[i])
             leaf.paint_uniform_color(list(color[:3]))
             leaf_pcs.append(leaf)
-        # o3d.visualization.draw_geometries(
-        #     [leaf_pcs[i] for i in range(len(leaves))], window_name="FRG")
+        o3d.visualization.draw_geometries(
+            [leaf_pcs[i] for i in range(len(leaves))], window_name="FRG")
 
 
         # Get leaf axes and base points and associated leaves
@@ -146,39 +303,43 @@ def FRG_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], pro
             _, current_edges= la.get_axis_and_ends(leaf)
             edges = np.vstack((edges, current_edges))
         edges = np.delete(edges, 0, 0)
+        num_edges = edges.shape[0]
+
+
+        # Genetic algorithm
+        # n_iter = 100 # define the total iterations
+        # n_bits = 3 * num_edges # bits
+        # n_pop = 10 # define the population size
+        # r_cross = 0.5 # crossover rate
+        # r_mut = 1.0 / float(n_bits) # mutation rate
+        # best_S_bits, score = ga.genetic_algorithm(genetic_fitness_function, edges, leaves, n_bits, n_iter, n_pop, r_cross, r_mut)
+        # best_S_string = "".join([str(best_S_bits[x]) for x in range(0, len(best_S_bits))])
+        # best_S_int = [int(best_S_string[i:i+3], 2) for i in range(0, len(best_S_string), 3)]
+        # best_S = reduce_S(best_S_int)
+        # print(best_S)
+        
+        # Find a way to convert best_S_int so that it has no gaps
 
         # Use brute force to find optimal weed assignment based on cost function from least squares
-        best_S, lowest_cost, _ = brute_force_optimize(edges)
-        print("Best S: ", best_S)
-        print("Lowest Cost: ", lowest_cost)
+        best_S, lowest_cost, _ = brute_force_optimize(edges, leaves)
 
         # Convert aptimal weed assignment to dictionary of pointclouds
         weeds_segments = assemble_weeds_from_label(leaves, best_S)
-
-        # S0 = [math.floor(len(leaf_pcs) / 2)] * len(leaf_pcs)
-        # S0 = [0] * len(leaf_pcs)
-        # result = optimize.minimize(LstSqrs_cost, S0, args=(edges), options={'disp': True})
-        # best_S = result.x
-
-        # bounds = [(0.0, len(leaf_pcs))] * len(leaf_pcs)
-        # cons = ({'type': 'eq', 'fun':is_int})
-        # results = dict()
-        # results['shgo'] = optimize.shgo(LstSqrs_cost, bounds, args=([edges]), constraints=cons, options={'disp': True})
-        # best_S = results['shgo'].x
-
-        # res, weeds_centroids = LstSqrs_cost(correct_S, edges, return_cents=True)
     else:
         weeds_segments = {0: weeds}
 
 
-    # Solve for centroids and normals using usual methods
+    # Solve for centroids and normals using usual methods, remove obvious false positives
     weeds_centroids = calculate_centroids(weeds_segments)
+    if not np.array_equal(np.array([0, 0, 0]), small_centroids):
+        weeds_centroids = np.vstack((weeds_centroids, np.array(small_centroids)))
+    weeds_centroids = remove_false_positives(weeds_centroids, all_weeds_array)
     normal = calculate_normal(dirt)
     if len(weeds_centroids) < 1:
         return None, None
     
-    # o3d.visualization.draw_geometries(
-    #     [weeds_segments[i] for i in range(len(weeds_segments))], window_name="Weed Combinations")
+    o3d.visualization.draw_geometries(
+        [weeds_segments[i] for i in range(len(weeds_segments))], window_name="Weed Combinations")
 
     # If we want multiple grasps, return multiple grasps
     if return_multiple_grasps == True:
@@ -187,11 +348,19 @@ def FRG_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], pro
         return weeds_centroids[0], normal
 
 
-def brute_force_optimize(E, max_weeds=5):
+def brute_force_optimize(E, leaves, max_weeds=5):
+    '''!
+    Brute force optimization of cost functions to find best assignment S of leaves to weeds
+
+    @param E   An Nx6 matrix where each row corresponds to a line (as defined by two 3d points) representing a leaf
+    @param leaves   a list where each element is a numpy array containing xyz points for each leaf
+    
+    @return best assignments S, cost for that assignment, centroid locations from least squares for S
+    '''
+
     # Find all possible S for the number of edges and max number of possible weeds
     num_edges = len(E)
-    combinations = find_combinations(num_edges, max_weeds, allow_singles=False)
-    # print(combinations)
+    combinations = find_combinations(num_edges, max_weeds, allow_singles=True)
 
     # Test all S with least squares to find the lowest cost
     lowest_cost = math.inf
@@ -199,45 +368,36 @@ def brute_force_optimize(E, max_weeds=5):
     all_costs = []
     best_S = 0
     all_S = []
+    all_times = 0
     for i in range(len(combinations)):
         current_S = list(combinations[i])
         all_S.append(np.array(current_S).reshape(1, len(current_S))[0])
-        LS_cost, current_centroids = LstSqrs_cost(current_S, E, return_cents = True)
-        D_cost = distance_cost(E, current_S)
-        current_cost = LS_cost + D_cost
-        # current_cost = LS_cost
-        # print("LST Cost: ", current_cost)
-        # print("Dist Cost: ", distance_cost(E, current_S))
-        # print()
+        st = time.time()
+        # D_cost = distance_cost(E, leaves, current_S)
+        LS_cost1, LS_cost2, current_centroids = LstSqrs_cost(current_S, E, leaves, return_cents = True)
+        et = time.time()
+        all_times += et-st
+        current_cost = LS_cost2
         all_costs.append(current_cost)
         
         if current_cost < lowest_cost:
             lowest_cost = current_cost
             best_centroids = current_centroids
             best_S = current_S
-    
-    
-    # Sort costs and centroids
-    sort_index = np.argsort(np.array([all_costs]))[0]
-    correct_Ss = [
-        np.array([2, 2, 0, 0, 0, 2, 1, 1, 1]),
-        np.array([2, 2, 1, 1, 1, 2, 0, 0, 0]),
-        np.array([1, 1, 0, 0, 0, 1, 2, 2, 2]),
-        np.array([1, 1, 2, 2, 2, 1, 0, 0, 0]),
-        np.array([0, 0, 1, 1, 1, 0, 2, 2, 2]),
-        np.array([0, 0, 2, 2, 2, 0, 1, 1, 1])]
-    for i in range(len(all_costs)):
-        this_S = np.array(all_S)[sort_index[i], :]
-        this_cost = np.array(all_costs)[sort_index[i]]
-        for ans in correct_Ss:
-            if np.array_equal(ans, this_S):
-                print("The correct S is the ", i, " best cost")
-                # print("Cost of correct S: ", this_cost)
-
+    print("Avg Cost Eval Time: ", all_times/len(combinations))
     return best_S, lowest_cost, best_centroids
 
 
 def find_combinations(num_edges, max_weeds, allow_singles=True):
+    '''!
+    Use more_itertools to return a list of possible solutions, S
+
+    @param num_edges   the number of edges (or facets) we are trying to find a solution for. This dictates the length of S
+    @param max_weeds   the maximum number of weeds we are assuming exist in the selection. This dictates the highest possible value in S
+    @param allow_singles    optional, boolean, True if you want to allow S to allow leaves to be assigned alone to their own weed, False otherwise
+
+    @return a dictionary of edges, a dictionary of points
+    '''
 
     # Create all possible partition combinations and convert them to form of S
     combinations = []
@@ -262,21 +422,46 @@ def find_combinations(num_edges, max_weeds, allow_singles=True):
                             S[k] = j
                     else:
                         keep_S = False
-            
+
             if keep_S == True:
                 combinations.append(S)
     
     return combinations
 
 
-def LstSqrs_cost(S, E, return_cents=False):
+def genetic_fitness_function(S_bits, E, leaves):
+    '''!
+    The least squares cost function but formatted for use with the genetic algorithm.
+
+    @param S_bits   a list of bits where each set of 3 is binary for a single integer value between 0 and 7
+    @param E   An Nx6 matrix where each row corresponds to a line (as defined by two 3d points) representing a leaf
+    @param leaves   a list where each element is a numpy array containing xyz points for each leaf
+
+    @return least squares mean distance cost (goes up as solution becomes more correct, as is required by the genetic algorithm)
+    '''
+    
+    # Convert S_bits to integers
+    S_string = "".join([str(S_bits[x]) for x in range(0, len(S_bits))])
+    S_ints = [int(S_string[i:i+3], 2) for i in range(0, len(S_string), 3)]
+    S_ints = reduce_S(S_ints)
+
+    # Evaluate cost function of choice
+    LS_cost1, LS_cost2 = LstSqrs_cost(S_ints, E, leaves)
+
+    return -1 * LS_cost2
+
+
+def LstSqrs_cost(S, E, leaves, return_cents=False, default_res=3.5, default_dist=0.07):
     '''!
     Uses least squares to find the centroids of plants given their leaf assignments
 
     @param S   a list of integer labels corresponding to each leaf
     @param E   An Nx6 matrix where each row corresponds to a line (as defined by two 3d points) representing a leaf
+    @param leaves   a list where each element is a numpy array containing xyz points for each leaf
+    @param default_res   optional, a float assigning a default least squares residual in the event that least squares cannot find one (usually for cases where there is a single leaf alone in an assignment)
+    @param default_dist   optional, a float assigning a default least squares mean distance in the event that least squares cannot find one (usually for cases where there is a single leaf alone in an assignment)
 
-    @return sum of the residuals from least squares, list of centroids for each weed
+    @return sum of the residuals from least squares, sum of distances to mean locations, list of centroids for each weed
     '''
     
     S = [round(i) for i in S]
@@ -284,30 +469,16 @@ def LstSqrs_cost(S, E, return_cents=False):
     S = np.array(S)
     
     # Seperate E into weeds based on S
-    plants = {}
-    for i in range(S.max()+1):
-        plant_exists = False
-        idx = np.where(S[:] == i)[0]
-        current_plant = np.array([0, 0, 0, 0, 0, 0])
-        for j in idx:
-            current_plant = np.vstack((current_plant, E[j, :]))
-            plant_exists = True
-        
-        # If the current S doesnt assign current index to anything set it to an empty list
-        if plant_exists:
-            current_plant = np.delete(current_plant, 0, 0)
-            plants[i] = current_plant
-        else:
-            plants[i] = np.array([])
-    
-   
-    
+    plants, plants_points = solution_to_plants(E, leaves, S)
+
     # Do least squares for every plant and store the centroids and residuals in lists
     centroids_list = []
     residuals = []
+    dist_to_mean_list = []
     count = 0
     for i in range(len(plants)):
         edges = plants[i]
+        weed = plants_points[i]
         
         # If the current plant index actually has a plant in it, do the stuff
         if np.any(edges):
@@ -315,7 +486,10 @@ def LstSqrs_cost(S, E, return_cents=False):
             # A is the sum of all A_i for each edge, e_i 
             A = np.array([0, 0, 0])
             b = np.array([[0]])
+            mean_leaves = np.array([0, 0, 0])
             for e in range(edges.shape[0]):
+                mean_leaf_location = np.mean(weed[e], axis=0)
+                mean_leaves = np.vstack((mean_leaves, mean_leaf_location))
                 point_a = edges[e,:3]
                 point_b = edges[e, 3:]
                 d = point_b - point_a
@@ -326,57 +500,126 @@ def LstSqrs_cost(S, E, return_cents=False):
                 A = np.vstack((A, A_i))
                 b = np.vstack((b, b_i))
         
+            mean_leaves = np.delete(mean_leaves, 0, 0)
             A = np.delete(A, 0, 0)
             b = np.delete(b, 0, 0)
 
-            # Perform least squares to get centroid guess cent and residuals
+            # Perform least squares to get centroid guess and residuals
             cent, res, _, _ = np.linalg.lstsq(A, b, rcond=None)
             centroids_list.append(list(cent.reshape((3,))))
 
-            # If no residual is givn (ie the plant assignment only contains one leaf), set residual to 0
+            # Find sum of distances of LS predicted centroid to mean locations of each leaf in a plant
+            all_dists_to_leaves = np.linalg.norm(mean_leaves - cent.reshape((1,3)), axis=1)
+            dists_to_leaves = np.sum(all_dists_to_leaves)
+            
+
+            # If no residual is given (ie the plant assignment only contains one leaf), set residual to default value
             if len(res) > 0:
                 residuals.append(res[0])
+                dist_to_mean_list.append(dists_to_leaves)
                 count += 1
             else:
-                residuals.append(0)
+                residuals.append(default_res)
+                dist_to_mean_list.append(default_dist)
 
-    # print(S, " cost: ", np.sum(residuals))
 
-    # Remove empty values
+    # Return appropriate values
     if return_cents == True:
         # return np.sum(residuals)/count, np.array(centroids_list)
-        return np.sum(residuals), np.array(centroids_list)
+        return np.sum(residuals), sum(dist_to_mean_list), np.array(centroids_list)
     else:
         # return np.sum(residuals)/count
-        return np.sum(residuals)
+        return np.sum(residuals), sum(dist_to_mean_list)
 
 
-def distance_cost(edges, S):
-    # Calculate distance cost
+def solution_to_plants(E, leaves, S):
+    '''!
+    Use the solution S to create a dictionary of edges and a dictionary of points
 
+    @param E   a Hx6 numpy array where each row is a set of edges representing a facet. The first 3 values are coords of endpoint 1 and the last 3 values are coords of endpoint 2
+    @param leaves   a list of leaves. Each leaf is an Gx3 numpy array where each row is a point in the leaf.
+    @param S    a list of integers representing weed assignments (S is similar to the labels output of DBSCAN)
+
+    @return a dictionary of edges, a dictionary of points
+    '''
+
+    plants = {}
+    plant_points = {}
+    for i in range(S.max()+1):
+        plant_exists = False
+        idx = np.where(S[:] == i)[0]
+        current_plant = np.array([0, 0, 0, 0, 0, 0])
+        current_plant_points = []
+        for j in idx:
+            current_plant = np.vstack((current_plant, E[j, :]))
+            current_plant_points.append(leaves[j])
+            plant_exists = True
+        
+        # If the current S doesnt assign current index to anything set it to an empty list
+        if plant_exists:
+            current_plant = np.delete(current_plant, 0, 0)
+            plants[i] = current_plant
+            plant_points[i] = current_plant_points
+        else:
+            plants[i] = np.array([])
+            plant_points[i] = np.array([])
+    return plants, plant_points
+
+
+def reduce_S(S):
+    '''!
+    If S contains non-consecutive numbers, we can fix that.
+
+    @param S    a list of integers representing weed assignments (S is similar to the labels output of DBSCAN)
+
+    @return a fixed version of S
+    '''
+    new_S = np.zeros((len(S),))
+    S = np.array(S)
+    count = 0
+    done_list = []
+    for i in range(len(S)):
+        current = S[i]
+        idx = np.where(S == current)[0]
+        if idx.size != 0:
+            for j in idx:
+                if j not in done_list:
+                    done_list.append(j)
+                    new_S[j] = count
+            count += 1
+        
+    return list(new_S.astype(np.int64))
+
+
+def distance_cost(E, leaves, S):
+    '''!
+    Calculate the value of the distance cost function for a given solution
+
+    @param E   a Hx6 numpy array where each row is a set of edges representing a facet. The first 3 values are coords of endpoint 1 and the last 3 values are coords of endpoint 2
+    @param leaves   a list of leaves. Each leaf is an Gx3 numpy array where each row is a point in the leaf.
+    @param S    a list of integers representing weed assignments (S is similar to the labels output of DBSCAN)
+
+    @return a float that decreases as the leaves in a weed assignment get closer together
+    '''
+
+    # Format S into 
     S = [round(i) for i in S]
     S = [int(i) for i in S]
     S = np.array(S)
 
+
     # Create dict of edges according to proposed S
-    plants = {}
-    for i in range(S.max() + 1):
-        plants[i] = []
-        idx = np.where(S[:] == i)[0]
-        for j in idx:
-                plants[i].append(edges[j])
+    plants, plants_points = solution_to_plants(E, leaves, S)
     
     
     all_plant_costs = []
     for i in range(len(plants)):
-        # Get list of all possible combinations of points
+        # Get list of all possible combinations of points within the plant
         possible_combos = list(itertools.combinations(list(range(len(plants[i]))), 2))
 
         edge_set = plants[i]
-        # print(len(edge_set))
-        # print(S)
 
-        # If the current plant only has one leaf it has no distance cost
+        # If the current plant only has one leaf it has no distance cost. Otherwise:
         if len(edge_set) >= 2:
             # For each possible combo find min dist:
             all_min_dists = []
@@ -388,49 +631,47 @@ def distance_cost(edges, S):
                     np.linalg.norm(edge_set[current_combo[0]][1] - edge_set[current_combo[1]][0]),
                     np.linalg.norm(edge_set[current_combo[0]][1] - edge_set[current_combo[1]][1])])
                 min_dist = np.amin(all_dists)
-                # print(min_dist)
                 all_min_dists.append(min_dist)
             
             # Find the avg min distance for all combinations within a single plant
             plant_cost = np.mean(all_min_dists)
-            # plant_cost = sum(all_min_dists)
+            # plant_cost = np.sum(all_min_dists)
         
             all_plant_costs.append(plant_cost)
 
-    # Distance cost is average of all plant costs. The closer together the base points of leaves the smaller the cost
-    d_cost = sum(all_plant_costs) / len(all_plant_costs) * 1000
+    # Distance cost is sum of all plant costs. The closer together the base points of leaves the smaller the cost
+    d_cost = sum(all_plant_costs) * 1000
+
     return d_cost
 
 
-def assemble_weeds_from_label(leaves, best_S):
+def remove_false_positives(centroids, weeds_array):
     '''!
-    Assembles dictionary of point clouds representing weeds given labels from bestS for each leaf
+    Delete centroid guesses that are not near any weed points
 
-    @param leaves   a list of numpy arrays. each numpy array is a leaf (from facet region growing)
-    @param best_S   a list of integers. each element is the weed label for one leaf in leaves
+    @param centroids   a numpy array where each row is a centroid guess
+    @param weeds_array   a numpy array where each row is a point in the point cloud of all weeds (ie. excluding dirt and rocks)
 
-    @return dictionary of point clouds where each point cloud is a weed
+    @return a numpy array containing only centroids near weeds
     '''
+    new_centroids = np.array([0, 0, 0])
 
-    new_dict = {}
-    best_S = np.array(best_S)
-    # colors = [(1, 0, 0), (0, 1, 0), (0, 0, 1), (0, 0, 0), (0.5, 0.5, 0.5), (1, 0, 1), (1, 1, 0), (0, 1, 1), (1, 0.5, 0)]
-    for i in range(np.max(best_S) + 1):
-        idx = np.where(best_S[:] == i)[0]
-        current_weed = []
+    # go through each of the points in the centroids and determine if close to the weeds pointcloud
+    min_dist = math.inf
+    for i in range(centroids.shape[0]):
+        current_cent = centroids[i, :]
 
-        for j in idx:
-            current_weed.append(leaves[j])
+        for j in range(weeds_array.shape[0]):
+            dist = np.linalg.norm(current_cent - weeds_array[j, :])
+            if dist < min_dist:
+                min_dist = dist
+            
+        if min_dist < 0.0015:
+            new_centroids = np.vstack((new_centroids, current_cent))
 
-        current_weed = np.concatenate(current_weed, axis=0)
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(current_weed)
-        color = (random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1))
-        # color= colors[i]
-        pcd.paint_uniform_color(list(color[:3]))
-        new_dict[i] = pcd
-    
-    return new_dict
+    new_centroids = np.delete(new_centroids, 0, 0)
+
+    return new_centroids
 
 
 def initial_segmentation(points, algorithm='npc', weights=[0,100,100,0,100,0]):
@@ -438,17 +679,21 @@ def initial_segmentation(points, algorithm='npc', weights=[0,100,100,0,100,0]):
     Does initial segmentation --> Uses specified algorithm to seperate weeds from dirt
 
     @param points   a list of points from the point cloud from the selection
-    @param algorithm   string containing algorithm choice. options include 'kmeans-optimized', 'kmeans-redmean', 'kmeans-euclidean', 'bi-kmeans', 'spectral', 'ward', 'npc
-    @param weights    a list containing 6 weights for weighted kmeans implementation. weights must be >= 0
+    @param algorithm   optional, string containing algorithm choice. options include 'kmeans-optimized', 'kmeans-redmean', 'kmeans-euclidean', 'bi-kmeans', 'spectral', 'ward', 'npc'
+    @param weights    optional, a list containing 6 weights for weighted kmeans implementation. weights must be >= 0
 
     @return point cloud of weeds, point cloud of dirt
     '''
     
     # Create and format point cloud
-    pcd, pcd_array, pcd_colors = array_2_pc(points)
+    pcd, pcd_array, pcd_colors = array_to_pc(points)
     # o3d.visualization.draw_geometries([pcd], window_name="Original")
-    # np.save("/home/amasse/catkin_ws/src/plant_selector/weed_eval/saved.npy", points)
-    # o3d.io.write_point_cloud("/home/amasse/catkin_ws/src/plant_selector/weed_eval/saved.pcd", pcd)
+
+
+    # Save pc to file if desired
+    file_loc = "/home/amasse/catkin_ws/src/plant_selector/weed_eval/"
+    # np.save(file_loc + "saved.npy", points)
+    # o3d.io.write_point_cloud(file_loc + "saved.pcd", pcd)
 
 
     # Do clustering on original point cloud, based on desired method
@@ -477,46 +722,28 @@ def initial_segmentation(points, algorithm='npc', weights=[0,100,100,0,100,0]):
         using_npc = True
 
 
+    # Color and display according to labels from initial segmentation step
     max_label = labels.max()
     if max_label < 1:
         return None, None
     colors = plt.get_cmap("Paired")(labels / (max_label if max_label > 0 else 1))
     colors[labels < 0] = 0
-    # colors[labels == 1] = 0
-    # colors[labels == 2] = 0.5
     pcd.colors = o3d.utility.Vector3dVector(colors[:, :3])
     # o3d.visualization.draw_geometries([pcd], window_name="Initial Segmentation")
 
-    
 
     # Seperate segments into dict of idividual clusters
     segments = labels_to_dict(pcd, labels)
 
 
-
     # Compare by sizes to get pcds for weeds and dirt, filter out outliers
+    # This makes the assumption that the dirt pc is larger than the weeds pc
     weeds, dirt = separate_by_size(segments, using_npc)
     _, ind = weeds.remove_radius_outlier(nb_points=7, radius=0.007)
     if len(ind) != 0:
         weeds = weeds.select_by_index(ind)
     
     return weeds, dirt
-
-
-def is_int(S):
-    # Determine if all values in S are integers
-    for s in S:
-        if math.floor(s) != s:
-            return False
-    
-    return True
-
-
-def calculate_radian(vector1, vector2):
-    dot = np.dot(vector1, vector2)
-    norm = np.linalg.norm(vector1) * np.linalg.norm(vector2)
-    cos = dot / norm
-    return np.arccos(np.clip(cos, -1.0, 1.0))
 
 
 def kmeans_from_scratch(X, k, weights=[1, 1, 1, 1, 1, 1], redmean=False):
@@ -544,7 +771,7 @@ def kmeans_from_scratch(X, k, weights=[1, 1, 1, 1, 1, 1], redmean=False):
             mn_dist = float('inf') # dist of the point from all centroids
             
             for idx, centroid in enumerate(centroids):
-                # weighted distance function
+                # Use redmean distance (just another distance metric in color space)
                 if redmean == True:
                     rc255 = int(centroid[3] * 255)
                     rr255 = int(row[3] * 255)
@@ -561,6 +788,8 @@ def kmeans_from_scratch(X, k, weights=[1, 1, 1, 1, 1, 1], redmean=False):
                         d = np.sqrt(2*(rc-rr)**2 + 4*(gc-gr)**2 + 3*(bc-br)**2)
                     else:
                         d = np.sqrt(3*(rc-rr)**2 + 4*(gc-gr)**2 + 2*(bc-br)**2)
+
+                # Use weighted distance with weight calculated in optimize_kmeans.py
                 else:
                     d = np.sqrt(
                         (weights[0] * (centroid[0] - row[0])**2) +
@@ -585,27 +814,6 @@ def kmeans_from_scratch(X, k, weights=[1, 1, 1, 1, 1, 1], redmean=False):
     labels = labels.astype(int)
 
     return centroids, labels
-
-
-def remove_height_outliers(pcd_points, pcd_colors, max_height = -0.2):
-    '''!
-    Removes all point cloud points above max_height
-
-    @param pcd_points   [x,3] numpy array containing x, y, and z coords
-    @param pcd_colors   [x,3] numpy array containing r, g, and b colors
-    @param max_height   float containing height cutoff. default -0.2
-
-    @return pcd_points, pcd_colors with points above max_height removed
-    '''
-    pcd_array = np.hstack((pcd_points, pcd_colors))
-
-    filtered_array = np.delete(pcd_array, np.where(
-        pcd_array[:,2] > max_height)[0], axis=0)
-
-    pcd_points = filtered_array[:, :3]
-    pcd_colors = filtered_array[:, 3:]
-
-    return pcd_points, pcd_colors
 
 
 def separate_by_height(segments, height_threshold=0.001):
@@ -638,9 +846,9 @@ def separate_by_height(segments, height_threshold=0.001):
     return weeds, dirt
 
 
-def array_2_pc(points):
+def array_to_pc(points):
     '''!
-    take in array of points and format it to be usable
+    Take in array of points and format it into an open3d point cloud
 
     @param points   list of points
 
@@ -653,7 +861,6 @@ def array_2_pc(points):
         rgb = float_to_rgb(x)
         pcd_colors = np.vstack((pcd_colors, rgb))
     pcd_colors = np.delete(pcd_colors, 0, 0)
-    # pcd_points, pcd_colors = remove_height_outliers(pcd_points, pcd_colors)
     pcd_array = np.hstack((pcd_points, pcd_colors))
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(pcd_points)
@@ -667,7 +874,7 @@ def separate_by_size(segments, using_npc=False):
 
     @param segments   dict containing all segments of point cloud
 
-    @return weeds, dirt pointclouds containing weeds and dirt respecively
+    @return weeds, dirt:  pointclouds containing weeds and dirt respecively
     '''
 
     if using_npc == True:
@@ -695,7 +902,7 @@ def labels_to_dict(pcd, labels):
     Seperats pcd into dict of clusters based on labels
 
     @param pcd   the open3d point cloud in question
-    @param labels   list of labels (eg from dbscan or kmeans)
+    @param labels   list of labels (eg from dbscan or kmeans, list of integers)
 
     @return dictionary containing pointclouds by cluster
     '''
@@ -707,11 +914,42 @@ def labels_to_dict(pcd, labels):
     return new_dict
 
 
+def assemble_weeds_from_label(leaves, best_S):
+    '''!
+    Assembles dictionary of point clouds representing weeds given labels from bestS for each leaf
+
+    @param leaves   a list of numpy arrays. each numpy array is a leaf (usually from facet region growing)
+    @param best_S   a list of integers. each element is the weed label for one leaf in leaves
+
+    @return dictionary of point clouds where each point cloud is a weed
+    '''
+
+    new_dict = {}
+    best_S = np.array(best_S)
+    for i in range(np.max(best_S) + 1):
+        idx = np.where(best_S[:] == i)[0]
+        current_weed = []
+
+        for j in idx:
+            current_weed.append(leaves[j])
+
+        current_weed = np.concatenate(current_weed, axis=0)
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(current_weed)
+        color = (random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1))
+        # color= colors[i]
+        pcd.paint_uniform_color(list(color[:3]))
+        new_dict[i] = pcd
+    
+    return new_dict
+
+
 def calculate_epsilon(pcd_array):
     '''!
     Uses method described here:
     https://towardsdatascience.com/machine-learning-clustering-dbscan-determine-the-optimal-value-for-epsilon-eps-python-example-3100091cfbc
     and kneed package to find the ideal epsilon for our data
+    Currently out of use because "ideal" epsilon does not neccisarily produce correct weeds. Hand tuned value is 0.004.
 
     @param pcd_array   numpy array containing x,y, and z points from pt cloud
 
@@ -730,13 +968,9 @@ def calculate_epsilon(pcd_array):
     kn = KneeLocator(x=range(len(distances)), y=distances, curve='convex')
     knee_idx = kn.knee
     epsilon = distances[knee_idx]
-    # print("Calculated eps: ", epsilon)
 
-    epsilon = 0.004
-
-    # if epsilon < 0.004:
-    #     epsilon = 0.004
-        # print("switched to default epsilon")
+    if epsilon < 0.004:
+        epsilon = 0.004
 
     return epsilon
 
@@ -789,14 +1023,14 @@ def calculate_normal(dirt):
 
 
 def float_to_rgb(float_rgb):
-    """ Converts a packed float RGB format to an RGB list
+    '''!
+    Converts a packed float RGB format to an RGB list
 
-        Args:
-            float_rgb: RGB value packed as a float
+    @param float_rgb   RGB value packed as a float
 
-        Returns:
-            color (list): 3-element list of integers [0-255,0-255,0-255]
-    """
+    @return color (list): 3-element list of integers [0-255,0-255,0-255]
+    '''
+
     s = struct.pack('>f', float_rgb)
     i = struct.unpack('>l', s)[0]
     pack = ctypes.c_uint32(i).value
