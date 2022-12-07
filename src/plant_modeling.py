@@ -18,7 +18,7 @@ from tf.transformations import rotation_matrix
 import find_centroids as fc
 
 
-def predict_weed_pose(selection):
+def predict_weed_pose(selection, ret_mult=False):
     # Load point cloud and visualize it
     points = np.array(list(pc2.read_points(selection)))
 
@@ -27,7 +27,7 @@ def predict_weed_pose(selection):
         return None
 
     # weed_centroid, normal = fc.DBSCAN_calculate_pose(points)
-    weed_centroid, normal = fc.FRG_calculate_pose(points)
+    weed_centroid, normal = fc.FRG_calculate_pose(points, return_multiple_grasps=ret_mult)
     # weed_centroid, normal = fc.color_calculate_pose(points)
     if weed_centroid is None:
         return None
@@ -41,13 +41,23 @@ def predict_weed_pose(selection):
         phi = phi + pi - 2 * phi
     theta = atan(normal[0] / -normal[2])
 
-    # Construct transformation matrix from camera to tool of end effector
-    camera2tool = np.eye(4)
-    camera2tool[:3, :3] = (rotation_matrix(phi, np.asarray([1, 0, 0])) @
-                           rotation_matrix(theta, np.asarray([0, 1, 0])))[:3, :3]
-    camera2tool[:3, 3] = weed_centroid
-
-    return camera2tool
+    # Construct transformation matrices from camera to tool of end effector
+    # If multiple grasps are returned, make a list of them. If not, dont
+    if weed_centroid.ndim > 1:
+        camera2tool_list = []
+        for i in range(weed_centroid.shape[0]):
+            camera2tool = np.eye(4)
+            camera2tool[:3, :3] = (rotation_matrix(phi, np.asarray([1, 0, 0])) @
+                                rotation_matrix(theta, np.asarray([0, 1, 0])))[:3, :3]
+            camera2tool[:3, 3] = weed_centroid[i, :]
+            camera2tool_list.append(camera2tool)
+        return camera2tool_list
+    else: 
+        camera2tool = np.eye(4)
+        camera2tool[:3, :3] = (rotation_matrix(phi, np.asarray([1, 0, 0])) @
+                            rotation_matrix(theta, np.asarray([0, 1, 0])))[:3, :3]
+        camera2tool[:3, 3] = weed_centroid
+        return [camera2tool]
 
 
 def cluster_filter(points):

@@ -241,7 +241,7 @@ def FRG_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], pro
 
     @return list of weed centroids, normal associated with dirt
     '''
-    print("Using facet region growing with {}...\n".format(algorithm))
+    print("\nUsing facet region growing with {}...\n".format(algorithm))
 
     # Do initial segmentation and convert to numpy array
     all_weeds, dirt = initial_segmentation(points, algorithm, weights)
@@ -282,64 +282,75 @@ def FRG_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], pro
         weeds.paint_uniform_color([0.01, 0.5, 0.01])
         # o3d.visualization.draw_geometries([weeds], window_name="Only Large")
 
-        # Do facet region growing to find leaves
-        leaves = frg.facet_leaf_segmentation(weeds_array)
+        if len(weeds_array) > 0:
+            # Do facet region growing to find leaves
+            leaves = frg.facet_leaf_segmentation(weeds_array)
 
-        # Format+display FRG
-        leaf_pcs = []
-        for i in range(len(leaves)):
-            color = (random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1))
-            leaf = o3d.geometry.PointCloud()
-            leaf.points = o3d.utility.Vector3dVector(leaves[i])
-            leaf.paint_uniform_color(list(color[:3]))
-            leaf_pcs.append(leaf)
-        o3d.visualization.draw_geometries(
-            [leaf_pcs[i] for i in range(len(leaves))], window_name="FRG")
+            # Format+display FRG
+            leaf_pcs = []
+            for i in range(len(leaves)):
+                color = (random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1))
+                leaf = o3d.geometry.PointCloud()
+                leaf.points = o3d.utility.Vector3dVector(leaves[i])
+                leaf.paint_uniform_color(list(color[:3]))
+                leaf_pcs.append(leaf)
+            # o3d.visualization.draw_geometries(
+                # [leaf_pcs[i] for i in range(len(leaves))], window_name="FRG")
+
+            
+            # If there is only one leaf we dont want to do the rest of FRG. 
+            if len(leaves) == 1:
+                weeds_segments = {0: leaf_pcs[0]}
+            else:
+                # Get leaf axes and base points and associated leaves
+                edges = np.array([0, 0, 0, 0, 0, 0])
+                for leaf in leaves:
+                    _, current_edges= la.get_axis_and_ends(leaf)
+                    edges = np.vstack((edges, current_edges))
+                edges = np.delete(edges, 0, 0)
+                num_edges = edges.shape[0]
 
 
-        # Get leaf axes and base points and associated leaves
-        edges = np.array([0, 0, 0, 0, 0, 0])
-        for leaf in leaves:
-            _, current_edges= la.get_axis_and_ends(leaf)
-            edges = np.vstack((edges, current_edges))
-        edges = np.delete(edges, 0, 0)
-        num_edges = edges.shape[0]
+                # Genetic algorithm
+                # n_iter = 100 # define the total iterations
+                # n_bits = 3 * num_edges # bits
+                # n_pop = 10 # define the population size
+                # r_cross = 0.5 # crossover rate
+                # r_mut = 1.0 / float(n_bits) # mutation rate
+                # best_S_bits, score = ga.genetic_algorithm(genetic_fitness_function, edges, leaves, n_bits, n_iter, n_pop, r_cross, r_mut)
+                # best_S_string = "".join([str(best_S_bits[x]) for x in range(0, len(best_S_bits))])
+                # best_S_int = [int(best_S_string[i:i+3], 2) for i in range(0, len(best_S_string), 3)]
+                # best_S = reduce_S(best_S_int)
+                # print(best_S)
+                
+                # Find a way to convert best_S_int so that it has no gaps
 
+                # Use brute force to find optimal weed assignment based on cost function from least squares
+                best_S, lowest_cost, _ = brute_force_optimize(edges, leaves)
 
-        # Genetic algorithm
-        # n_iter = 100 # define the total iterations
-        # n_bits = 3 * num_edges # bits
-        # n_pop = 10 # define the population size
-        # r_cross = 0.5 # crossover rate
-        # r_mut = 1.0 / float(n_bits) # mutation rate
-        # best_S_bits, score = ga.genetic_algorithm(genetic_fitness_function, edges, leaves, n_bits, n_iter, n_pop, r_cross, r_mut)
-        # best_S_string = "".join([str(best_S_bits[x]) for x in range(0, len(best_S_bits))])
-        # best_S_int = [int(best_S_string[i:i+3], 2) for i in range(0, len(best_S_string), 3)]
-        # best_S = reduce_S(best_S_int)
-        # print(best_S)
-        
-        # Find a way to convert best_S_int so that it has no gaps
+                # Convert optimal weed assignment to dictionary of pointclouds
+                weeds_segments = assemble_weeds_from_label(leaves, best_S)
 
-        # Use brute force to find optimal weed assignment based on cost function from least squares
-        best_S, lowest_cost, _ = brute_force_optimize(edges, leaves)
-
-        # Convert aptimal weed assignment to dictionary of pointclouds
-        weeds_segments = assemble_weeds_from_label(leaves, best_S)
+                # Solve for centroids and normals using usual methods, remove obvious false positives
+                weeds_centroids = calculate_centroids(weeds_segments)
+                if not np.array_equal(np.array([0, 0, 0]), small_centroids):
+                    weeds_centroids = np.vstack((weeds_centroids, np.array(small_centroids)))
+                if len(weeds_segments) > 1:
+                    weeds_centroids = remove_false_positives(weeds_centroids, all_weeds_array)
+        else:
+            weeds_centroids = small_centroids
     else:
-        weeds_segments = {0: weeds}
-
-
-    # Solve for centroids and normals using usual methods, remove obvious false positives
-    weeds_centroids = calculate_centroids(weeds_segments)
-    if not np.array_equal(np.array([0, 0, 0]), small_centroids):
-        weeds_centroids = np.vstack((weeds_centroids, np.array(small_centroids)))
-    weeds_centroids = remove_false_positives(weeds_centroids, all_weeds_array)
+        weeds_segments = {0: all_weeds}
+        weeds_centroids = calculate_centroids(weeds_segments)
+        normal = calculate_normal(dirt)
+        return weeds_centroids, normal
+    
     normal = calculate_normal(dirt)
     if len(weeds_centroids) < 1:
         return None, None
     
-    o3d.visualization.draw_geometries(
-        [weeds_segments[i] for i in range(len(weeds_segments))], window_name="Weed Combinations")
+    # o3d.visualization.draw_geometries(
+    #     [weeds_segments[i] for i in range(len(weeds_segments))], window_name="Weed Combinations")
 
     # If we want multiple grasps, return multiple grasps
     if return_multiple_grasps == True:
@@ -384,7 +395,7 @@ def brute_force_optimize(E, leaves, max_weeds=5):
             lowest_cost = current_cost
             best_centroids = current_centroids
             best_S = current_S
-    print("Avg Cost Eval Time: ", all_times/len(combinations))
+    # print("Avg Cost Eval Time: ", all_times/len(combinations))
     return best_S, lowest_cost, best_centroids
 
 

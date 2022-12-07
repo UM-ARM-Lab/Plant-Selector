@@ -7,6 +7,7 @@ import numpy as np
 import plant_modeling as pm
 import rospy
 from arc_utilities.tf2wrapper import TF2Wrapper
+from arm_rviz.rviz_animation_controller import RvizAnimationController
 from sensor_msgs.msg import PointCloud2
 from std_msgs.msg import String
 from std_msgs.msg import Bool
@@ -72,12 +73,31 @@ class PlantExtractor:
         self.robot_plan(camera2tool)
 
     def select_weed(self, selection):
-        camera2tool = pm.predict_weed_pose(selection)
+        camera2tool = pm.predict_weed_pose(selection, ret_mult=True)
+
+        # If there are none or a single predicted grasp, visualize and execute as normal
         if camera2tool is None:
             rospy.loginfo("Unable to make a weed prediction")
             return
-        self.visualize_red_gripper(camera2tool)
-        self.robot_plan(camera2tool)
+        elif len(camera2tool) == 1:
+            camera2tool = camera2tool[0]
+            self.visualize_red_gripper(camera2tool)
+            self.robot_plan(camera2tool)
+            return
+        
+        # If there are multiple grasps returned, display each of them until done with animation controller
+        grasp_viz = RvizAnimationController(n_time_steps=len(camera2tool), ns='poses')
+        print("Found multiple weeds, press 'Done' to continue making selections...")
+        while not grasp_viz.done:
+            grasp_idx = grasp_viz.t()
+            current_grasp = camera2tool[grasp_idx]
+            self.visualize_red_gripper(current_grasp)
+            grasp_viz.step()
+        self.hide_red_gripper()
+
+        # Execute multiple times
+        for i in range(len(camera2tool)):
+            self.robot_plan(camera2tool[i])
 
     def robot_plan(self, camera2tool):
         if self.robot is None:

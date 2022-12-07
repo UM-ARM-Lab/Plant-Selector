@@ -57,7 +57,7 @@ def main():
     '''!
     Test algorithms on multiple files with specified algorithms
     '''
-    display = False
+    display = True
     
     data_directory = '/home/amasse/catkin_ws/src/plant_selector/weed_eval/'
     pcs_folder = 'multi_pcs/'
