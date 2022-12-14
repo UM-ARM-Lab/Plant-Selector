@@ -26,9 +26,9 @@ def predict_weed_pose(selection, ret_mult=False):
         rospy.loginfo("You selected no points, select a few points")
         return None
 
-    # weed_centroid, normal = fc.DBSCAN_calculate_pose(points)
+    # weed_centroid, normal = fc.DBSCAN_calculate_pose(points, return_multiple_grasps=ret_mult)
     weed_centroid, normal = fc.FRG_calculate_pose(points, return_multiple_grasps=ret_mult)
-    # weed_centroid, normal = fc.color_calculate_pose(points)
+    # weed_centroid, normal = fc.color_calculate_pose(points, return_multiple_grasps=ret_mult)
     if weed_centroid is None:
         return None
 

@@ -1,16 +1,16 @@
 # Plant Selector
 This package is meant for creating goal gripper poses for Val in the garden.
 
-Demo Video: https://drive.google.com/file/d/1rhoIgoLtfJwrlv68aB5PwK_YFSWYTWPV/view?usp=sharing
+This branch contains Amanda Massey's updates to the initial work by Miguel Munoz and Christian Foreman. Miguel and Christian created the package and develped weed/branch fitting, rviz plugins, and tools for connecting with Val. Email amasse@umich.edu for questions reguarding the weed centroid extraction pipeline. Email cjforema@umich.edu for any questions regaurding rviz or ros.
 
-This package was made by Miguel Munoz and Christian Foreman. Miguel worked mainly with the weed/branch fitting, and Christian worked with created the rviz plugins and connecting with code with Val. Email cjforema@umich.edu for any questions. If you have any questions about changing the rviz plugins, I can definitely help. Since Miguel and I were the main users, we got pretty familiar with how it all works, but there are probably some things to change to make it easier to use.
+Documentation can be found in plant_selector/doxygen/html/index.html
 
 ## Requirements
-Below are requirements for this code to work. In Short, make sure that your ZED camera works in neural mode, and you have the basic ARMLAB packages for controlling the robots.
+Below are the requirements for usage of this package. In short, make sure that the ZED camera works in neural mode and you have the basic ARMLab packages for controlling the robots.
 If you are not using a robot, ZED should be all you need.
 
 ### ZED SDK
-Since this project assumes the use of a zed camera, it is neccesary to install the ZED SDK.
+Since this project assumes the use of a ZED camera, it is neccesary to install the ZED SDK.
 
 Follow the download instructions at https://www.stereolabs.com/docs/ros/
 
@@ -30,7 +30,7 @@ rosrun rviz rviz
 ```
 
 ### ZED2i Parameters
-Whenever you run a zed camera with the current roslaunch files, they will be using the current best parameters which are found in
+Whenever you run a ZED camera with the current roslaunch files, they will be using the current best parameters which are found in
 cam_params. The most import parameters here are setting quality to 4 (neural mode), and resolution to 0 (HD2K).
 
 Those should be all the parameters you need. Running some of the launch files may result in complaing about frame rates, so you may want to tweak some parameters for smoother performance. However, you almost always want to run neural mode. The other quality settings result in really poor looking point clouds which aren't nearly good enough for detecting weeds.
@@ -38,7 +38,7 @@ Those should be all the parameters you need. Running some of the launch files ma
 Note: all this code was made assuming the ZED2i camera is being used, a different ZED would most likely work as long as you modify the roslaunch files. Using a different camera like realsense could work, but more modifications to the code would be necessary.
 
 ### Other Packages
-This project also requires other packages such as arm_robots, hdt_michigan, gazebo_ros, and other basic packages for when you are using a robot like Val or Victor.
+This project also requires other packages such as arm_rviz, arm_robots, hdt_michigan, gazebo_ros, and other basic packages for when you are using a robot like Val or Victor.
 
 ## Running
 Once you have pulled this repo into catkin_ws/src/ make sure to catkin build. After building, things should work. Look below at some example launch files.
@@ -167,10 +167,12 @@ To configure this code to work on a different weed prediction model, go into the
 In order to add more weed data, take a look at scripts/weed_data_collector.py. It's a little clunky in how it works, but basically, it assumes you first select a region of the entire point cloud in which you want to model a weed, followed by a selection of a single point. You can keep going back and forth through this process until you have a good amount of data. Make sure to be using the publishing selector.
 
 ## Code Explanation
-Below is a quick description of how the current plant fitting models work, most relevant code is found in plant_modeling.py.
+Below is a quick description of how the current plant fitting models work, most relevant code is found in find_centroids.py, facet_region_growing.py, and nearest_prototype_classifier.py.
 
 ### Weed Extraction
-After making a selection around a weed, the following steps take place:
+Chose between the methods of centroid extraction below by altering the code on lines 29-31 in plant_modeling.py. The default method is facet region growing. After making a selection around a weed, the following steps take place depending on the algorithm chosen:
+
+#### Color-based method
 1. Filter the pointcloud with a green color filter
 2. Filter out small groupings of green points
 3. DBSCAN on the remaining green points to cluster groups of green pixels
@@ -179,10 +181,25 @@ After making a selection around a weed, the following steps take place:
 6. Use the points that aren't green, aka dirt, and fit a plane to the points with RANSAC
 7. Perform transforms to move a gripper to the centroid of the weed with the direction of the normal of the dirt
 
-Notes:
-* This method of taking the centroid of filtered green points is extremely simple. However, with the amount of variation in pointcloud data and weed shapes, it is hard to create even more accurate weed models.
-* One other model we were looking into was to project the green points onto a plane, fit an alphashape (concave hull) to the 2d points, followed by skeltonizing the alphashape. This method looks promising, but it is hard to determine what point on the skeleton would belong to the stem. Look in the 'unfinished' folder for some of our code on this topic. Look at the skeltonization.png photo in the images_gifs/ folder. In those examples, the red point in the centroid and the orange point is the labeled stem center.
-* Some other attempts at modelings weeds include 2d/3d edge detection and fitting shapes to each leaf. These attempts weren't great due to the lack of points from the ZED Camera. Most weeds only have about 30-50 points of data so creating robust models is extremely difficult. This code can also be found in the unfinished folder.
+#### DBSCAN Method:
+1. Perform initial segmentation, seperating dirt and rocks from the weed points
+2. DBSCAN on the remaining green points to cluster points into weeds
+3. Remove weeds with less than 15 points
+4. Get the centroids of the weed clusters, these act as a prediction of where each stem is
+5. Use the points associated with the dirt to fit a plane to the points with RANSAC
+6. Perform transforms to move a gripper to each centroid of the weeds with the direction of the normal of the dirt
+
+#### Facet Region Growing Method:
+1. Perform initial segmentation, seperating dirt and rocks from the weed points
+2. If initial segmentation finds less than 30 points, assume only one weed has been selected and find its centroid
+3. Run DBSCAN with coarse parameters to seperate small outlying weeds from larger clusters. Find centroids of small weeds seperately
+4. Do facet region growing and cost optimization on large weed clusters to find large weed centroids.
+5. Combine small and large weed centroids
+6. Use the points associated with the dirt to fit a plane to the points with RANSAC
+7. Perform transforms to move a gripper to the centroid of the weed with the direction of the normal of the dirt
+
+Below is a block diagram for the centroid extraction pipeline:
+![Image of Centroid Extraction Block Diagram](images_gifs/block_diagram.png)
 
 ### Branch Extraction
 After making a selection of a part of a branch, the following steps take place:

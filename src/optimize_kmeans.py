@@ -20,7 +20,7 @@ def get_segmentation(weights, training_directory, pc_filenames):
 
     @return list of weeds where each element contains all weeds from the corresponding file
     '''
-    pc_folder = training_directory + 'training_selections/'
+    pc_folder = training_directory + '/training_selections/'
     
     # For every file, load it and do weighted kmeans. Put the labels and point clouds into a list
     labels_list = []
@@ -71,7 +71,7 @@ def calculate_cost(weights, training_directory, pc_filenames, manual_labels_file
     weeds_list = get_segmentation(weights, training_directory, pc_filenames)
 
     # Organize manual labels into a list of 3d points
-    manual_labels_folder = training_directory + 'training_manually_segmented/'
+    manual_labels_folder = training_directory + '/training_manually_segmented/'
     manual_labels_list = []
     for file in manual_labels_filenames:
         pcd = o3d.io.read_point_cloud(manual_labels_folder + file)
@@ -102,7 +102,7 @@ def main():
 
 
     # Location of the training data
-    training_directory = "/home/amasse/catkin_ws/src/plant_selector/segmentation_training/"
+    training_directory = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "segmentation_training"))
 
     # Make a list of file names for the point clouds and their manual labels
     pc_filenames = []

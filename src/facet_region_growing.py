@@ -10,6 +10,7 @@ import open3d as o3d
 import matplotlib.pyplot as plt
 import math
 import random
+import os
 
 
 def spatial_characteristics(points, K=8, plane_thresh=0.003):
@@ -359,13 +360,12 @@ def facet_leaf_segmentation(points, min_points = 10):
     return good_leaves
 
 
-
 def main():
     '''!
     Testing and display for facet region growing method.
     '''
-
-    file_loc = '/home/amasse/catkin_ws/src/plant_selector/weed_eval/all_pcd_files/segmented_weeds.pcd'
+    
+    file_loc = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "weed_eval/all_pcd_files/segmented_weeds.pcd"))
     weeds = o3d.io.read_point_cloud(file_loc)
     pcd_points = np.asarray(weeds.points)
 

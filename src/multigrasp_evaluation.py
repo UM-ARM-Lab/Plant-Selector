@@ -57,11 +57,12 @@ def main():
     '''!
     Test algorithms on multiple files with specified algorithms
     '''
-    display = True
-    
-    data_directory = '/home/amasse/catkin_ws/src/plant_selector/weed_eval/'
-    pcs_folder = 'multi_pcs/'
-    manual_labels_folder = 'multi_manual_labels/'
+    display = False
+
+    basepath = os.path.dirname(__file__)
+    data_directory = os.path.abspath(os.path.join(basepath, "..", "weed_eval"))
+    pcs_folder = '/multi_pcs/'
+    manual_labels_folder = '/multi_manual_labels/'
 
     # pc_filenames = ['1_multi.npy','2_multi.npy','3_multi.npy','4_multi.npy']
     # label_filenames = ['1_multi_label.npy','2_multi_label.npy','3_multi_label.npy','4_multi_label.npy']
@@ -104,7 +105,9 @@ def main():
 
     # Combine and save the pandas dataframe into a csv file
     full_frame = pd.concat(all_dfs)
-    full_frame.to_csv('/home/amasse/catkin_ws/src/plant_selector/weed_eval/multi_grasp_data.csv')
+    basepath = os.path.dirname(__file__)
+    data_directory = os.path.abspath(os.path.join(basepath, "..", "weed_eval/multi_grasp_data.csv"))
+    full_frame.to_csv(data_directory)
 
     
     # Display predicitons and manual labels

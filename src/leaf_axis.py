@@ -5,6 +5,7 @@
 from email.mime import base
 import numpy as np
 import open3d as o3d
+import os
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 from pyquaternion import Quaternion
@@ -137,7 +138,8 @@ def get_axis_and_ends(points):
 
 
 def main():
-    M = o3d.io.read_point_cloud('/home/amasse/catkin_ws/src/plant_selector/segmentation_training/leaf_model_2.ply')
+    data_directory = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "segmentation_training/leaf_model_2.ply"))
+    M = o3d.io.read_point_cloud(data_directory)
     leaf = np.asarray(M.points)
 
     c1, end_points = get_axis_and_ends(leaf)

@@ -6,6 +6,7 @@ import numpy as np
 import open3d as o3d
 import matplotlib.pyplot as plt
 import cv2
+import os
 import find_centroids as fc
 
 
@@ -23,9 +24,9 @@ def get_training_points(path_to_training, file_numbers):
     rocks_training_set = np.zeros((1, 6))
     dirt_training_set = np.zeros((1, 6))
     for file_num in file_numbers:
-        weed_file = path_to_training + file_num + '_weeds.ply'
-        rock_file = path_to_training + file_num + '_rocks.ply'
-        dirt_file = path_to_training + file_num + '_dirt.ply'
+        weed_file = path_to_training + "/" + file_num + '_weeds.ply'
+        rock_file = path_to_training + "/" + file_num + '_rocks.ply'
+        dirt_file = path_to_training + "/" + file_num + '_dirt.ply'
 
         weeds_points = np.asarray(o3d.io.read_point_cloud(weed_file).points)
         weeds_colors = np.asarray(o3d.io.read_point_cloud(weed_file).colors)
@@ -94,7 +95,7 @@ def npc_segment_weeds(unclassified_data, use_hsv=False):
     @return list of label numbers for input data
     '''
     
-    path_to_training = '/home/amasse/catkin_ws/src/plant_selector/segmentation_training/npc_training_data/'
+    path_to_training = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "segmentation_training/npc_training_data/"))
     # possible file numbers ['20', '22', '77', '79', '95', '104]
     file_numbers = ['22']
 
@@ -151,10 +152,10 @@ def npc_segment_weeds(unclassified_data, use_hsv=False):
 
 
 def main():
-    file_loc = '/home/amasse/catkin_ws/src/plant_selector/segmentation_training/all_selections/79.npy'
+    file_loc = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "segmentation_training/all_selections/79.npy"))
 
     # Load in data we want to classify
-    pcd, unclassified_data, _ = fc.array_2_pc(np.load(file_loc))
+    pcd, unclassified_data, _ = fc.array_to_pc(np.load(file_loc))
     # o3d.visualization.draw_geometries([pcd], window_name="Original")
 
     label_nums = npc_segment_weeds(unclassified_data, use_hsv=False)

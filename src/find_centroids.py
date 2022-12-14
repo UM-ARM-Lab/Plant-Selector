@@ -5,6 +5,7 @@
 from audioop import avg
 import ctypes
 from os import fdatasync
+import os
 import struct
 from turtle import fd
 
@@ -97,7 +98,7 @@ def color_calculate_pose(points, return_multiple_grasps=False):
     # Just keep the inlier points in the point cloud
     green_pcd = green_pcd.select_by_index(ind)
     green_pcd_points = np.asarray(green_pcd.points)
-    # green_pcd.paint_uniform_color([0.01, 0.5, 0.01])
+    green_pcd.paint_uniform_color([0.01, 0.5, 0.01])
     # o3d.visualization.draw_geometries([green_pcd], window_name="Initial Segmentation")
 
     # Apply DBSCAN to green points
@@ -153,7 +154,7 @@ def color_calculate_pose(points, return_multiple_grasps=False):
     return weed_centroid, normal
 
 
-def DBSCAN_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], return_multiple_grasps=False):
+def DBSCAN_calculate_pose(points, algorithm='npc', weights=[0,0,100,0,100,0], return_multiple_grasps=False):
     '''!
     Uses DBSCAN to cluster weeds and calculate pose
 
@@ -171,7 +172,7 @@ def DBSCAN_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], 
     if weeds_array.shape[0] < 2:
         return None, None
     # weeds.paint_uniform_color([0.01, 0.5, 0.01])set_partitions
-    # o3d.io.write_point_cloud("/home/amasse/catkin_ws/src/plant_selector/weed_eval/segmented_weeds2.pcd", weeds)
+    # o3d.io.write_point_cloud(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "weed_eval/segmented_weeds2.pcd")), weeds)
     # o3d.visualization.draw_geometries([weeds])
 
 
@@ -183,7 +184,7 @@ def DBSCAN_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], 
     labels = np.array(weeds.cluster_dbscan(eps=epsilon, min_points=10))
     max_label = labels.max()
     colors = plt.get_cmap("tab10")(labels / (max_label if max_label > 0 else 1))
-    colors[labels < 0] = 0
+    colors[labels < 0] = 1
     weeds.colors = o3d.utility.Vector3dVector(colors[:, :3])
     # o3d.visualization.draw_geometries([weeds])
     
@@ -209,28 +210,23 @@ def DBSCAN_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], 
         return None, None
     
 
+    # Remove centroid guesses that do not lie within a weed
+    weeds_centroids = remove_false_positives(weeds_centroids, weeds_array)
+    
+
     # If we want multiple grasps, return multiple grasps
     if return_multiple_grasps == True:
         return weeds_centroids, normal
 
 
-    # Remove centroid guesses that do not lie within a weed
-    weeds_centroids = remove_false_positives(weeds_centroids, weeds_array)
+    # For now only return one weed
+    if weeds_centroids.ndim == 1:
+            return None, None
+    else:
+        return weeds_centroids[0], normal
 
 
-    # For now only return the largest weed
-    weeds_sizes = {}
-    for i in range(len(weeds_centroids)):
-        weeds_sizes[i] = np.shape(np.asarray(weeds_segments[i].points))[0]
-    if len(weeds_sizes) < 1:
-        return None, None
-    largest_segment = max(weeds_sizes, key=weeds_sizes.get)
-
-
-    return weeds_centroids[largest_segment], normal
-
-
-def FRG_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], proximity_thresh=0.05, return_multiple_grasps=False):
+def FRG_calculate_pose(points, algorithm='npc', weights=[0,0,100,0,100,0], proximity_thresh=0.05, return_multiple_grasps=False):
     '''!
     Uses Facet Region Growing method and PCA to return the pose for the gripper
 
@@ -250,6 +246,7 @@ def FRG_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], pro
         return None, None
 
     # Use facet region growing to get individual leaves (provided there are enough points)
+    weeds_centroids = []
     if all_weeds_array.shape[0] >= 30:
         # Run dbscan to cluster into individual weeds, color them
         labels = np.array(all_weeds.cluster_dbscan(eps=0.0065, min_points=5))
@@ -262,7 +259,7 @@ def FRG_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], pro
         # Seperate the weeds into dict of individual clusters
         all_weeds_segments = labels_to_dict(all_weeds, labels)
 
-        # Remove clusters under 20 points and put them in a list, combine large ones
+        # Remove clusters under 30 points and put them in a list, combine large ones
         small_weeds = []
         small_centroids = np.array([0, 0, 0])
         weeds = o3d.geometry.PointCloud()
@@ -286,64 +283,67 @@ def FRG_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], pro
             # Do facet region growing to find leaves
             leaves = frg.facet_leaf_segmentation(weeds_array)
 
-            # Format+display FRG
-            leaf_pcs = []
-            for i in range(len(leaves)):
-                color = (random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1))
-                leaf = o3d.geometry.PointCloud()
-                leaf.points = o3d.utility.Vector3dVector(leaves[i])
-                leaf.paint_uniform_color(list(color[:3]))
-                leaf_pcs.append(leaf)
-            # o3d.visualization.draw_geometries(
-                # [leaf_pcs[i] for i in range(len(leaves))], window_name="FRG")
-
-            
-            # If there is only one leaf we dont want to do the rest of FRG. 
-            if len(leaves) == 1:
-                weeds_segments = {0: leaf_pcs[0]}
+            # If FRG cannot find any leaves, just assume ther is only one
+            if len(leaves) < 1:
+                weeds_centroids = small_centroids
             else:
-                # Get leaf axes and base points and associated leaves
-                edges = np.array([0, 0, 0, 0, 0, 0])
-                for leaf in leaves:
-                    _, current_edges= la.get_axis_and_ends(leaf)
-                    edges = np.vstack((edges, current_edges))
-                edges = np.delete(edges, 0, 0)
-                num_edges = edges.shape[0]
+                # Format+display FRG
+                leaf_pcs = []
+                for i in range(len(leaves)):
+                    color = (random.uniform(0, 1), random.uniform(0, 1), random.uniform(0, 1))
+                    leaf = o3d.geometry.PointCloud()
+                    leaf.points = o3d.utility.Vector3dVector(leaves[i])
+                    leaf.paint_uniform_color(list(color[:3]))
+                    leaf_pcs.append(leaf)
+                # o3d.visualization.draw_geometries(
+                    # [leaf_pcs[i] for i in range(len(leaves))], window_name="FRG")
+
+                # If there is only one leaf we dont want to do the rest of FRG. 
+                if len(leaves) == 1:
+                    weeds_segments = {0: leaf_pcs[0]}
+                else:
+                    # Get leaf axes and base points and associated leaves
+                    edges = np.array([0, 0, 0, 0, 0, 0])
+                    for leaf in leaves:
+                        _, current_edges= la.get_axis_and_ends(leaf)
+                        edges = np.vstack((edges, current_edges))
+                    edges = np.delete(edges, 0, 0)
+                    num_edges = edges.shape[0]
 
 
-                # Genetic algorithm
-                # n_iter = 100 # define the total iterations
-                # n_bits = 3 * num_edges # bits
-                # n_pop = 10 # define the population size
-                # r_cross = 0.5 # crossover rate
-                # r_mut = 1.0 / float(n_bits) # mutation rate
-                # best_S_bits, score = ga.genetic_algorithm(genetic_fitness_function, edges, leaves, n_bits, n_iter, n_pop, r_cross, r_mut)
-                # best_S_string = "".join([str(best_S_bits[x]) for x in range(0, len(best_S_bits))])
-                # best_S_int = [int(best_S_string[i:i+3], 2) for i in range(0, len(best_S_string), 3)]
-                # best_S = reduce_S(best_S_int)
-                # print(best_S)
-                
-                # Find a way to convert best_S_int so that it has no gaps
+                    # Genetic algorithm
+                    # n_iter = 100 # define the total iterations
+                    # n_bits = 3 * num_edges # bits
+                    # n_pop = 10 # define the population size
+                    # r_cross = 0.5 # crossover rate
+                    # r_mut = 1.0 / float(n_bits) # mutation rate
+                    # best_S_bits, score = ga.genetic_algorithm(genetic_fitness_function, edges, leaves, n_bits, n_iter, n_pop, r_cross, r_mut)
+                    # best_S_string = "".join([str(best_S_bits[x]) for x in range(0, len(best_S_bits))])
+                    # best_S_int = [int(best_S_string[i:i+3], 2) for i in range(0, len(best_S_string), 3)]
+                    # best_S = reduce_S(best_S_int)
+                    # print(best_S)
+                    
+                    # Find a way to convert best_S_int so that it has no gaps
 
-                # Use brute force to find optimal weed assignment based on cost function from least squares
-                best_S, lowest_cost, _ = brute_force_optimize(edges, leaves)
+                    # Use brute force to find optimal weed assignment based on cost function from least squares
+                    best_S, lowest_cost, _ = brute_force_optimize(edges, leaves)
 
-                # Convert optimal weed assignment to dictionary of pointclouds
-                weeds_segments = assemble_weeds_from_label(leaves, best_S)
+                    # Convert optimal weed assignment to dictionary of pointclouds
+                    weeds_segments = assemble_weeds_from_label(leaves, best_S)
 
-                # Solve for centroids and normals using usual methods, remove obvious false positives
-                weeds_centroids = calculate_centroids(weeds_segments)
-                if not np.array_equal(np.array([0, 0, 0]), small_centroids):
-                    weeds_centroids = np.vstack((weeds_centroids, np.array(small_centroids)))
-                if len(weeds_segments) > 1:
-                    weeds_centroids = remove_false_positives(weeds_centroids, all_weeds_array)
+                    # Solve for centroids and normals using usual methods, remove obvious false positives
+                    weeds_centroids = calculate_centroids(weeds_segments)
+                    if not np.array_equal(np.array([0, 0, 0]), small_centroids):
+                        weeds_centroids = np.vstack((weeds_centroids, np.array(small_centroids)))
+                    if len(weeds_segments) > 1:
+                        weeds_centroids = remove_false_positives(weeds_centroids, all_weeds_array)
         else:
             weeds_centroids = small_centroids
     else:
         weeds_segments = {0: all_weeds}
         weeds_centroids = calculate_centroids(weeds_segments)
         normal = calculate_normal(dirt)
-        return weeds_centroids, normal
+        return weeds_centroids[0], normal
     
     normal = calculate_normal(dirt)
     if len(weeds_centroids) < 1:
@@ -356,7 +356,10 @@ def FRG_calculate_pose(points, algorithm='npc', weights=[0,100,100,0,100,0], pro
     if return_multiple_grasps == True:
         return weeds_centroids, normal
     else:
-        return weeds_centroids[0], normal
+        if weeds_centroids.ndim == 1:
+            return None, None
+        else:
+            return weeds_centroids[0], normal
 
 
 def brute_force_optimize(E, leaves, max_weeds=5):
@@ -478,7 +481,7 @@ def LstSqrs_cost(S, E, leaves, return_cents=False, default_res=3.5, default_dist
     S = [round(i) for i in S]
     S = [int(i) for i in S]
     S = np.array(S)
-    
+
     # Seperate E into weeds based on S
     plants, plants_points = solution_to_plants(E, leaves, S)
 
@@ -702,9 +705,9 @@ def initial_segmentation(points, algorithm='npc', weights=[0,100,100,0,100,0]):
 
 
     # Save pc to file if desired
-    file_loc = "/home/amasse/catkin_ws/src/plant_selector/weed_eval/"
-    # np.save(file_loc + "saved.npy", points)
-    # o3d.io.write_point_cloud(file_loc + "saved.pcd", pcd)
+    file_loc = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "weed_eval"))
+    # np.save(file_loc + "/saved.npy", points)
+    # o3d.io.write_point_cloud(file_loc + "/saved.pcd", pcd)
 
 
     # Do clustering on original point cloud, based on desired method
@@ -737,7 +740,7 @@ def initial_segmentation(points, algorithm='npc', weights=[0,100,100,0,100,0]):
     max_label = labels.max()
     if max_label < 1:
         return None, None
-    colors = plt.get_cmap("Paired")(labels / (max_label if max_label > 0 else 1))
+    colors = plt.get_cmap("tab10")(labels / (max_label if max_label > 0 else 1))
     colors[labels < 0] = 0
     pcd.colors = o3d.utility.Vector3dVector(colors[:, :3])
     # o3d.visualization.draw_geometries([pcd], window_name="Initial Segmentation")
@@ -753,6 +756,7 @@ def initial_segmentation(points, algorithm='npc', weights=[0,100,100,0,100,0]):
     _, ind = weeds.remove_radius_outlier(nb_points=7, radius=0.007)
     if len(ind) != 0:
         weeds = weeds.select_by_index(ind)
+    # o3d.visualization.draw_geometries([weeds], window_name="Initial Segmentation")
     
     return weeds, dirt
 

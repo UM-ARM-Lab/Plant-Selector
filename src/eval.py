@@ -36,10 +36,12 @@ class WeedMetrics:
         self.best_metrics = []
         self.current_metrics = []
 
-        self.last_file = '/home/amasse/catkin_ws/src/plant_selector/weed_eval/past_metrics/eval_last.csv'
-        self.best_file = '/home/amasse/catkin_ws/src/plant_selector/weed_eval/past_metrics/eval_best.csv'
-        self.current_file = '/home/amasse/catkin_ws/src/plant_selector/weed_eval/past_metrics/color.csv'
-        self.all_data_file = '/home/amasse/catkin_ws/src/plant_selector/weed_eval/npc_test.csv'
+        self.basepath = os.path.dirname(__file__)
+
+        self.last_file = os.path.abspath(os.path.join(self.basepath, "..", "weed_eval/past_metrics/eval_last.csv"))
+        self.best_file = os.path.abspath(os.path.join(self.basepath, "..", "weed_eval/past_metrics/eval_best.csv"))
+        self.current_file = os.path.abspath(os.path.join(self.basepath, "..", "weed_eval/past_metrics/color.csv"))
+        self.all_data_file = os.path.abspath(os.path.join(self.basepath, "..", "weed_eval/test_eval.csv"))
 
         self.skipped_weeds = 0
         self.skipped_weeds_filenames = []
@@ -244,7 +246,8 @@ def main():
 
     # Run the evaluation
     # evaluator = WeedMetrics(args.weed_directory, fc.color_calculate_pose, gripper_size=0.015)
-    evaluator = WeedMetrics(args.weed_directory, fc.DBSCAN_calculate_pose, gripper_size=0.015, return_multiple_grasps=False)
+    # evaluator = WeedMetrics(args.weed_directory, fc.DBSCAN_calculate_pose, gripper_size=0.015, return_multiple_grasps=False)
+    evaluator = WeedMetrics(args.weed_directory, fc.FRG_calculate_pose, gripper_size=0.015, return_multiple_grasps=False)
     evaluator.run_eval()
 
 
